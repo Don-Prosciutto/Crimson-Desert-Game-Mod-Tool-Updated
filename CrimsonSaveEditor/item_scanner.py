@@ -138,17 +138,16 @@ def scan_items(data: bytes | bytearray) -> List[SaveItem]:
 
     _classify_items(data, items)
 
-    # Die Mustersuche oben nimmt zwangslaeufig auch zufaellige Bytefolgen mit,
-    # die ihrem Muster entsprechen. Das Schema des Spielstands sagt, welche
-    # Datensaetze echt sind; alles andere mit unplausiblen Werten fliegt raus.
-    # Schlaegt das fehl, bleibt die Liste wie sie war - lieber ein Phantom
-    # zuviel als ein fehlendes Item.
+    # The pattern scan above inevitably picks up random byte sequences that
+    # match its pattern. The save's own schema says which records are real;
+    # everything else with implausible values is dropped. If that fails, the
+    # list stays as it was - better one false hit too many than a missing item.
     try:
         import schema_item_index
-        index = schema_item_index.baue_index(data)
-        items, phantome = schema_item_index.entferne_phantome(items, index)
-        if phantome:
-            log.info("Dropped %d false hits, %d real items", len(phantome), len(items))
+        index = schema_item_index.build_index(data)
+        items, false_hits = schema_item_index.drop_false_hits(items, index)
+        if false_hits:
+            log.info("Dropped %d false hits, %d real items", len(false_hits), len(items))
     except Exception as e:  # noqa: BLE001
         log.warning("False-hit filter skipped: %s", e)
 
@@ -1062,24 +1061,24 @@ def enrich_items_with_parc(
                 item.bag = bname
                 break
 
-    # Der PARC-Weg liest nur Felder der Art `object_list`. Items hinter einem
-    # Zeiger - vor allem Ausruestung - erreicht er nicht; die behielten bisher
-    # die falschen Werte der Bytemustersuche und liessen sich gar nicht aendern.
-    # Die holt der Schema-Index nach. Schlaegt das fehl, bleibt alles wie es
-    # war: die Anreicherung selbst ist davon nicht abhaengig.
-    ergaenzt = 0
+    # The PARC path only reads fields of kind `object_list`. Items behind a
+    # pointer - equipment above all - are out of its reach; those used to keep
+    # the wrong values from the byte-pattern scan and could not be edited at
+    # all. The schema index fills those in. If that fails, everything stays as
+    # it was: the enrichment itself does not depend on it.
+    filled = 0
     try:
         import schema_item_index
-        _, nach_anker = schema_item_index.baue_indizes(data)
-        stat = schema_item_index.ergaenze_ohne_parc(items, nach_anker)
-        ergaenzt = stat["ergaenzt"]
+        _, by_anchor = schema_item_index.build_indexes(data)
+        stats = schema_item_index.fill_in_without_parc(items, by_anchor)
+        filled = stats["filled"]
     except Exception as e:  # noqa: BLE001
         log.warning("Schema fill-in skipped: %s", e)
 
     status = f"PARC mode: {enriched}/{len(items)} items enriched with exact field offsets"
-    if ergaenzt:
-        status += f", {ergaenzt} weitere ueber den Schema-Index"
-    return enriched + ergaenzt, status
+    if filled:
+        status += f", {filled} more via the schema index"
+    return enriched + filled, status
 
 
 def apply_item_swap_parc(

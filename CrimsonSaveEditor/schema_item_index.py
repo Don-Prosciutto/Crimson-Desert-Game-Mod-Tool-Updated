@@ -1,37 +1,37 @@
-"""Item-Datensaetze ueber das Schema des Spielstands lesen.
+"""Read item records through the save file's own schema.
 
-Der Baustein hat zwei Aufgaben.
+This module has two jobs.
 
-**1. Fehltreffer der Bytemustersuche erkennen.**
-`scan_items` findet Items ueber eine Bytemustersuche und akzeptiert dabei Stapel
-bis 9*10^18 und beliebige Slotnummern. Dadurch meldet sie zufaellige Bytefolgen
-als Items - in einem frisch begonnenen Spiel ohne Mods 126 Stueck, mit Stapeln
-von 72 Billiarden auf Slot 256.
+**1. Recognise false hits of the byte-pattern scan.**
+`scan_items` finds items with a byte-pattern scan and accepts stacks up to
+9*10^18 and arbitrary slot numbers. That makes it report random byte sequences
+as items - in a freshly started, unmodded game 126 of them, with stacks of
+72 quadrillion on slot 256.
 
-Eine einfache Plausibilitaetsgrenze genuegt dafuer nicht: der groesste ECHTE
-Stapel in den Messdaten ist 88.888.888 (Stack-Mods), und 50 echte Items liegen
-auf Slots ueber 255 (erweiterte Taschen). Ein Schwellwert allein wuerde echte
-Items wegwerfen. Deshalb der Umweg ueber das Schema, das der Spielstand selbst
-mitbringt: Was dort als Item-Datensatz steht, ist echt. Was nicht dort steht UND
-unplausible Werte hat, ist ein Fehltreffer.
+A simple plausibility limit is not enough here: the largest REAL stack in the
+measured saves is 88,888,888 (stack mods), and 50 real items sit on slots above
+255 (expanded bags). A threshold alone would throw away real items. Hence the
+detour through the schema the save brings along itself: whatever is listed there
+as an item record is real. Whatever is NOT listed there AND has implausible
+values is a false hit.
 
-**2. Items nachbessern, die `enrich_items_with_parc` nicht erreicht.**
-Der PARC-Weg des Autors liest nur Felder der Art `object_list`
-(`_find_item_fields_in_parsed`: `if kind != "object_list": continue`). Items, die
-hinter einem Zeiger haengen - so haengt Ausruestung an ihrem Slot -, erreicht er
-nicht. In den Messdaten betrifft das slot104: 243 von 597 Items. Fuer die zeigte
-das Tool als "Haltbarkeit" die gepackten Sockelzahlen an (5 statt 0, 773 statt 0),
-und **aendern liess sich an ihnen gar nichts**, weil `_require_parc_field_offset`
-ohne Feldposition zu Recht ablehnt.
+**2. Fill in items that `enrich_items_with_parc` never reaches.**
+The author's PARC path only reads fields of kind `object_list`
+(`_find_item_fields_in_parsed`: `if kind != "object_list": continue`). Items
+behind a pointer - which is how equipment hangs off its slot - are out of its
+reach. In the measured saves this affects slot104: 243 of 597 items. For those
+the tool displayed the packed socket counts as "endurance" (5 instead of 0, 773
+instead of 0), and **nothing about them could be edited at all**, because
+`_require_parc_field_offset` rightly refuses without a field offset.
 
-Dieser Baustein geht denselben Datensaetzen ueber das Schema nach und liefert
-Werte **samt Byte-Position**. Damit stimmen die Anzeigewerte, und der Schreibweg
-trifft die richtige Stelle.
+This module walks the same records through the schema and returns values
+**together with their byte offsets**. That makes the displayed values correct,
+and the write path hits the right spot.
 
-Belegt: An 5087 Feldern, die beide Wege erreichen, stimmen die Byte-Positionen
-ueberein. Die einzigen 24 Abweichungen betrafen 8 Items, die zweimal im
-Spielstand stehen - dort ordnete `enrich_items_with_parc` den falschen der beiden
-Datensaetze zu, weil es nur nach `_itemNo` abgleicht. Das ist dort behoben.
+Verified: across 5087 fields both paths reach, the byte offsets agree. The only
+24 deviations concerned 8 items that appear twice in the save - there
+`enrich_items_with_parc` matched the wrong one of the two records, because it
+only matches on `_itemNo`. That has been fixed on its side.
 """
 
 from __future__ import annotations
@@ -41,109 +41,102 @@ from typing import Any, Dict, NamedTuple, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
-# Blockklassen, die Items tragen koennen. Als Wortstaemme, nicht als exakte
-# Namen: je nach Spielstand heisst der Inventarblock InventorySaveData oder
-# InventoryItemContentsSaveData. Ein frisch begonnenes Spiel hat nur den
-# zweiten — eine Liste exakter Namen uebersieht dort das halbe Inventar.
-ITEMTRAGENDE_STAEMME = ("Inventory", "Equipment", "Store", "Mercenary")
+# Block classes that can carry items. Matched as word stems, not as exact
+# names: depending on the save the inventory block is called InventorySaveData
+# or InventoryItemContentsSaveData. A freshly started game only has the second
+# one - a list of exact names would miss half the inventory there.
+ITEM_BEARING_CLASS_STEMS = ("Inventory", "Equipment", "Store", "Mercenary")
 
 
-def _traegt_items(klassenname: str) -> bool:
-    return any(stamm in (klassenname or "") for stamm in ITEMTRAGENDE_STAEMME)
+def _bears_items(class_name: str) -> bool:
+    return any(stem in (class_name or "") for stem in ITEM_BEARING_CLASS_STEMS)
 
-# 0xFFFF bedeutet in diesen Datensaetzen "nicht gesetzt", nicht 65535.
-NICHT_GESETZT_U16 = 0xFFFF
+# In these records 0xFFFF means "not set", not 65535.
+UNSET_U16 = 0xFFFF
 
 
-class Feld(NamedTuple):
-    """Ein Feldwert samt seiner Position im entpackten Spielstand."""
-    wert: Optional[int]
+class Field(NamedTuple):
+    """One field value together with its offset in the decompressed save."""
+    value: Optional[int]
     start: int
-    ende: int
-    sicher: bool = True
+    end: int
+    trusted: bool = True
 
     @property
-    def verwendbar(self) -> bool:
-        """Darf diese Position benutzt werden, um zu lesen oder zu schreiben?
+    def usable(self) -> bool:
+        """May this offset be used for reading or writing?
 
-        Hinter den Listenfeldern laeuft dieser Index dem PARC-Weg um zwei
-        Byte hinterher - nachgemessen an slot100: _transferredItemKey liegt
-        laut PARC bei 34110 (Wert 1163042, plausibel), laut diesem Index bei
-        34108 (Wert 3206676737, Unsinn). Offenbar belegt ein fehlendes
-        Listenfeld trotzdem zwei Byte, die dieser Gang nicht mitzaehlt.
+        Behind the list fields this index runs two bytes behind the PARC path -
+        measured on slot100: _transferredItemKey sits at 34110 according to
+        PARC (value 1163042, plausible) and at 34108 according to this index
+        (value 3206676737, nonsense). Apparently a missing list field still
+        occupies two bytes that this walk does not count.
 
-        Die Felder VOR den Listen sind davon nicht betroffen - dort stimmen
-        beide Wege an 15.635 Stellen ueberein, und das sind genau die, die
-        das Tool liest und schreibt. Damit niemand versehentlich auf die
-        unsicheren baut, melden die sich hier von selbst ab.
+        The fields BEFORE the lists are not affected - there both paths agree
+        in 15,635 places, and those are exactly the ones the tool reads and
+        writes. So that nobody builds on the untrusted ones by accident, they
+        report themselves as unusable here.
         """
-        return self.vorhanden and self.sicher
+        return self.present and self.trusted
 
     @property
-    def vorhanden(self) -> bool:
-        """Steht dieses Feld ueberhaupt im Datensatz?
+    def present(self) -> bool:
+        """Is this field in the record at all?
 
-        Entschieden wird das an der Byte-Position, NICHT am Wert. Ein
-        Listenfeld wie _socketSaveDataList hat keinen Zahlenwert, aber sehr
-        wohl eine Position - frueher galt es hier deshalb faelschlich als
-        nicht vorhanden, und der Index verschwieg genau das Feld, auf dem
-        der Sockel-Reiter steht. Fehlende Felder haben start == ende == 0.
+        This is decided by the byte offset, NOT by the value. A list field like
+        _socketSaveDataList has no numeric value, but it very much has an
+        offset - previously it therefore counted as absent here, and the index
+        withheld exactly the field the socket tab is built on. Missing fields
+        have start == end == 0.
         """
-        return self.ende > self.start
+        return self.end > self.start
 
     @property
-    def gesetzt(self) -> bool:
-        """Vorhanden, mit Zahlenwert, und nicht der Sentinel fuer 'kein Wert'."""
-        return (self.vorhanden and self.wert is not None
-                and self.wert != NICHT_GESETZT_U16)
+    def is_set(self) -> bool:
+        """Present, with a numeric value, and not the "no value" sentinel."""
+        return (self.present and self.value is not None
+                and self.value != UNSET_U16)
 
 
-def _als_zahl(text: str) -> Optional[int]:
+def _as_int(text: str) -> Optional[int]:
     try:
         return int(text)
     except (TypeError, ValueError):
         return None
 
 
-def _sammle_items(feld, treffer: list) -> None:
-    """Alle ItemSaveData-Knoten unterhalb eines Feldes einsammeln.
+def _collect_items(field, hits: list) -> None:
+    """Collect every ItemSaveData node below a field.
 
-    Items stecken an zwei Stellen: als Listenelemente (Inventar) und hinter
-    einem Zeiger (`object_locator`, so haengt Ausruestung an ihrem Slot).
-    Beide Faelle muessen geprueft werden — nur auf Listenelemente zu achten
-    uebersieht die komplette Ausruestung.
+    Items sit in two places: as list elements (inventory) and behind a pointer
+    (`object_locator`, which is how equipment hangs off its slot). Both cases
+    have to be checked - looking only at list elements misses all equipment.
     """
-    if getattr(feld, "child_type_name", "") == "ItemSaveData" and feld.child_fields:
-        treffer.append(feld)
-    for element in (getattr(feld, "list_elements", None) or []):
-        typ = getattr(element, "child_type_name", "") or getattr(element, "type_name", "")
-        if typ == "ItemSaveData" and element.child_fields:
-            treffer.append(element)
-        for kind in (element.child_fields or []):
-            _sammle_items(kind, treffer)
-    for kind in (getattr(feld, "child_fields", None) or []):
-        _sammle_items(kind, treffer)
+    if getattr(field, "child_type_name", "") == "ItemSaveData" and field.child_fields:
+        hits.append(field)
+    for element in (getattr(field, "list_elements", None) or []):
+        kind = getattr(element, "child_type_name", "") or getattr(element, "type_name", "")
+        if kind == "ItemSaveData" and element.child_fields:
+            hits.append(element)
+        for child in (element.child_fields or []):
+            _collect_items(child, hits)
+    for child in (getattr(field, "child_fields", None) or []):
+        _collect_items(child, hits)
 
 
-# Die Bytemustersuche meldet als `offset` die Stelle vier Byte vor `_itemNo`.
-# Nachgemessen: bei allen eindeutigen Items stimmt dieser Wert exakt mit dem
-# `offset` ueberein, den der PARC-Weg meldet. Dadurch laesst sich ein Item auch
-# dann eindeutig einem Datensatz zuordnen, wenn dieselbe itemNo mehrfach im
-# Spielstand steht.
-# Die Bytemustersuche meldet als `offset` die Stelle vier Byte vor `_itemNo`.
-# Nachgemessen an slot104: bei allen 340 eindeutigen Items stimmt dieser Wert
-# exakt mit dem `offset` ueberein, den der PARC-Weg meldet. Dadurch laesst sich
-# ein Item auch dann eindeutig einem Datensatz zuordnen, wenn dieselbe itemNo
-# mehrfach im Spielstand steht.
-ANKER_VERSATZ = 4
+# The byte-pattern scan reports as `offset` the position four bytes before
+# `_itemNo`. Measured on slot104: for all 340 unique items this value matches
+# exactly the `offset` the PARC path reports. That makes it possible to map an
+# item to one specific record even when the same itemNo appears several times
+# in the save.
+ANCHOR_OFFSET = 4
 
 
-def _lies_datensaetze(blob) -> list:
-    """Alle Item-Datensaetze als {Feldname: Feld} - einmal durch den Spielstand.
+def _read_records(blob) -> list:
+    """All item records as {field name: Field} - one pass over the save.
 
-    Gibt bei jedem Fehler eine leere Liste zurueck. Der Aufrufer faellt dann auf
-    die bisherigen Werte zurueck; ein Fehler hier darf das Laden eines
-    Spielstands nicht verhindern.
+    Returns an empty list on any error. The caller then falls back to the
+    values it already had; a failure here must never stop a save from loading.
     """
     try:
         import save_parser
@@ -154,172 +147,169 @@ def _lies_datensaetze(blob) -> list:
     blob = bytes(blob)
     try:
         schema = save_parser.parse_schema(blob)
-        typnamen = [t.name for t in schema["types"]]
-        toc = save_parser.parse_toc(blob, schema["schema_end"], typnamen)
-        eintraege = [e for e in toc["entries"] if _traegt_items(e.class_name)]
-        if not eintraege:
+        type_names = [t.name for t in schema["types"]]
+        toc = save_parser.parse_toc(blob, schema["schema_end"], type_names)
+        entries = [e for e in toc["entries"] if _bears_items(e.class_name)]
+        if not entries:
             log.info("No item-bearing blocks found in this save")
             return []
-        bloecke = save_parser.decode_object_blocks(blob, eintraege, schema["types"])
-    except Exception as e:  # noqa: BLE001 - Diagnose darf nie das Laden kippen
+        blocks = save_parser.decode_object_blocks(blob, entries, schema["types"])
+    except Exception as e:  # noqa: BLE001 - diagnostics must never break loading
         log.warning("Could not build the schema index: %s", e)
         return []
 
-    knoten: list = []
-    for block in bloecke:
-        for feld in block.fields:
-            _sammle_items(feld, knoten)
+    nodes: list = []
+    for block in blocks:
+        for field in block.fields:
+            _collect_items(field, nodes)
 
-    datensaetze = []
-    for knoten_ in knoten:
-        felder: Dict[str, Feld] = {}
-        # Ab dem ersten Listenfeld gelten die Positionen als unsicher, siehe
-        # Feld.verwendbar. Die Liste selbst ist noch in Ordnung - nachgemessen
-        # an 1.895 Items stimmt _socketSaveDataList mit dem PARC-Weg ueberein -,
-        # erst was DAHINTER kommt, driftet.
-        hinter_liste = False
-        for cf in (knoten_.child_fields or []):
-            felder[cf.name] = Feld(
-                wert=_als_zahl(cf.value_repr) if cf.value_repr else None,
+    records = []
+    for node in nodes:
+        fields: Dict[str, Field] = {}
+        # From the first list field onwards the offsets count as untrusted, see
+        # Field.usable. The list itself is still fine - measured across 1,895
+        # items _socketSaveDataList agrees with the PARC path - only what comes
+        # AFTER it drifts.
+        behind_list = False
+        for cf in (node.child_fields or []):
+            fields[cf.name] = Field(
+                value=_as_int(cf.value_repr) if cf.value_repr else None,
                 start=cf.start_offset,
-                ende=cf.end_offset,
-                sicher=not hinter_liste,
+                end=cf.end_offset,
+                trusted=not behind_list,
             )
             if cf.name.endswith("List") or cf.name.endswith("Data"):
-                hinter_liste = True
-        if felder.get("_itemKey") and felder.get("_itemNo"):
-            datensaetze.append(felder)
+                behind_list = True
+        if fields.get("_itemKey") and fields.get("_itemNo"):
+            records.append(fields)
 
     log.info("Schema: %d item records from %d blocks",
-             len(datensaetze), len(bloecke))
-    return datensaetze
+             len(records), len(blocks))
+    return records
 
 
-# Beim Laden eines Spielstands wird der Index zweimal gebraucht: einmal fuer die
-# Phantomerkennung in scan_items, einmal fuer die Ergaenzung in
-# enrich_items_with_parc. Der Durchgang kostet auf einem 6,7-MB-Spielstand rund
-# eine Sekunde - also einmal rechnen, nicht zweimal. Gemerkt wird nur der
-# zuletzt gelesene Spielstand; mehr wird nie gleichzeitig gebraucht.
-_MERK_SCHLUESSEL = None
-_MERK_ERGEBNIS = None
+# Loading a save needs the index twice: once for false-hit detection in
+# scan_items, once for the fill-in in enrich_items_with_parc. The pass costs
+# about a second on a 6.7 MB save - so compute it once, not twice. Only the
+# most recently read save is cached; more than one is never needed at a time.
+_CACHE_KEY = None
+_CACHE_RESULT = None
 
 
-def _blob_schluessel(blob) -> str:
+def _blob_key(blob) -> str:
     import hashlib
     return f"{len(blob)}:{hashlib.md5(bytes(blob)).hexdigest()}"
 
 
-def baue_indizes(blob) -> Tuple[Dict[Tuple[int, int], Dict[str, Feld]],
-                                Dict[int, Dict[str, Feld]]]:
-    """Beide Zuordnungen in einem Durchgang.
+def build_indexes(blob) -> Tuple[Dict[Tuple[int, int], Dict[str, Field]],
+                                 Dict[int, Dict[str, Field]]]:
+    """Both mappings in a single pass.
 
-    - nach (itemKey, itemNo): fuer die Phantomerkennung. Dort genuegt die Frage
-      "kommt dieser Schluessel ueberhaupt im Schema vor", Doppelungen schaden
-      nicht.
-    - nach Anker (Byte-Position): ordnet ein einzelnes Item eindeutig EINEM
-      Datensatz zu, auch wenn dieselbe itemNo mehrfach vorkommt. Nur diese
-      Zuordnung darf Grundlage fuer Schreibzugriffe sein.
+    - by (itemKey, itemNo): for false-hit detection. There the only question is
+      "does this key appear in the schema at all", so duplicates do no harm.
+    - by anchor (byte offset): maps a single item to exactly ONE record, even
+      when the same itemNo appears several times. Only this mapping may be the
+      basis for writes.
     """
-    global _MERK_SCHLUESSEL, _MERK_ERGEBNIS
+    global _CACHE_KEY, _CACHE_RESULT
     try:
-        schluessel = _blob_schluessel(blob)
+        cache_key = _blob_key(blob)
     except Exception:  # noqa: BLE001
-        schluessel = None
-    if schluessel is not None and schluessel == _MERK_SCHLUESSEL:
-        return _MERK_ERGEBNIS
+        cache_key = None
+    if cache_key is not None and cache_key == _CACHE_KEY:
+        return _CACHE_RESULT
 
-    nach_schluessel: Dict[Tuple[int, int], Dict[str, Feld]] = {}
-    nach_anker: Dict[int, Dict[str, Feld]] = {}
-    for felder in _lies_datensaetze(blob):
-        # NICHT 'schluessel' nennen - so hiess oben der Schluessel des
-        # Zwischenspeichers, und die Schleife hat ihn ueberschrieben. Gemerkt
-        # wurde dann die itemNo des letzten Datensatzes statt der Pruefsumme
-        # des Spielstands, und der Zwischenspeicher griff nie.
-        itemschluessel = (felder["_itemKey"].wert, felder["_itemNo"].wert)
-        if None not in itemschluessel:
-            nach_schluessel[itemschluessel] = felder
-        itemno = felder["_itemNo"]
-        if itemno.vorhanden:
-            nach_anker[itemno.start - ANKER_VERSATZ] = felder
+    by_key: Dict[Tuple[int, int], Dict[str, Field]] = {}
+    by_anchor: Dict[int, Dict[str, Field]] = {}
+    for fields in _read_records(blob):
+        # Do NOT name this 'cache_key' - that is the name of the cache's own
+        # key above, and the loop used to overwrite it. What got cached was
+        # then the itemNo of the last record instead of the save's checksum,
+        # and the cache never hit.
+        item_key = (fields["_itemKey"].value, fields["_itemNo"].value)
+        if None not in item_key:
+            by_key[item_key] = fields
+        item_no = fields["_itemNo"]
+        if item_no.present:
+            by_anchor[item_no.start - ANCHOR_OFFSET] = fields
 
-    if schluessel is not None:
-        _MERK_SCHLUESSEL, _MERK_ERGEBNIS = schluessel, (nach_schluessel, nach_anker)
-    return nach_schluessel, nach_anker
-
-
-def baue_index(blob: bytes | bytearray) -> Dict[Tuple[int, int], Dict[str, Feld]]:
-    """Nur die Zuordnung nach (itemKey, itemNo) - fuer die Phantomerkennung."""
-    return baue_indizes(blob)[0]
+    if cache_key is not None:
+        _CACHE_KEY, _CACHE_RESULT = cache_key, (by_key, by_anchor)
+    return by_key, by_anchor
 
 
+def build_index(blob: bytes | bytearray) -> Dict[Tuple[int, int], Dict[str, Field]]:
+    """Only the mapping by (itemKey, itemNo) - for false-hit detection."""
+    return build_indexes(blob)[0]
 
-def feld_position(index, item_key: int, item_no: int, feldname: str) -> Optional[Tuple[int, int]]:
-    """Byte-Position eines Feldes, oder None wenn es im Datensatz fehlt.
 
-    Der Schreibweg fragt hier nach, bevor er etwas veraendert. Kommt None
-    zurueck, existiert das Feld in diesem Datensatz nicht — dann darf nicht
-    geschrieben werden, sonst landet der Wert in einem anderen Feld.
+def field_position(index, item_key: int, item_no: int, field_name: str) -> Optional[Tuple[int, int]]:
+    """Byte offset of a field, or None when the record does not have it.
+
+    The write path asks here before it changes anything. If None comes back,
+    the field does not exist in this record - then nothing may be written, or
+    the value would land in a different field.
     """
-    felder = index.get((item_key, item_no))
-    if not felder:
+    fields = index.get((item_key, item_no))
+    if not fields:
         return None
-    feld = felder.get(feldname)
-    if feld is None or not feld.verwendbar:
+    field = fields.get(field_name)
+    if field is None or not field.usable:
         return None
-    return (feld.start, feld.ende)
+    return (field.start, field.end)
 
 
-# -- Fehltreffer aussortieren ------------------------------------------------
+# -- Sorting out false hits --------------------------------------------------
 #
-# Die Bytemustersuche akzeptiert Stapel bis 9*10^18 und beliebige Slotnummern.
-# Dadurch findet sie zufaellige Bytefolgen, die ihrem Muster entsprechen, und
-# meldet sie als Items. Gemessen an sieben Spielstaenden:
+# The byte-pattern scan accepts stacks up to 9*10^18 and arbitrary slot
+# numbers. That makes it find random byte sequences matching its pattern and
+# report them as items. Measured across seven saves:
 #
-#   nicht im Schema-Index: 114 / 115 / 126 / 2 Stueck
-#   davon mit Stapel ueber 10 Mio: ALLE
-#   im Schema-Index, Stapel ueber 10 Mio: KEINES
-#   groesster echter Stapel: 8.951.308 (mit Stack-Mods)
+#   not in the schema index: 114 / 115 / 126 / 2 of them
+#   of those, stack above 10 million: ALL
+#   in the schema index, stack above 10 million: NONE
+#   largest real stack: 8,951,308 (with stack mods)
 #
-# Die Trennung ist also vollstaendig. Trotzdem wird hier nur aussortiert, was
-# BEIDES ist - nicht im Schema UND offensichtlich unplausibel. Ein echtes Item,
-# das der Schema-Gang aus irgendeinem Grund nicht erreicht, bleibt dadurch
-# sichtbar. Lieber ein Phantom zuviel als ein echtes Item zuwenig.
+# The separation is therefore complete. Even so, only what is BOTH - absent
+# from the schema AND obviously implausible - is sorted out here. A real item
+# the schema pass fails to reach for whatever reason stays visible. Better one
+# false hit too many than one real item too few.
 
-PLAUSIBLER_STAPEL = 9_999_999
-PLAUSIBLE_SLOTNUMMER = 255
+PLAUSIBLE_STACK = 9_999_999
+PLAUSIBLE_SLOT_NO = 255
 
 
-def ist_phantom(item, index) -> bool:
-    """Fehltreffer der Bytemustersuche: nicht im Schema UND unplausible Werte."""
+def is_false_hit(item, index) -> bool:
+    """False hit of the byte-pattern scan: absent from the schema AND implausible."""
     if (item.item_key, item.item_no) in index:
         return False
-    return (item.stack_count > PLAUSIBLER_STAPEL
-            or item.slot_no > PLAUSIBLE_SLOTNUMMER)
+    return (item.stack_count > PLAUSIBLE_STACK
+            or item.slot_no > PLAUSIBLE_SLOT_NO)
 
 
-def entferne_phantome(items, index) -> Tuple[list, list]:
-    """Teilt die Itemliste in echte Items und Fehltreffer.
+def drop_false_hits(items, index) -> Tuple[list, list]:
+    """Split the item list into real items and false hits.
 
-    Ohne Schema-Index wird nichts aussortiert - dann fehlt die Grundlage fuer
-    die Entscheidung, und eine Vermutung ist kein Grund, etwas zu verstecken.
+    Without a schema index nothing is sorted out - the basis for the decision
+    is missing then, and a guess is no reason to hide anything.
     """
     if not index:
         return list(items), []
-    echt, phantome = [], []
+    real, false_hits = [], []
     for it in items:
-        (phantome if ist_phantom(it, index) else echt).append(it)
-    if phantome:
+        (false_hits if is_false_hit(it, index) else real).append(it)
+    if false_hits:
         log.info("Dropped %d false hits of the byte-pattern scan (of %d)",
-                 len(phantome), len(items))
-    return echt, phantome
+                 len(false_hits), len(items))
+    return real, false_hits
 
 
-# ── Items nachbessern, die der PARC-Weg nicht erreicht ──────────────────────
+# -- Filling in items the PARC path never reaches ---------------------------
 
-# Felder, die der Schreibweg veraendern kann. Die Groesse steht dabei, weil
-# `_require_parc_field_offset` sie prueft - ein Feld, dessen Schema-Eintrag eine
-# andere Groesse hat, wird nicht uebernommen.
-SCHREIBBARE_FELDER = {
+# Fields the write path can change. The size is listed because
+# `_require_parc_field_offset` checks it - a field whose schema entry has a
+# different size is not taken over.
+WRITABLE_FIELDS = {
     "_stackCount": 8,
     "_itemNo": 8,
     "_enchantLevel": 2,
@@ -328,75 +318,75 @@ SCHREIBBARE_FELDER = {
 }
 
 
-def _wert(felder, name: str) -> int:
-    feld = felder.get(name)
-    return feld.wert if (feld and feld.gesetzt) else 0
+def _value_of(fields, name: str) -> int:
+    field = fields.get(name)
+    return field.value if (field and field.is_set) else 0
 
 
-def ergaenze_ohne_parc(items, nach_anker) -> Dict[str, int]:
-    """Items, die `enrich_items_with_parc` nicht erreicht hat, aus dem Schema fuellen.
+def fill_in_without_parc(items, by_anchor) -> Dict[str, int]:
+    """Fill items `enrich_items_with_parc` never reached from the schema.
 
-    Betrifft Items hinter einem Zeiger - vor allem Ausruestung. Fuer die zeigte
-    das Tool bisher die gepackten Sockelzahlen als "Haltbarkeit" an, und aendern
-    liess sich an ihnen nichts.
+    Affects items behind a pointer - equipment above all. For those the tool
+    used to display the packed socket counts as "endurance", and nothing about
+    them could be edited.
 
-    Angefasst wird nur, was der PARC-Weg NICHT erreicht hat. Was er geliefert
-    hat, bleibt unveraendert - die beiden Wege stimmen dort nachweislich
-    ueberein, und zwei Quellen fuer denselben Wert sind eine Fehlerquelle mehr.
+    Only what the PARC path did NOT reach is touched. Whatever it delivered
+    stays unchanged - the two paths demonstrably agree there, and two sources
+    for the same value is one more source of error.
 
-    Die Zuordnung laeuft ueber die Byte-Position, nicht ueber die itemNo. Findet
-    sich dort kein Datensatz, bleibt das Item wie es war: lieber ein Item ohne
-    Schreibrecht als eine Aenderung an der falschen Stelle.
+    The mapping runs over the byte offset, not over the itemNo. If no record is
+    found there, the item stays as it was: better an item without write access
+    than a change in the wrong place.
     """
-    stat = {"ergaenzt": 0, "ohne_datensatz": 0, "werte_korrigiert": 0,
-            "schreibbar_geworden": 0}
-    if not nach_anker:
-        return stat
+    stats = {"filled": 0, "no_record": 0, "values_corrected": 0,
+             "now_editable": 0}
+    if not by_anchor:
+        return stats
 
     for it in items:
         if getattr(it, "parc_parsed", False) and it.field_offsets:
             continue
-        felder = nach_anker.get(it.offset)
-        if felder is None:
-            stat["ohne_datensatz"] += 1
+        fields = by_anchor.get(it.offset)
+        if fields is None:
+            stats["no_record"] += 1
             continue
-        stat["ergaenzt"] += 1
+        stats["filled"] += 1
 
-        neu_schaerfe = _wert(felder, "_sharpness")
-        neu_haltbar = _wert(felder, "_endurance")
-        if neu_schaerfe != it.sharpness or neu_haltbar != it.endurance:
-            stat["werte_korrigiert"] += 1
-        it.sharpness = neu_schaerfe
-        it.endurance = neu_haltbar
+        new_sharpness = _value_of(fields, "_sharpness")
+        new_endurance = _value_of(fields, "_endurance")
+        if new_sharpness != it.sharpness or new_endurance != it.endurance:
+            stats["values_corrected"] += 1
+        it.sharpness = new_sharpness
+        it.endurance = new_endurance
 
-        # Sockelzahlen getrennt mitgeben, statt sie wie die Bytemustersuche in
-        # die Haltbarkeit zu packen.
-        setattr(it, "max_socket_count", _wert(felder, "_maxSocketCount"))
-        setattr(it, "valid_socket_count", _wert(felder, "_validSocketCount"))
+        # Pass the socket counts along separately, instead of packing them into
+        # the endurance the way the byte-pattern scan does.
+        setattr(it, "max_socket_count", _value_of(fields, "_maxSocketCount"))
+        setattr(it, "valid_socket_count", _value_of(fields, "_validSocketCount"))
 
-        verzauberung = felder.get("_enchantLevel")
-        if verzauberung and verzauberung.vorhanden:
-            it.enchant_level = verzauberung.wert
-            it.has_enchant = verzauberung.wert != NICHT_GESETZT_U16
+        enchant = fields.get("_enchantLevel")
+        if enchant and enchant.present:
+            it.enchant_level = enchant.value
+            it.has_enchant = enchant.value != UNSET_U16
 
-        positionen = {}
-        for name, groesse in SCHREIBBARE_FELDER.items():
-            feld = felder.get(name)
-            if feld and feld.verwendbar and feld.ende - feld.start == groesse:
-                positionen[name] = feld.start
-        if positionen:
-            enden = [f.ende for f in felder.values() if f.verwendbar]
-            positionen["_record_end"] = max(enden) if enden else 0
-            it.field_offsets = positionen
-            # Die Positionen stammen aus dem Schema des Spielstands - genau die
-            # Bedingung, die `_require_parc_field_offset` sicherstellen soll.
+        offsets = {}
+        for name, size in WRITABLE_FIELDS.items():
+            field = fields.get(name)
+            if field and field.usable and field.end - field.start == size:
+                offsets[name] = field.start
+        if offsets:
+            ends = [f.end for f in fields.values() if f.usable]
+            offsets["_record_end"] = max(ends) if ends else 0
+            it.field_offsets = offsets
+            # These offsets come from the save's own schema - exactly the
+            # condition `_require_parc_field_offset` is meant to guarantee.
             it.parc_parsed = True
-            setattr(it, "positionsquelle", "schema_index")
-            stat["schreibbar_geworden"] += 1
+            setattr(it, "offset_source", "schema_index")
+            stats["now_editable"] += 1
 
-    if stat["ergaenzt"]:
+    if stats["filled"]:
         log.info("Filled in %d items from the schema (%d values corrected, "
                  "%d of them now editable), %d without a matching record",
-                 stat["ergaenzt"], stat["werte_korrigiert"],
-                 stat["schreibbar_geworden"], stat["ohne_datensatz"])
-    return stat
+                 stats["filled"], stats["values_corrected"],
+                 stats["now_editable"], stats["no_record"])
+    return stats
