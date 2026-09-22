@@ -18,7 +18,7 @@ from PySide6.QtCore import (
     Qt, QTimer, QSortFilterProxyModel, Signal, QSize, QObject, QThread, Slot,
 )
 from PySide6.QtGui import (
-    QAction, QActionGroup, QColor, QFont, QIcon, QKeySequence, QBrush, QShortcut,
+    QAction, QActionGroup, QColor, QCursor, QFont, QIcon, QKeySequence, QBrush, QShortcut,
 )
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -5531,6 +5531,25 @@ QCheckBox::indicator {{
                     if val >= splice_point:
                         fo[name] = val + delta
 
+    def _sockel_arbeit_anzeigen(self, text: str) -> None:
+        """Sanduhr und Statuszeile setzen, bevor eine lange Aenderung laeuft.
+
+        Das Einsetzen oder Entfernen eines Steins zieht saemtliche internen
+        Zeiger des Spielstands nach - auf einem 6-MB-Spielstand ueber 113.000
+        Stueck, gemessen rund sieben Sekunden. Das laeuft im selben Strang wie
+        die Oberflaeche. Ohne dieses Signal sieht das Fenster in der Zeit aus
+        wie abgestuerzt, und Windows schreibt "Keine Rueckmeldung" daneben.
+        """
+        QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+        try:
+            self._update_status(text)
+        except Exception:  # noqa: BLE001 - Anzeige darf die Aenderung nie kippen
+            pass
+        QApplication.processEvents()
+
+    def _sockel_arbeit_beenden(self) -> None:
+        QApplication.restoreOverrideCursor()
+
     def _apply_socket_changes(self) -> None:
         if not self._save_data or not self._sock_current_item:
             QMessageBox.warning(self, "Sockets", "No item selected.")
@@ -5637,7 +5656,13 @@ QCheckBox::indicator {{
         if fills:
             from parc_inserter3 import fill_socket_slots
             original_blob_size = len(blob)
-            ok, new_blob, msg = fill_socket_slots(blob, item, fills)
+            self._sockel_arbeit_anzeigen(
+                f"Installing {len(fills)} gem(s) — updating internal offsets, "
+                f"this takes a few seconds…")
+            try:
+                ok, new_blob, msg = fill_socket_slots(blob, item, fills)
+            finally:
+                self._sockel_arbeit_beenden()
             if not ok:
                 QMessageBox.warning(self, "Sockets", f"Fill failed: {msg}")
                 return
@@ -5651,7 +5676,13 @@ QCheckBox::indicator {{
         if clears:
             from parc_inserter3 import clear_socket_slots
             original_blob_size = len(blob)
-            ok, new_blob, msg = clear_socket_slots(blob, item, list(clears.keys()))
+            self._sockel_arbeit_anzeigen(
+                f"Removing {len(clears)} gem(s) — updating internal offsets, "
+                f"this takes a few seconds…")
+            try:
+                ok, new_blob, msg = clear_socket_slots(blob, item, list(clears.keys()))
+            finally:
+                self._sockel_arbeit_beenden()
             if not ok:
                 QMessageBox.warning(self, "Sockets", f"Clear failed: {msg}")
                 return
