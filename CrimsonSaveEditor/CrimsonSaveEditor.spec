@@ -1,7 +1,12 @@
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    # Der Parser wird mit eingepackt; crimson_rs im Ordner ist nur eine
+    # Weiterleitung darauf.
+    binaries=[
+        ('dmm_parser/dmm_parser.pyd', 'dmm_parser'),
+        ('dmm_parser/dmm_parser.abi3.so', 'dmm_parser'),
+    ],
     datas=[
         ('parc_parser.dll', '.'),
         ('item_names.json', '.'),
@@ -28,6 +33,9 @@ a = Analysis(
         ('localizationstring_eng_items.tsv', '.'),
         ('locale', 'locale'),
         ('knowledge_packs', 'knowledge_packs'),
+        ('dmm_parser', 'dmm_parser'),
+        ('crimson_rs', 'crimson_rs'),
+        ('table_layout.py', '.'),
     ],
     hiddenimports=[
         'lz4',
@@ -49,6 +57,10 @@ a = Analysis(
         'startup_splash',
         'theme_support',
         'ben_save_decrypt',
+        'table_layout',
+        'dmm_parser',
+        'dmm_parser.enums',
+        'dmm_parser.pack_mod',
         'crimson_rs',
         'crimson_rs.enums',
         'crimson_rs.create_pack',
