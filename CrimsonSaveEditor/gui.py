@@ -4964,6 +4964,20 @@ QCheckBox::indicator {{
                 return bytes(blob[ls + 2: ls + 2 + m]).ljust(3, b'\x00')
         return b'\x00\x00\x00'
 
+    @staticmethod
+    def _elementanfang(socket_data, slot_index: int, ersatz: int) -> int:
+        """Byte-Position des Sockel-Elements mit diesem Index.
+
+        Das ist der Punkt, ab dem sich beim Austauschen eines Elements alles
+        dahinter verschiebt. Fehlt die Angabe, wird auf den Anfang der
+        Sockelliste zurueckgefallen - dann stimmt die Verschiebung nicht
+        genau, aber es wird nichts schlimmer als vorher.
+        """
+        for eintrag in socket_data or []:
+            if eintrag.get("slot") == slot_index and isinstance(eintrag.get("elem_start"), int):
+                return eintrag["elem_start"]
+        return ersatz
+
     def _compute_socket_list_offset(self, bitmask: bytes) -> int:
         offset = 0
         for field_idx in range(13):
@@ -5011,6 +5025,7 @@ QCheckBox::indicator {{
                     'gem_key': gem_key,
                     'gem_key_abs_offset': gem_key_abs,
                     'endurance': endurance,
+                    'elem_start': elem_start,
                 })
                 pos = elem_start + 32
             elif mask == 0x00:
@@ -5020,6 +5035,7 @@ QCheckBox::indicator {{
                     'gem_key': 0,
                     'gem_key_abs_offset': 0,
                     'endurance': 0,
+                    'elem_start': elem_start,
                 })
                 pos = elem_start + 26
             else:
@@ -5040,6 +5056,7 @@ QCheckBox::indicator {{
                         'gem_key': gem_key,
                         'gem_key_abs_offset': key_off,
                         'endurance': 0,
+                        'elem_start': elem_start,
                     })
                 else:
                     results.append({
@@ -5048,6 +5065,7 @@ QCheckBox::indicator {{
                         'gem_key': 0,
                         'gem_key_abs_offset': 0,
                         'endurance': 0,
+                        'elem_start': elem_start,
                     })
                 pos = elem_start + total
 
@@ -5656,6 +5674,13 @@ QCheckBox::indicator {{
         if fills:
             from parc_inserter3 import fill_socket_slots
             original_blob_size = len(blob)
+            # Verschoben wird erst ab dem ERSTEN ausgetauschten Element, nicht
+            # ab dem Anfang der Sockelliste. Sonst wandert die Position der
+            # Liste selbst mit, und danach liest die Oberflaeche 6 Byte daneben
+            # - sichtbar als "Fassung wieder leer", obwohl der Stein in der
+            # Datei steht. Schlimmer: eine zweite Aenderung in derselben
+            # Sitzung wuerde dann an der falschen Stelle schreiben.
+            ansatz_fills = self._elementanfang(socket_data, min(fills), sock_abs_pre)
             self._sockel_arbeit_anzeigen(
                 f"Installing {len(fills)} gem(s) — updating internal offsets, "
                 f"this takes a few seconds…")
@@ -5670,12 +5695,13 @@ QCheckBox::indicator {{
             blob = self._save_data.decompressed_blob
             delta = len(blob) - original_blob_size
             if delta:
-                self._shift_item_offsets_after_splice(sock_abs_pre, delta)
+                self._shift_item_offsets_after_splice(ansatz_fills, delta)
             socket_data = self._read_socket_gems(blob, item)
 
         if clears:
             from parc_inserter3 import clear_socket_slots
             original_blob_size = len(blob)
+            ansatz_clears = self._elementanfang(socket_data, min(clears), sock_abs_pre)
             self._sockel_arbeit_anzeigen(
                 f"Removing {len(clears)} gem(s) — updating internal offsets, "
                 f"this takes a few seconds…")
@@ -5690,7 +5716,7 @@ QCheckBox::indicator {{
             blob = self._save_data.decompressed_blob
             delta = len(blob) - original_blob_size
             if delta:
-                self._shift_item_offsets_after_splice(sock_abs_pre, delta)
+                self._shift_item_offsets_after_splice(ansatz_clears, delta)
             socket_data = self._read_socket_gems(blob, item)
 
         swap_edits = []
