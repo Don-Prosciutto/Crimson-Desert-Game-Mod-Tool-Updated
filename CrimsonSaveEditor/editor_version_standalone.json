@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
-  "url": "https://github.com/NattKh/CRIMSON-DESERT-SAVE-EDITOR-AND-GAME-MODS/releases/download/standalone-v1.0.0/CrimsonSaveEditorStandalone.exe",
-  "notes": "Crimson Save Editor — Standalone (save-editing only). First 1.0 release: Game Mods tabs removed for lower RAM usage and tighter stability. Use the full build if you need ItemBuffs / Stores / PAZ mods."
+  "version": "2.2.0",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/saveeditor-2.03.01/CrimsonSaveEditorStandalone.exe",
+  "notes": "Game 2.03.01 \u2014 parser update, schema-backed item index (no more phantom items, correct values for equipment), socket fill/clear repaired"
 }

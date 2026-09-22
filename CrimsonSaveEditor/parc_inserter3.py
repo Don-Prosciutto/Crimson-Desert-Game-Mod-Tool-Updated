@@ -3010,8 +3010,16 @@ def _splice_socket_elements(
         )
 
     fp = _item_socket_field_present
-    sock_rel = sum(_ITEM_SOCKET_FIELD_SIZES[i] for i in range(13) if fp(bitmask, i))
-    sock_abs = item.offset + sock_rel
+    # Zuerst die Position aus dem Schema des Spielstands. Die Berechnung
+    # darunter zaehlt feste Feldgroessen zusammen und trifft daneben, seit
+    # Spielversion 1.14 das Feld _averagePrice dazwischengeschoben hat - sie
+    # las dann eine Sockelzahl von 0 und brach ab. Dadurch waren Fuellen und
+    # Leeren unbemerkt fuer jedes Item kaputt; nur das Austauschen eines
+    # vorhandenen Steins ging noch, weil das einen anderen Weg nimmt.
+    sock_abs = (item.field_offsets or {}).get("_socketSaveDataList")
+    if not isinstance(sock_abs, int) or sock_abs <= 0:
+        sock_rel = sum(_ITEM_SOCKET_FIELD_SIZES[i] for i in range(13) if fp(bitmask, i))
+        sock_abs = item.offset + sock_rel
 
     count = struct.unpack_from('<I', orig_blob, sock_abs + 1)[0]
     if count < 1 or count > 6:
@@ -3108,9 +3116,12 @@ def _splice_socket_elements(
             fixed_toc += 1
 
     valid_updated = False
-    if fp(bitmask, 12):
-        valid_sock_rel = sum(_ITEM_SOCKET_FIELD_SIZES[i] for i in range(12) if fp(bitmask, i))
-        valid_sock_abs = item.offset + valid_sock_rel
+    valid_sock_abs = (item.field_offsets or {}).get("_validSocketCount")
+    if not isinstance(valid_sock_abs, int) or valid_sock_abs <= 0:
+        valid_sock_abs = (
+            item.offset + sum(_ITEM_SOCKET_FIELD_SIZES[i] for i in range(12) if fp(bitmask, i))
+        ) if fp(bitmask, 12) else None
+    if isinstance(valid_sock_abs, int) and 0 <= valid_sock_abs < len(new_blob):
         old_valid = new_blob[valid_sock_abs]
         new_blob[valid_sock_abs] = valid_count_fn(old_valid, len(validated))
         log.info("%s: _validSocketCount %d -> %d", fn_name, old_valid, new_blob[valid_sock_abs])

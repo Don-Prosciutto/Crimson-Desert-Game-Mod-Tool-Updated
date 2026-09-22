@@ -5474,21 +5474,30 @@ QCheckBox::indicator {{
             combo = row["combo"]
             unlocked = i < valid_s
             record_exists = i < len(socket_data)
-            editable = unlocked and record_exists and has_gem
+            # Frueher stand hier zusaetzlich "and has_gem" - eine leere Fassung
+            # liess sich also nicht befuellen. Der Datensatz dafuer existiert
+            # aber im Spielstand (Maske 0x00), und fill_socket_slots ist genau
+            # dafuer geschrieben. Gemessen an sieben Spielstaenden: jedes Item
+            # mit Sockeln bringt alle fuenf Datensaetze mit, auch die leeren.
+            editable = unlocked and record_exists
 
             combo.setEnabled(editable)
             row["filter"].setEnabled(editable)
             row["search"].setEnabled(editable)
 
-            if editable:
+            if editable and has_gem:
                 row["label"].setText(f"Slot {i+1}:")
                 row["label"].setStyleSheet("font-weight: bold;")
                 row["label"].setToolTip("")
-            elif unlocked:
+            elif editable:
                 row["label"].setText(f"Slot {i+1} (empty):")
-                row["label"].setStyleSheet("font-weight: bold; color: gray;")
+                row["label"].setStyleSheet("font-weight: bold;")
                 row["label"].setToolTip(
-                    "No installed Abyss Gear record — install a gem in-game first, then reload this save."
+                    "Empty but unlocked — pick a gem to install it.\n\n"
+                    "If this slot is beyond the item's original socket count, the gem "
+                    "is only shown and applied while a game mod raises that count. "
+                    "Without the mod the game loads normally and simply displays fewer "
+                    "sockets; the gem stays in the save."
                 )
             else:
                 row["label"].setText(f"Slot {i+1} (locked):")
@@ -5575,6 +5584,29 @@ QCheckBox::indicator {{
                 f"five-slot capacity (currently {existing_filled} filled)."
             )
             return
+
+        # Hinweis, wenn ueber die urspruengliche Sockelzahl des Items hinaus
+        # gefuellt wird. Kein Abbruch: nachgemessen an einem Spielstand, den
+        # das Spiel selbst mit abgeschaltetem Mod geschrieben hat, bleiben
+        # ueberzaehlige Steine und die Sockelzahlen erhalten, und das Spiel
+        # laedt normal - es zeigt nur weniger Fassungen an.
+        design_limit = self._get_socket_design_limit(item.item_key)
+        if fills and 0 < design_limit < new_filled:
+            reply = QMessageBox.question(
+                self, "Beyond the original socket count",
+                f"This item originally has {design_limit} socket(s); you are installing "
+                f"{new_filled}.\n\n"
+                f"The extra gems only show up in game while a mod raises this item's "
+                f"socket count. Without that mod the game still loads normally and simply "
+                f"displays {design_limit} socket(s) — the gems stay in the save file and "
+                f"reappear once the mod is active again.\n\n"
+                f"The reference table is from May 2026 and does not list every item, so "
+                f"treat {design_limit} as a hint rather than a guarantee.\n\n"
+                f"Install anyway?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
+            )
+            if reply != QMessageBox.Yes:
+                return
 
         if fills:
             from parc_inserter3 import fill_socket_slots
