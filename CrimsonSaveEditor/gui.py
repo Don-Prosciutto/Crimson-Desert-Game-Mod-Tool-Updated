@@ -5719,6 +5719,31 @@ QCheckBox::indicator {{
             socket_data = self._read_socket_gems(blob, item)
 
         if clears:
+            # Entfernen ist genauso gesperrt wie Einsetzen - und das ist KEINE
+            # Folge unserer Aenderungen, sondern war im Tool immer erreichbar:
+            # eine belegte Fassung auf "(Empty - remove gem)" zu stellen ruft
+            # genau diesen Weg auf.
+            #
+            # Nachgewiesen an einem Spielstand, den das Spiel selbst mit einem
+            # Stein geschrieben hat (Save 7): Stein entfernen und direkt wieder
+            # einsetzen ergibt NICHT den Ausgangsstand. 1.832 Verweise bleiben
+            # um 6 Byte zu klein. Der Grund: nach dem Entfernen findet der
+            # Sammler 1.832 Verweise nicht mehr wieder (127.900 -> 126.068),
+            # obwohl er den Spielstand bis zum Ende durchlaeuft. Das Entfernen
+            # beschaedigt also einen Bereich, den unser Leser noch verkraftet
+            # und das Spiel nicht.
+            QMessageBox.critical(
+                self, "Removing gems is disabled",
+                "Removing a gem rewrites thousands of internal offsets, and that "
+                "machinery is currently faulty: a remove followed by a re-install "
+                "does not restore the original save — 1832 offsets are left 6 bytes "
+                "short.\n\n"
+                "Saves edited this way crash the game on startup. Gem swapping still "
+                "works: it writes 4 bytes in place and changes nothing else."
+            )
+            return
+
+        if False:
             from parc_inserter3 import clear_socket_slots
             original_blob_size = len(blob)
             ansatz_clears = self._elementanfang(socket_data, min(clears), sock_abs_pre)
