@@ -14563,8 +14563,22 @@ QCheckBox::indicator {{
             QMessageBox.warning(self, "Knowledge", "Load a save first.")
             return
 
+        # Den Dateidialog dort oeffnen, wo wirklich Packs liegen. Neben der EXE
+        # ist der Ordner beim ersten Start leer - die mitgelieferten Packs
+        # stecken im Temp-Ordner. Wer den Dialog in einem leeren Ordner
+        # aufgehen sieht, haelt das Tool fuer leer.
         pack_dir = os.path.join(self._app_dir(), 'knowledge_packs')
-        os.makedirs(pack_dir, exist_ok=True)
+        try:
+            os.makedirs(pack_dir, exist_ok=True)
+        except OSError:
+            pass
+        eigene = []
+        if os.path.isdir(pack_dir):
+            eigene = [f for f in os.listdir(pack_dir) if f.lower().endswith('.json')]
+        if not eigene:
+            mitgeliefert = os.path.join(self._bundle_dir(), 'knowledge_packs')
+            if os.path.isdir(mitgeliefert):
+                pack_dir = mitgeliefert
 
         path, _ = QFileDialog.getOpenFileName(
             self, "Load Knowledge Pack (Fast)", pack_dir, "Knowledge Pack (*.json)")
