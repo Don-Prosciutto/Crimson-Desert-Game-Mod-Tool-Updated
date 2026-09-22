@@ -137,6 +137,21 @@ def scan_items(data: bytes | bytearray) -> List[SaveItem]:
         _scan_range(data, items, max(20, range_start), min(range_end, length - 40), range_name)
 
     _classify_items(data, items)
+
+    # Die Mustersuche oben nimmt zwangslaeufig auch zufaellige Bytefolgen mit,
+    # die ihrem Muster entsprechen. Das Schema des Spielstands sagt, welche
+    # Datensaetze echt sind; alles andere mit unplausiblen Werten fliegt raus.
+    # Schlaegt das fehl, bleibt die Liste wie sie war - lieber ein Phantom
+    # zuviel als ein fehlendes Item.
+    try:
+        import schema_item_index
+        index = schema_item_index.baue_index(data)
+        items, phantome = schema_item_index.entferne_phantome(items, index)
+        if phantome:
+            log.info("%d Fehltreffer aussortiert, %d echte Items", len(phantome), len(items))
+    except Exception as e:  # noqa: BLE001
+        log.warning("Phantomfilter uebersprungen: %s", e)
+
     return items
 
 
@@ -1010,15 +1025,24 @@ def enrich_items_with_parc(
     if not parc_items:
         return 0, status
 
+    # Nach Byte-Position UND nach itemNo ablegen. Die Position ist eindeutig,
+    # die itemNo nicht: in den Messdaten stehen 8 Items zweimal im Spielstand
+    # (einmal im Inventar, einmal woanders). Eine Zuordnung allein nach itemNo
+    # nahm dort den zuletzt gefundenen Datensatz - also bei 8 von 597 Items den
+    # falschen. Eine Aenderung waere damit in einem fremden Datensatz gelandet.
+    parc_by_offset: Dict[int, SaveItem] = {}
     parc_by_no: Dict[int, SaveItem] = {}
     for pi in parc_items:
+        parc_by_offset[pi.offset] = pi
         parc_by_no[pi.item_no] = pi
 
     bag_ranges = _extract_bag_ranges(data)
 
     enriched = 0
     for item in items:
-        pi = parc_by_no.get(item.item_no)
+        pi = parc_by_offset.get(item.offset)
+        if pi is None:
+            pi = parc_by_no.get(item.item_no)
         if pi is not None and pi.field_offsets:
             item.field_offsets = pi.field_offsets
             item.parc_parsed = True
@@ -1038,7 +1062,24 @@ def enrich_items_with_parc(
                 item.bag = bname
                 break
 
-    return enriched, f"PARC mode: {enriched}/{len(items)} items enriched with exact field offsets"
+    # Der PARC-Weg liest nur Felder der Art `object_list`. Items hinter einem
+    # Zeiger - vor allem Ausruestung - erreicht er nicht; die behielten bisher
+    # die falschen Werte der Bytemustersuche und liessen sich gar nicht aendern.
+    # Die holt der Schema-Index nach. Schlaegt das fehl, bleibt alles wie es
+    # war: die Anreicherung selbst ist davon nicht abhaengig.
+    ergaenzt = 0
+    try:
+        import schema_item_index
+        _, nach_anker = schema_item_index.baue_indizes(data)
+        stat = schema_item_index.ergaenze_ohne_parc(items, nach_anker)
+        ergaenzt = stat["ergaenzt"]
+    except Exception as e:  # noqa: BLE001
+        log.warning("Schema-Ergaenzung uebersprungen: %s", e)
+
+    status = f"PARC mode: {enriched}/{len(items)} items enriched with exact field offsets"
+    if ergaenzt:
+        status += f", {ergaenzt} weitere ueber den Schema-Index"
+    return enriched + ergaenzt, status
 
 
 def apply_item_swap_parc(
