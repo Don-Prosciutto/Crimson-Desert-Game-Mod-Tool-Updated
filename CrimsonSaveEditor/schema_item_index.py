@@ -60,15 +60,42 @@ class Feld(NamedTuple):
     wert: Optional[int]
     start: int
     ende: int
+    sicher: bool = True
+
+    @property
+    def verwendbar(self) -> bool:
+        """Darf diese Position benutzt werden, um zu lesen oder zu schreiben?
+
+        Hinter den Listenfeldern laeuft dieser Index dem PARC-Weg um zwei
+        Byte hinterher - nachgemessen an slot100: _transferredItemKey liegt
+        laut PARC bei 34110 (Wert 1163042, plausibel), laut diesem Index bei
+        34108 (Wert 3206676737, Unsinn). Offenbar belegt ein fehlendes
+        Listenfeld trotzdem zwei Byte, die dieser Gang nicht mitzaehlt.
+
+        Die Felder VOR den Listen sind davon nicht betroffen - dort stimmen
+        beide Wege an 15.635 Stellen ueberein, und das sind genau die, die
+        das Tool liest und schreibt. Damit niemand versehentlich auf die
+        unsicheren baut, melden die sich hier von selbst ab.
+        """
+        return self.vorhanden and self.sicher
 
     @property
     def vorhanden(self) -> bool:
-        return self.wert is not None
+        """Steht dieses Feld ueberhaupt im Datensatz?
+
+        Entschieden wird das an der Byte-Position, NICHT am Wert. Ein
+        Listenfeld wie _socketSaveDataList hat keinen Zahlenwert, aber sehr
+        wohl eine Position - frueher galt es hier deshalb faelschlich als
+        nicht vorhanden, und der Index verschwieg genau das Feld, auf dem
+        der Sockel-Reiter steht. Fehlende Felder haben start == ende == 0.
+        """
+        return self.ende > self.start
 
     @property
     def gesetzt(self) -> bool:
-        """Vorhanden und nicht der Sentinel fuer 'kein Wert'."""
-        return self.wert is not None and self.wert != NICHT_GESETZT_U16
+        """Vorhanden, mit Zahlenwert, und nicht der Sentinel fuer 'kein Wert'."""
+        return (self.vorhanden and self.wert is not None
+                and self.wert != NICHT_GESETZT_U16)
 
 
 def _als_zahl(text: str) -> Optional[int]:
@@ -146,12 +173,20 @@ def _lies_datensaetze(blob) -> list:
     datensaetze = []
     for knoten_ in knoten:
         felder: Dict[str, Feld] = {}
+        # Ab dem ersten Listenfeld gelten die Positionen als unsicher, siehe
+        # Feld.verwendbar. Die Liste selbst ist noch in Ordnung - nachgemessen
+        # an 1.895 Items stimmt _socketSaveDataList mit dem PARC-Weg ueberein -,
+        # erst was DAHINTER kommt, driftet.
+        hinter_liste = False
         for cf in (knoten_.child_fields or []):
             felder[cf.name] = Feld(
                 wert=_als_zahl(cf.value_repr) if cf.value_repr else None,
                 start=cf.start_offset,
                 ende=cf.end_offset,
+                sicher=not hinter_liste,
             )
+            if cf.name.endswith("List") or cf.name.endswith("Data"):
+                hinter_liste = True
         if felder.get("_itemKey") and felder.get("_itemNo"):
             datensaetze.append(felder)
 
@@ -229,7 +264,7 @@ def feld_position(index, item_key: int, item_no: int, feldname: str) -> Optional
     if not felder:
         return None
     feld = felder.get(feldname)
-    if feld is None or not feld.vorhanden:
+    if feld is None or not feld.verwendbar:
         return None
     return (feld.start, feld.ende)
 
@@ -347,10 +382,10 @@ def ergaenze_ohne_parc(items, nach_anker) -> Dict[str, int]:
         positionen = {}
         for name, groesse in SCHREIBBARE_FELDER.items():
             feld = felder.get(name)
-            if feld and feld.vorhanden and feld.ende - feld.start == groesse:
+            if feld and feld.verwendbar and feld.ende - feld.start == groesse:
                 positionen[name] = feld.start
         if positionen:
-            enden = [f.ende for f in felder.values() if f.vorhanden]
+            enden = [f.ende for f in felder.values() if f.verwendbar]
             positionen["_record_end"] = max(enden) if enden else 0
             it.field_offsets = positionen
             # Die Positionen stammen aus dem Schema des Spielstands - genau die
