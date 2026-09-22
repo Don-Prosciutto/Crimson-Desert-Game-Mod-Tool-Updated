@@ -6937,13 +6937,24 @@ QCheckBox::indicator {{
 
 
     def _load_dye_slot_db(self) -> dict:
+        """Farbslot-Wissen laden: erst das selbst dazugelernte, sonst das mitgelieferte.
+
+        Gesucht wurde bisher nur neben der EXE. Dort liegt die Datei beim
+        ersten Start aber nicht - sie ist eingepackt und landet im Temp-Ordner.
+        In der EXE fing das Wissen deshalb jedes Mal bei Null an, obwohl 130
+        Eintraege mitgeliefert werden.
+        """
         import json as _json
-        p = os.path.join(self._app_dir(), 'dye_slot_counts.json')
-        if os.path.isfile(p):
-            try:
-                return _json.load(open(p, 'r'))
-            except Exception:
-                pass
+        for basis in (self._app_dir(), self._bundle_dir()):
+            p = os.path.join(basis, 'dye_slot_counts.json')
+            if os.path.isfile(p):
+                try:
+                    with open(p, 'r', encoding='utf-8') as f:
+                        daten = _json.load(f)
+                    log.info("Farbslot-Wissen aus %s: %d Eintraege", p, len(daten))
+                    return daten
+                except Exception as e:  # noqa: BLE001
+                    log.warning("Farbslot-Wissen %s nicht lesbar: %s", p, e)
         return {}
 
     def _save_dye_slot_db(self, db: dict) -> None:
