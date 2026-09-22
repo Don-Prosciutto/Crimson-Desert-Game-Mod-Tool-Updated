@@ -25,6 +25,10 @@ class ItemNameDB:
         self.items: Dict[int, ItemInfo] = {}
         self.loaded_path: str = ""
         self.version: int = 0
+        # Spielversion, aus der diese Datenbank stammt. Leer bei den
+        # mitgelieferten Daten - die wurden irgendwann erzeugt und niemand
+        # weiss, wann. Genau deshalb wird sie ab jetzt mitgeschrieben.
+        self.game_version: str = ""
         self.load_auto()
 
     def load_auto(self) -> str:
@@ -40,6 +44,7 @@ class ItemNameDB:
         self.items.clear()
         self.loaded_path = path
         self.version = 0
+        self.game_version = ""
 
         if not os.path.isfile(path):
             return
@@ -51,6 +56,7 @@ class ItemNameDB:
             return
 
         self.version = data.get("version", 0)
+        self.game_version = str(data.get("gameVersion", "") or "")
         for entry in data.get("items", []):
             key = entry.get("itemKey", 0)
             if key <= 0:
@@ -98,6 +104,8 @@ class ItemNameDB:
             items_list.append(entry)
 
         data = {"version": self.version, "items": items_list}
+        if self.game_version:
+            data["gameVersion"] = self.game_version
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
@@ -199,6 +207,11 @@ class ItemNameDB:
         if not self.items:
             return False, "No usable item records were found in the local game data."
         self.version += 1
+        try:
+            from game_version import read_game_version
+            self.game_version = read_game_version(game_path) or ""
+        except Exception:  # noqa: BLE001
+            self.game_version = ""
         # A bundled one-file resource lives under PyInstaller's temporary
         # _MEIPASS directory.  Always persist refreshes beside the executable
         # so the current-client database survives the next launch.
@@ -214,6 +227,7 @@ class ItemNameDB:
             "declaredRecords": count,
             "parsedRecords": parsed,
             "uniqueClientItemKeys": len(extracted_keys),
+            "gameVersion": self.game_version,
             "databaseItems": len(self.items),
             "added": added,
             "refreshed": updated,
@@ -243,3 +257,28 @@ def _guess_item_category(internal_name: str) -> str:
     if "quest" in name:
         return "Quest"
     return "Misc"
+
+
+def datenbank_veraltet(db, game_path: str):
+    """Passt die Itemdatenbank zur installierten Spielversion?
+
+    Gibt (veraltet, spielversion, datenbankversion) zurueck. `veraltet` ist
+    None, wenn sich die Frage nicht beantworten laesst - etwa ohne Spielpfad.
+
+    Warum das noetig ist: Die mitgelieferte Datenbank ist ein Abzug von
+    irgendwann. Wer nicht weiss, wieviele Items das Spiel hat, merkt nie,
+    dass welche fehlen - er findet sie einfach nicht und haelt das fuer
+    normal. Die Zahl allein genuegt als Merkmal nicht, weil ein Update auch
+    Items entfernen kann; deshalb die Spielversion.
+    """
+    if not game_path or not os.path.isdir(game_path):
+        return None, "", getattr(db, "game_version", "")
+    try:
+        from game_version import read_game_version
+        installiert = read_game_version(game_path) or ""
+    except Exception:  # noqa: BLE001
+        return None, "", getattr(db, "game_version", "")
+    if not installiert:
+        return None, "", getattr(db, "game_version", "")
+    stand = getattr(db, "game_version", "")
+    return (stand != installiert), installiert, stand

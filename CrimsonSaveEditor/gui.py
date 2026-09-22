@@ -3113,6 +3113,7 @@ class MainWindow(QMainWindow):
             self._paz_manager.game_path = saved_gp
             self._global_game_path.setText(saved_gp)
             self._global_game_path.setToolTip(saved_gp)
+            QTimer.singleShot(1200, lambda: self._pruefe_itemdatenbank(saved_gp))
 
         self._tabs = QTabWidget()
         right_layout.addWidget(self._tabs, 1)
@@ -33652,6 +33653,50 @@ QCheckBox::indicator {{
         QMessageBox.information(self, "Pack Exported",
             f"Saved {len(items)} items to:\n{path}\n\n"
             f"This pack will appear in the DropSets tab Pack dropdown.")
+
+    def _pruefe_itemdatenbank(self, game_path: str) -> None:
+        """Beim Start melden, wenn die Itemdatenbank aelter ist als das Spiel.
+
+        Wer nicht weiss, wieviele Items das Spiel hat, merkt nie, dass welche
+        fehlen - er findet sie einfach nicht und haelt das fuer normal. Genau
+        das ist Allan mit 6.236 statt 6.816 Items passiert.
+
+        Gefragt wird hoechstens einmal je Spielversion. Ungefragt aktualisiert
+        wird nicht: der Vorgang schreibt eine Datei und dauert seine Zeit, und
+        beides gehoert nicht ungefragt in einen Programmstart.
+        """
+        try:
+            from item_db import datenbank_veraltet
+            veraltet, spiel, stand = datenbank_veraltet(self._name_db, game_path)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Itemdatenbank-Pruefung uebersprungen: %s", e)
+            return
+        if veraltet is None:
+            log.info("Itemdatenbank: Spielversion nicht ermittelbar, keine Pruefung")
+            return
+        log.info("Itemdatenbank: Stand %s, Spiel %s, %d Items -> %s",
+                 stand or "unbekannt", spiel, len(self._name_db.items),
+                 "veraltet" if veraltet else "aktuell")
+        if not veraltet:
+            return
+        if self._config.get("itemdb_hinweis_fuer") == spiel:
+            return
+        self._config["itemdb_hinweis_fuer"] = spiel
+        self._save_config()
+
+        woher = f"built from game version {stand}" if stand else "of unknown age"
+        antwort = QMessageBox.question(
+            self, "Item database out of date",
+            f"The item database is {woher} and currently holds "
+            f"{len(self._name_db.items)} items.\n\n"
+            f"Your installed game is version {spiel}. Items added since then are "
+            f"missing here \u2014 they simply will not show up when you search.\n\n"
+            f"Read the item list from your installation now? Existing display "
+            f"names and categories are kept.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
+        )
+        if antwort == QMessageBox.Yes:
+            self._sync_items_local()
 
     def _sync_items_local(self) -> None:
         game_path = self._config.get("game_install_path", "")

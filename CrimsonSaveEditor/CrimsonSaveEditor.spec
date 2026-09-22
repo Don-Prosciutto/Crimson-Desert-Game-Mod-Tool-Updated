@@ -59,6 +59,7 @@ a = Analysis(
         'ben_save_decrypt',
         # wird nur innerhalb von Funktionen importiert, deshalb ausdruecklich
         'schema_item_index',
+        'game_version',
         'table_layout',
         'dmm_parser',
         'dmm_parser.enums',
