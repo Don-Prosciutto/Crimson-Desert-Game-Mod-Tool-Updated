@@ -1794,6 +1794,7 @@ class QuestEditorWindow(QDialog):
             if progress is not None:
                 progress.set_stage("Refreshing backups and save browser...", 6)
             QApplication.processEvents()
+            self._merke_ladestand()
             pristine = self._create_pristine_backup(path)
             if pristine:
                 log.info("Pristine backup created: %s", pristine)
@@ -31678,6 +31679,7 @@ QCheckBox::indicator {{
             self._loaded_path = path
             self._dirty = False
             self._undo_stack.clear()
+            self._merke_ladestand()
 
             _step("Creating backup...", 2)
             pristine = self._create_pristine_backup(path)
@@ -31745,6 +31747,66 @@ QCheckBox::indicator {{
             return
         self._do_save(path)
 
+    def _merke_ladestand(self) -> None:
+        """Den Spielstand so festhalten, wie er geladen wurde.
+
+        Grundlage fuer die Pruefung vor dem Speichern: ohne den Zustand
+        davor laesst sich nicht sagen, ob eine Aenderung etwas kaputtgemacht
+        hat. Kostet einmal die Groesse des Spielstands an Arbeitsspeicher -
+        rund 6 MB.
+        """
+        try:
+            self._blob_beim_laden = bytes(self._save_data.decompressed_blob)
+        except Exception:  # noqa: BLE001
+            self._blob_beim_laden = None
+        self._verweise_beim_laden = None
+
+    def _pruefe_vor_dem_speichern(self) -> bool:
+        """Vor dem Schreiben nachrechnen, ob der Spielstand noch stimmig ist.
+
+        Gibt True zurueck, wenn geschrieben werden darf.
+
+        Die C++-Pruefung beim Schreiben faengt diesen Fall NICHT ab: der
+        Spielstand, der das Spiel beim Start abstuerzen liess, ist durch sie
+        hindurchgegangen. Sie prueft Schema und Bloecke - der Schaden lag in
+        den Verweisen dazwischen.
+        """
+        vorher = getattr(self, "_blob_beim_laden", None)
+        jetzt = bytes(self._save_data.decompressed_blob)
+        if vorher is None:
+            log.info("Kein Ladestand gemerkt - Pruefung uebersprungen")
+            return True
+
+        lang = len(vorher) != len(jetzt)
+        if lang:
+            self._sockel_arbeit_anzeigen(
+                "Checking the edited save before writing \u2014 this takes a few seconds…")
+        try:
+            import save_check
+            befund = save_check.pruefe(vorher, jetzt,
+                                       getattr(self, "_verweise_beim_laden", None))
+        except Exception as e:  # noqa: BLE001
+            log.warning("Pruefung vor dem Speichern nicht moeglich: %s", e)
+            return True
+        finally:
+            if lang:
+                self._sockel_arbeit_beenden()
+
+        if befund.ok:
+            log.info("Pruefung vor dem Speichern: %s - %s", befund.titel, befund.text)
+            return True
+
+        log.error("Pruefung vor dem Speichern FEHLGESCHLAGEN: %s | %s",
+                  befund.titel, befund.ausfuehrlich or befund.text)
+        antwort = QMessageBox.critical(
+            self, f"Refusing to save: {befund.titel}",
+            befund.text + "\n\n"
+            "Save anyway? Only do this if you know exactly why the check is wrong \u2014 "
+            "a save in this state can stop the game from starting at all.",
+            QMessageBox.Cancel | QMessageBox.Save, QMessageBox.Cancel,
+        )
+        return antwort == QMessageBox.Save
+
     def _do_save(self, path: str) -> None:
         try:
             if self._save_data.is_raw_stream:
@@ -31769,6 +31831,10 @@ QCheckBox::indicator {{
                 backup_path = self._create_backup(path)
                 if backup_path:
                     self._update_status(f"Backup created: {os.path.basename(backup_path)}")
+
+            if not self._pruefe_vor_dem_speichern():
+                self._update_status("Save cancelled - the edited save did not pass the check")
+                return
 
             self._update_status("C++ backend is validating the edited save...")
             QApplication.processEvents()
