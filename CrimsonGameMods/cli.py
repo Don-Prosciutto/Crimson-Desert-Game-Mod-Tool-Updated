@@ -439,21 +439,21 @@ def cmd_apply_field_json_raw(args):
         print("ERROR: not a Format 3 Field JSON file")
         return 1
 
-    # Format 3.0 legt die Intents flach ab, Format 3.1 gruppiert sie unter
-    # "targets": [{"file": ..., "intents": [...]}, ...]. Ohne diesen Zweig
-    # fand der Befehl bei 3.1-Mods nichts und schrieb die Datei unveraendert
-    # zurueck — mit der Meldung "Applied: 0, Skipped: 0".
+    # Format 3.0 stores the intents flat, format 3.1 groups them under
+    # "targets": [{"file": ..., "intents": [...]}, ...]. Without this branch
+    # the command found nothing in 3.1 mods and wrote the file back unchanged
+    # - reporting "Applied: 0, Skipped: 0".
     intents = list(doc.get('intents') or [])
     for target_block in (doc.get('targets') or []):
-        ziel_datei = (target_block.get('file') or '').lower()
-        if ziel_datei and 'iteminfo' not in ziel_datei:
-            print(f"WARNUNG: uebersprungen — dieser Befehl bearbeitet nur iteminfo, "
-                  f"der Mod zielt auch auf {target_block.get('file')}")
+        target_file = (target_block.get('file') or '').lower()
+        if target_file and 'iteminfo' not in target_file:
+            print(f"WARNING: skipped - this command only edits iteminfo, "
+                  f"the mod also targets {target_block.get('file')}")
             continue
         intents.extend(target_block.get('intents') or [])
 
     if not intents:
-        print("ERROR: keine Intents in der Mod-Datei gefunden")
+        print("ERROR: no intents found in the mod file")
         return 1
 
     applied = 0

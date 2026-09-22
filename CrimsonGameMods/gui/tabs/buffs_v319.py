@@ -3455,30 +3455,30 @@ class ItemBuffsTab(QWidget):
         except Exception as e:
             import traceback; traceback.print_exc()
             self._buff_status_label.setText(f"Rust extraction failed: {e}")
-            # Frueher stand hier pauschal "your iteminfo has been modified by
-            # another mod" — das schickt in die falsche Richtung. Der mit
-            # Abstand haeufigste Grund ist ein Parser, der nicht zur
-            # installierten Spielversion passt; absurde Zahlen in der Meldung
-            # sind genau dieses Symptom. Deshalb zuerst die Versionen zeigen.
-            versionshinweis = ""
+            # This used to say, flatly, "your iteminfo has been modified by
+            # another mod" - which sends people the wrong way. By far the most
+            # common reason is a parser that does not match the installed game
+            # version; absurd numbers in the message are exactly that symptom.
+            # So show the versions first.
+            version_note = ""
             try:
                 import game_version
-                installiert = game_version.read_game_version(
+                installed = game_version.read_game_version(
                     getattr(self, "_game_path", "") or "")
-                if installiert:
-                    passt = (installiert.split(".")[:2]
-                             == game_version.PARSER_TARGET.split(".")[:2])
-                    versionshinweis = (
-                        f"Installed game version: {installiert}\n"
+                if installed:
+                    matches = (installed.split(".")[:2]
+                               == game_version.PARSER_TARGET.split(".")[:2])
+                    version_note = (
+                        f"Installed game version: {installed}\n"
                         f"Parser targets: {game_version.PARSER_TARGET}"
-                        + ("" if passt else "   <-- mismatch, this is very likely the cause")
+                        + ("" if matches else "   <-- mismatch, this is very likely the cause")
                         + "\n\n")
             except Exception:  # noqa: BLE001
                 pass
 
             QMessageBox.warning(self, "Could not read iteminfo",
                 f"Failed to parse iteminfo.pabgb:\n{e}\n\n"
-                f"{versionshinweis}"
+                f"{version_note}"
                 f"Most likely causes, in order:\n"
                 f"  1. The bundled parser does not match your game version.\n"
                 f"     A game update moves fields; the parser then reads at the\n"

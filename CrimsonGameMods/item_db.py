@@ -202,9 +202,9 @@ class ItemNameDB:
         self.save()
         return True, f"Synced v{remote_version}: {added} new, {updated} updated."
 
-    # Sprachpakete des Spiels: Gruppennummer je Sprachkuerzel. Wird nur als
-    # Startpunkt benutzt; findet sich die Gruppe dort nicht, wird gesucht.
-    _SPRACHGRUPPEN = {
+    # The game's language packs: group number per language code. Only used as
+    # a starting point; if the group is not there, it is searched for.
+    _LANGUAGE_GROUPS = {
         "kor": "0019", "eng": "0020", "jpn": "0021", "rus": "0022", "tur": "0023",
         "spa-es": "0024", "spa-mx": "0025", "fre": "0026", "ger": "0027",
         "ita": "0028", "pol": "0029", "por-br": "0030", "zho-tw": "0031",
@@ -212,51 +212,51 @@ class ItemNameDB:
     }
 
     @staticmethod
-    def _finde_sprachgruppe(dmm_parser, game_path: str, lang: str) -> str:
-        """Gruppennummer des Sprachpakets, notfalls durch Suche im Spielordner."""
-        kandidat = ItemNameDB._SPRACHGRUPPEN.get(lang)
-        gesucht = f"gamedata/stringtable/binary__/{lang}"
-        if kandidat:
-            pfad = os.path.join(game_path, kandidat, "0.pamt")
-            if os.path.isfile(pfad):
+    def _find_language_group(dmm_parser, game_path: str, lang: str) -> str:
+        """Group number of the language pack, searching the game folder if needed."""
+        candidate = ItemNameDB._LANGUAGE_GROUPS.get(lang)
+        wanted = f"gamedata/stringtable/binary__/{lang}"
+        if candidate:
+            path = os.path.join(game_path, candidate, "0.pamt")
+            if os.path.isfile(path):
                 try:
-                    pamt = dmm_parser.parse_pamt_file(pfad)
+                    pamt = dmm_parser.parse_pamt_file(path)
                     for d in pamt.get("directories", []):
-                        if d.get("path", "").replace("\\", "/").lower() == gesucht and d.get("files"):
-                            return kandidat
+                        if d.get("path", "").replace("\\", "/").lower() == wanted and d.get("files"):
+                            return candidate
                 except Exception:
                     pass
         try:
-            gruppen = sorted(n for n in os.listdir(game_path)
-                             if n.isdigit() and len(n) == 4)
+            groups = sorted(n for n in os.listdir(game_path)
+                            if n.isdigit() and len(n) == 4)
         except OSError:
             return ""
-        for grp in gruppen:
-            pfad = os.path.join(game_path, grp, "0.pamt")
-            if not os.path.isfile(pfad):
+        for grp in groups:
+            path = os.path.join(game_path, grp, "0.pamt")
+            if not os.path.isfile(path):
                 continue
             try:
-                pamt = dmm_parser.parse_pamt_file(pfad)
+                pamt = dmm_parser.parse_pamt_file(path)
             except Exception:
                 continue
             for d in pamt.get("directories", []):
-                if d.get("path", "").replace("\\", "/").lower() == gesucht and d.get("files"):
+                if d.get("path", "").replace("\\", "/").lower() == wanted and d.get("files"):
                     return grp
         return ""
 
     def sync_from_local_game(self, game_path: str, language: str = "eng") -> tuple[bool, str]:
-        """Liest Items und Anzeigenamen direkt aus der installierten Spielversion.
+        """Read items and display names straight from the installed game.
 
-        Frueher wurden die Datensaetze hier aus den Rohbytes gelesen — mit fest
-        verdrahteten Feldoffsets und dem Archivverzeichnis von vor Spielversion
-        2.01. Beides bricht bei jedem Update, weshalb die mitgelieferten Daten
-        veraltet sind. Jetzt uebernimmt dmm_parser das Lesen, damit die Daten mit
-        dem Spiel mitwachsen statt zu altern.
+        This used to read the records from the raw bytes - with hard-wired
+        field offsets and the archive directory from before game version 2.01.
+        Both break with every update, which is why the data that ships with
+        the tool is out of date. dmm_parser now does the reading, so the data
+        grows with the game instead of ageing.
         """
         try:
             import dmm_parser
         except ImportError:
-            return False, "dmm_parser-Modul nicht verfuegbar."
+            return False, "dmm_parser module not available."
 
         try:
             from table_layout import INTERNAL_DIR
@@ -267,45 +267,45 @@ class ItemNameDB:
             pabgb_data = bytes(dmm_parser.extract_file(
                 game_path, "0008", INTERNAL_DIR, "iteminfo.pabgb"))
         except Exception as e:
-            return False, f"iteminfo konnte nicht entpackt werden: {e}"
+            return False, f"iteminfo could not be extracted: {e}"
 
         try:
-            geparst = dmm_parser.parse_iteminfo_from_bytes(pabgb_data)
+            parsed = dmm_parser.parse_iteminfo_from_bytes(pabgb_data)
         except Exception as e:
-            return False, f"iteminfo konnte nicht gelesen werden: {e}"
+            return False, f"iteminfo could not be read: {e}"
 
         items_raw = []
-        for it in geparst:
-            namensfeld = it.get("item_name") or {}
+        for it in parsed:
+            name_field = it.get("item_name") or {}
             items_raw.append((
                 int(it.get("key") or 0),
                 str(it.get("string_key") or ""),
-                int(namensfeld.get("index") or 0),
+                int(name_field.get("index") or 0),
                 int(it.get("max_stack_count") or 0),
             ))
 
         if not items_raw:
-            return False, "iteminfo enthielt keine Datensaetze."
+            return False, "iteminfo contained no records."
 
-        # ── Anzeigenamen aus der Lokalisierung des Spiels ──────────────────
+        # -- Display names from the game's own localization ------------------
         loc_map: Dict[int, str] = {}
         paloc_source = ""
         for lang in dict.fromkeys([language, "eng"]):
-            grp = self._finde_sprachgruppe(dmm_parser, game_path, lang)
+            grp = self._find_language_group(dmm_parser, game_path, lang)
             if not grp:
                 continue
             try:
                 paloc = bytes(dmm_parser.extract_file(
                     game_path, grp,
                     f"gamedata/stringtable/binary__/{lang}", "item.paloc"))
-                for eintrag in dmm_parser.parse_paloc_bytes(paloc):
-                    schluessel = str(eintrag.get("string_key") or "")
-                    if schluessel.isdigit():
-                        loc_map[int(schluessel)] = str(eintrag.get("string_value") or "")
+                for entry in dmm_parser.parse_paloc_bytes(paloc):
+                    key = str(entry.get("string_key") or "")
+                    if key.isdigit():
+                        loc_map[int(key)] = str(entry.get("string_value") or "")
             except Exception:
                 continue
             if loc_map:
-                paloc_source = f"Spiel-Lokalisierung ({lang}, Gruppe {grp})"
+                paloc_source = f"game localization ({lang}, group {grp})"
                 break
 
         if not loc_map:
@@ -319,19 +319,18 @@ class ItemNameDB:
                             parts = line.strip().split(";", 1)
                             if len(parts) == 2 and parts[0].isdigit():
                                 loc_map[int(parts[0])] = parts[1]
-                    paloc_source = "mitgelieferte TSV (veraltet)"
+                    paloc_source = "bundled TSV (out of date)"
                 except Exception:
                     pass
 
         if not loc_map:
             paloc_source = "none (using internal names)"
 
-        # Die vorhandenen Kategorien sind gepflegt und lassen sich aus den
-        # Spieldaten nicht gleichwertig rekonstruieren: die Namens-Heuristik
-        # allein wuerde 'Equipment' von 2.284 auf 18 Eintraege druecken.
-        # Bestehende Zuordnungen bleiben deshalb stehen; nur wirklich neue
-        # Items werden eingeordnet.
-        alte_kategorien = {k: v.category for k, v in self.items.items() if v.category}
+        # The existing categories are curated and cannot be reconstructed
+        # from the game data at the same quality: the name heuristic alone
+        # would push 'Equipment' from 2,284 down to 18 entries. Existing
+        # assignments therefore stay; only genuinely new items are classified.
+        old_categories = {k: v.category for k, v in self.items.items() if v.category}
         old_keys = set(self.items.keys())
         self.items.clear()
         matched = 0
@@ -343,41 +342,41 @@ class ItemNameDB:
                 matched += 1
             else:
                 display_name = internal_name.replace('_', ' ')
-            kategorie = alte_kategorien.get(item_key) or _guess_item_category(internal_name)
+            category = old_categories.get(item_key) or _guess_item_category(internal_name)
             self.items[item_key] = ItemInfo(
                 item_key=item_key,
                 name=display_name,
                 internal_name=internal_name,
-                category=kategorie,
+                category=category,
                 max_stack=max_stack,
             )
 
-        # Items, die das Spiel nicht mehr kennt, bleiben stehen: darunter
-        # koennen selbst angelegte Eintraege sein. Sie werden nur gemeldet.
-        verwaist = sorted(old_keys - set(self.items.keys()))
+        # Items the game no longer knows stay: entries added by hand can be
+        # among them. They are only reported.
+        orphaned = sorted(old_keys - set(self.items.keys()))
 
         self.version += 1
         self.save()
 
         new_keys = set(self.items.keys()) - old_keys
-        neu_ohne_kategorie = sum(
+        new_without_category = sum(
             1 for k in new_keys if self.items[k].category == 'Misc')
 
-        zeilen = [
-            f"{len(self.items)} Items aus der Spielinstallation gelesen.",
-            f"Neu hinzugekommen: {len(new_keys)}",
-            f"Namen zugeordnet: {matched} (Quelle: {paloc_source})",
-            f"Ohne Namen: {len(self.items) - matched}",
+        lines = [
+            f"Read {len(self.items)} items from the game installation.",
+            f"Newly added: {len(new_keys)}",
+            f"Names matched: {matched} (source: {paloc_source})",
+            f"Without a name: {len(self.items) - matched}",
         ]
         if new_keys:
-            zeilen.append(
-                f"Davon ohne erkennbare Kategorie (als 'Misc' eingeordnet): "
-                f"{neu_ohne_kategorie}")
-        if verwaist:
-            zeilen.append(
-                f"{len(verwaist)} Eintraege kennt das Spiel nicht mehr — "
-                f"sie bleiben erhalten, falls es eigene Items sind.")
-        return True, "\n".join(zeilen)
+            lines.append(
+                f"Of those, without a recognisable category (filed as 'Misc'): "
+                f"{new_without_category}")
+        if orphaned:
+            lines.append(
+                f"{len(orphaned)} entries the game no longer knows \u2014 "
+                f"they are kept in case they are your own items.")
+        return True, "\n".join(lines)
 
 
 def _guess_item_category(internal_name: str) -> str:

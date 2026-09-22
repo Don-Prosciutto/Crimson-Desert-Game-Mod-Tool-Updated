@@ -16,9 +16,9 @@ APP_VERSION = "2.2.0"
 
 APP_VARIANT = "gamemods"
 
-# Diese Fassung wird hier gepflegt; die Updatepruefung muss auf dieses
-# Repository zeigen, sonst wuerden Nutzer auf einen Stand ohne die
-# 2.03-Korrekturen zurueckgezogen. Original: NattKh/CRIMSON-DESERT-SAVE-EDITOR-AND-GAME-MODS
+# This build is maintained here; the update check has to point at this
+# repository, or users would be pulled back to a state without the 2.03
+# fixes. Original: NattKh/CRIMSON-DESERT-SAVE-EDITOR-AND-GAME-MODS
 UPDATE_REPO = "Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated"
 _MANIFEST_BY_VARIANT = {
     "gamemods":   "editor_version_gamemods.json",

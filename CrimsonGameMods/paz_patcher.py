@@ -837,13 +837,13 @@ _ITEMINFO_PAMT_OFFSET  = 0x00096731
 
 
 def _table_name_variants(filename: str) -> tuple:
-    """Beide Schreibweisen eines Tabellennamens.
+    """Both spellings of a table name.
 
-    Bis Spielversion 2.00 hiessen die statischen Tabellen im Archiv
-    `<name>.pabgb` / `<name>.pabgh`. Seit 2.01.00 heissen dieselben Dateien
-    `<name>.staticinfobody` / `<name>.staticinfoheader`. Alle Werkzeuge und
-    alle V3-Mods sprechen weiter die alten Namen, deshalb muss die Suche im
-    PAMT-Index beide akzeptieren.
+    Up to game version 2.00 the static tables were called `<name>.pabgb` /
+    `<name>.pabgh` in the archive. Since 2.01.00 the same files are called
+    `<name>.staticinfobody` / `<name>.staticinfoheader`. Every tool and every
+    V3 mod still speaks the old names, so the lookup in the PAMT index has to
+    accept both.
     """
     low = (filename or "").lower()
     try:
@@ -993,8 +993,8 @@ class ItemBuffPatcher:
 
     def extract_iteminfo(self) -> bytes:
         try:
-            # dmm_parser ist der gepflegte Nachfolger von crimson_rs und kennt
-            # das aktuelle Spielformat. crimson_rs bleibt als Rueckfallebene.
+            # dmm_parser is the maintained successor of crimson_rs and knows
+            # the current game format. crimson_rs stays as a fallback.
             try:
                 import dmm_parser as crimson_rs
             except Exception:

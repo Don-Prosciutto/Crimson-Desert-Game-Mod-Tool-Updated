@@ -2492,30 +2492,30 @@ QCheckBox::indicator {{
         self._warn_on_version_mismatch(path)
 
     def _warn_on_version_mismatch(self, path: str) -> None:
-        """Meldet, wenn die installierte Spielversion nicht zum Parser passt.
+        """Report when the installed game version does not match the parser.
 
-        Ein zu alter Parser liest Tabellen an falschen Stellen und kann sie
-        beim Zurueckschreiben stillschweigend beschaedigen. Diese Meldung
-        macht den Fall sofort sichtbar statt erst beim kaputten Mod. Pro
-        Spielversion wird hoechstens einmal gewarnt.
+        A parser that is too old reads tables at the wrong positions and can
+        silently damage them when writing back. This message makes the case
+        visible right away instead of at the first broken mod. At most one
+        warning per game version.
         """
         try:
             import game_version
         except ImportError:
             return
         try:
-            befund = game_version.check(path)
-        except Exception:  # noqa: BLE001 - eine Warnung darf nie den Start kippen
+            verdict = game_version.check(path)
+        except Exception:  # noqa: BLE001 - a warning must never break startup
             return
-        if not befund:
+        if not verdict:
             return
-        titel, text = befund
-        installiert = game_version.read_game_version(path)
-        if self._config.get("version_warning_seen") == installiert:
+        title, text = verdict
+        installed = game_version.read_game_version(path)
+        if self._config.get("version_warning_seen") == installed:
             return
-        self._config["version_warning_seen"] = installiert
+        self._config["version_warning_seen"] = installed
         self._save_config()
-        QMessageBox.warning(self, titel, text)
+        QMessageBox.warning(self, title, text)
 
     def _validate_game_path(self, path: str) -> bool:
         paz = os.path.join(path, "0008", "0.paz")
@@ -2806,18 +2806,18 @@ QCheckBox::indicator {{
 
     @staticmethod
     def _bundle_dir() -> str:
-        """Ordner, in den PyInstaller die mitgelieferten Dateien entpackt.
+        """Folder PyInstaller unpacks the bundled files into.
 
-        Das ist NICHT der Ordner der EXE. Die .spec packt knowledge_packs und
-        quest_packs mit ein - die landen beim Start in einem Temp-Ordner
-        (sys._MEIPASS). Wer nur neben der EXE sucht, findet sie nie. Im
-        Quellbetrieb faellt das nicht auf, weil dort beides derselbe Ordner
-        ist; kaputt ist es nur in der fertigen EXE.
+        This is NOT the EXE's folder. The .spec bundles knowledge_packs and
+        quest_packs - on startup those land in a temp folder (sys._MEIPASS).
+        Anyone looking next to the EXE only will never find them. Running from
+        source hides this, because there both are the same folder; it is only
+        broken in the finished EXE.
         """
         return getattr(sys, '_MEIPASS', None) or MainWindow._app_dir()
 
     def _get_pack_dirs(self) -> list:
-        """Ordner mit Packs: die des Nutzers neben der EXE, dann die mitgelieferten."""
+        """Pack folders: the user's next to the EXE, then the bundled ones."""
         dirs = []
         for folder in ['quest_packs', 'knowledge_packs']:
             p = os.path.join(self._app_dir(), folder)
