@@ -45,7 +45,7 @@ class Befund(NamedTuple):
     @property
     def geprueft(self) -> bool:
         """Konnte ueberhaupt geprueft werden?"""
-        return self.titel != "nicht pruefbar"
+        return self.titel != "not checkable"
 
 
 def _bloecke(blob: bytes):
@@ -72,17 +72,16 @@ def schnellpruefung(bearbeitet: bytes) -> Befund:
     try:
         schema, toc = _bloecke(bearbeitet)
     except Exception as e:  # noqa: BLE001
-        return Befund(False, "Spielstand nicht mehr lesbar",
-                      f"Der bearbeitete Spielstand laesst sich nicht mehr auslesen:\n\n{e}",
-                      "")
+        return Befund(False, "save no longer readable",
+                      f"The edited save can no longer be parsed:\n\n{e}", "")
     eintraege = toc["entries"]
     for e in eintraege:
         if e.data_offset < 0 or e.data_offset + e.data_size > len(bearbeitet):
-            return Befund(False, "Blockgrenze ausserhalb der Datei",
-                          f"Block #{e.index} ({e.class_name}) reicht ueber das Ende "
-                          f"des Spielstands hinaus.", "")
-    return Befund(True, "in Ordnung",
-                  f"{len(schema['types'])} Typen, {len(eintraege)} Bloecke gelesen.")
+            return Befund(False, "block extends past the end of the file",
+                          f"Block #{e.index} ({e.class_name}) reaches beyond the end "
+                          f"of the save.", "")
+    return Befund(True, "ok",
+                  f"{len(schema['types'])} types, {len(eintraege)} blocks read.")
 
 
 def vollpruefung(original: bytes, bearbeitet: bytes,
@@ -100,26 +99,25 @@ def vollpruefung(original: bytes, bearbeitet: bytes,
         vorher = verweise_vorher if verweise_vorher is not None else _verweise(original)
         nachher = _verweise(bearbeitet)
     except Exception as e:  # noqa: BLE001
-        log.warning("Verweispruefung nicht moeglich: %s", e)
-        return Befund(True, "nicht pruefbar",
-                      f"Die Verweise konnten nicht gezaehlt werden ({e}). "
-                      f"Der Spielstand ist lesbar, mehr laesst sich hier nicht sagen.")
+        log.warning("Could not count internal offsets: %s", e)
+        return Befund(True, "not checkable",
+                      f"The internal offsets could not be counted ({e}). "
+                      f"The save is readable; nothing more can be said here.")
 
     verloren = vorher - nachher
-    log.info("Verweispruefung: vorher %d, nachher %d (%+d)", vorher, nachher, -verloren)
+    log.info("Offset check: before %d, after %d (%+d)", vorher, nachher, -verloren)
     if verloren > 0:
         return Befund(
-            False, "Verweise verloren",
-            f"Nach der Aenderung sind {verloren} interne Verweise nicht mehr "
-            f"auffindbar ({vorher} → {nachher}).\n\n"
-            f"Der Spielstand laesst sich zwar lesen, aber ein Bereich ist nicht "
-            f"mehr durchgaengig begehbar. Genau so sah der Spielstand aus, der "
-            f"das Spiel beim Start abstuerzen liess.\n\n"
-            f"Diese Aenderung sollte nicht gespeichert werden.",
-            f"Verweise vorher {vorher}, nachher {nachher}, Differenz {-verloren}")
-    return Befund(True, "in Ordnung",
-                  f"Verweise vollstaendig ({vorher} → {nachher}), "
-                  f"{schnell.text}")
+            False, "internal offsets lost",
+            f"After this change, {verloren} internal offsets can no longer be "
+            f"found ({vorher} \u2192 {nachher}).\n\n"
+            f"The save still parses, but one region is no longer walkable end "
+            f"to end. That is exactly how the save looked that stopped the game "
+            f"from starting.\n\n"
+            f"This change should not be written.",
+            f"offsets before {vorher}, after {nachher}, difference {-verloren}")
+    return Befund(True, "ok",
+                  f"offsets complete ({vorher} \u2192 {nachher}), {schnell.text}")
 
 
 def pruefe(original: bytes, bearbeitet: bytes,
@@ -127,9 +125,9 @@ def pruefe(original: bytes, bearbeitet: bytes,
     """Die passende Pruefung waehlen: schnell bei gleicher Groesse, sonst voll."""
     if original is not None and len(original) == len(bearbeitet):
         befund = schnellpruefung(bearbeitet)
-        log.info("Spielstand unveraendert gross (%d Byte) - Schnellpruefung: %s",
+        log.info("Save size unchanged (%d bytes) - quick check: %s",
                  len(bearbeitet), befund.titel)
         return befund
-    log.info("Spielstand hat die Groesse geaendert (%d → %d Byte) - volle Pruefung",
+    log.info("Save size changed (%d -> %d bytes) - running the full check",
              len(original) if original is not None else -1, len(bearbeitet))
     return vollpruefung(original, bearbeitet, verweise_vorher)

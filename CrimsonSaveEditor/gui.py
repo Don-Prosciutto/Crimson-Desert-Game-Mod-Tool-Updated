@@ -5627,15 +5627,15 @@ QCheckBox::indicator {{
         # Protokollieren, was dieser Klick vorhat. Ohne das ist von aussen nicht
         # zu unterscheiden, ob nichts passiert ist, etwas lautlos passiert ist
         # oder etwas haengt - genau diese Frage hat uns schon Stunden gekostet.
-        log.info("Sockel-Aenderung an %s (key %s, no %s): %d fuellen %s, "
-                 "%d leeren %s, %d tauschen %s",
+        log.info("Socket change on %s (key %s, no %s): fill %d %s, "
+                 "clear %d %s, swap %d %s",
                  self._name_db.get_name(item.item_key), item.item_key, item.item_no,
                  len(fills), fills, len(clears), sorted(clears), len(swaps), swaps)
-        log.info("   Fassungen vorher: %s",
+        log.info("   sockets before: %s",
                  [(d.get("slot"), d.get("has_gem"), d.get("gem_key")) for d in socket_data])
 
         if not fills and not clears and not swaps:
-            log.info("   nichts zu tun - Auswahl entspricht dem Ist-Zustand")
+            log.info("   nothing to do - selection matches the current state")
             self._update_status("Sockets: nothing to change")
             return
 
@@ -5797,8 +5797,8 @@ QCheckBox::indicator {{
             ))
 
         self._dirty = True
-        log.info("   fertig: %d getauscht, Spielstand im Speicher geaendert "
-                 "(noch nicht gespeichert)", len(swap_edits))
+        log.info("   done: %d swapped, save changed in memory "
+                 "(not written yet)", len(swap_edits))
         self._on_socket_item_changed(self._sock_item_combo.currentIndex())
 
         parts = []
@@ -6953,10 +6953,10 @@ QCheckBox::indicator {{
                 try:
                     with open(p, 'r', encoding='utf-8') as f:
                         daten = _json.load(f)
-                    log.info("Farbslot-Wissen aus %s: %d Eintraege", p, len(daten))
+                    log.info("Dye slot data from %s: %d entries", p, len(daten))
                     return daten
                 except Exception as e:  # noqa: BLE001
-                    log.warning("Farbslot-Wissen %s nicht lesbar: %s", p, e)
+                    log.warning("Dye slot data %s not readable: %s", p, e)
         return {}
 
     def _save_dye_slot_db(self, db: dict) -> None:
@@ -13543,7 +13543,7 @@ QCheckBox::indicator {{
                     break
             if pack_path:
                 break
-        log.info("Abyss-Pack gesucht in: %s -> %s", gesucht, pack_path or "nicht gefunden")
+        log.info("Abyss pack searched in: %s -> %s", gesucht, pack_path or "not found")
 
         if not pack_path:
             QMessageBox.warning(
@@ -31774,7 +31774,7 @@ QCheckBox::indicator {{
         vorher = getattr(self, "_blob_beim_laden", None)
         jetzt = bytes(self._save_data.decompressed_blob)
         if vorher is None:
-            log.info("Kein Ladestand gemerkt - Pruefung uebersprungen")
+            log.info("No load-time snapshot kept - check skipped")
             return True
 
         lang = len(vorher) != len(jetzt)
@@ -31786,17 +31786,17 @@ QCheckBox::indicator {{
             befund = save_check.pruefe(vorher, jetzt,
                                        getattr(self, "_verweise_beim_laden", None))
         except Exception as e:  # noqa: BLE001
-            log.warning("Pruefung vor dem Speichern nicht moeglich: %s", e)
+            log.warning("Pre-save check not possible: %s", e)
             return True
         finally:
             if lang:
                 self._sockel_arbeit_beenden()
 
         if befund.ok:
-            log.info("Pruefung vor dem Speichern: %s - %s", befund.titel, befund.text)
+            log.info("Pre-save check: %s - %s", befund.titel, befund.text)
             return True
 
-        log.error("Pruefung vor dem Speichern FEHLGESCHLAGEN: %s | %s",
+        log.error("Pre-save check FAILED: %s | %s",
                   befund.titel, befund.ausfuehrlich or befund.text)
         antwort = QMessageBox.critical(
             self, f"Refusing to save: {befund.titel}",
@@ -33739,14 +33739,14 @@ QCheckBox::indicator {{
             from item_db import datenbank_veraltet
             veraltet, spiel, stand = datenbank_veraltet(self._name_db, game_path)
         except Exception as e:  # noqa: BLE001
-            log.warning("Itemdatenbank-Pruefung uebersprungen: %s", e)
+            log.warning("Item database check skipped: %s", e)
             return
         if veraltet is None:
-            log.info("Itemdatenbank: Spielversion nicht ermittelbar, keine Pruefung")
+            log.info("Item database: game version not readable, no check")
             return
-        log.info("Itemdatenbank: Stand %s, Spiel %s, %d Items -> %s",
+        log.info("Item database: built from %s, game is %s, %d items -> %s",
                  stand or "unbekannt", spiel, len(self._name_db.items),
-                 "veraltet" if veraltet else "aktuell")
+                 "out of date" if veraltet else "current")
         if not veraltet:
             return
         if self._config.get("itemdb_hinweis_fuer") == spiel:

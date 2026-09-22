@@ -148,9 +148,9 @@ def scan_items(data: bytes | bytearray) -> List[SaveItem]:
         index = schema_item_index.baue_index(data)
         items, phantome = schema_item_index.entferne_phantome(items, index)
         if phantome:
-            log.info("%d Fehltreffer aussortiert, %d echte Items", len(phantome), len(items))
+            log.info("Dropped %d false hits, %d real items", len(phantome), len(items))
     except Exception as e:  # noqa: BLE001
-        log.warning("Phantomfilter uebersprungen: %s", e)
+        log.warning("False-hit filter skipped: %s", e)
 
     return items
 
@@ -1074,7 +1074,7 @@ def enrich_items_with_parc(
         stat = schema_item_index.ergaenze_ohne_parc(items, nach_anker)
         ergaenzt = stat["ergaenzt"]
     except Exception as e:  # noqa: BLE001
-        log.warning("Schema-Ergaenzung uebersprungen: %s", e)
+        log.warning("Schema fill-in skipped: %s", e)
 
     status = f"PARC mode: {enriched}/{len(items)} items enriched with exact field offsets"
     if ergaenzt:

@@ -121,7 +121,7 @@ def _lies_datensaetze(blob) -> list:
     try:
         import save_parser
     except ImportError:
-        log.warning("save_parser nicht verfuegbar - Schema-Index wird uebersprungen")
+        log.warning("save_parser unavailable - skipping the schema index")
         return []
 
     blob = bytes(blob)
@@ -131,11 +131,11 @@ def _lies_datensaetze(blob) -> list:
         toc = save_parser.parse_toc(blob, schema["schema_end"], typnamen)
         eintraege = [e for e in toc["entries"] if _traegt_items(e.class_name)]
         if not eintraege:
-            log.info("Keine itemtragenden Bloecke im Spielstand gefunden")
+            log.info("No item-bearing blocks found in this save")
             return []
         bloecke = save_parser.decode_object_blocks(blob, eintraege, schema["types"])
     except Exception as e:  # noqa: BLE001 - Diagnose darf nie das Laden kippen
-        log.warning("Schema-Index konnte nicht gebaut werden: %s", e)
+        log.warning("Could not build the schema index: %s", e)
         return []
 
     knoten: list = []
@@ -155,7 +155,7 @@ def _lies_datensaetze(blob) -> list:
         if felder.get("_itemKey") and felder.get("_itemNo"):
             datensaetze.append(felder)
 
-    log.info("Schema: %d Item-Datensaetze aus %d Bloecken",
+    log.info("Schema: %d item records from %d blocks",
              len(datensaetze), len(bloecke))
     return datensaetze
 
@@ -274,7 +274,7 @@ def entferne_phantome(items, index) -> Tuple[list, list]:
     for it in items:
         (phantome if ist_phantom(it, index) else echt).append(it)
     if phantome:
-        log.info("%d Fehltreffer der Bytemustersuche aussortiert (von %d)",
+        log.info("Dropped %d false hits of the byte-pattern scan (of %d)",
                  len(phantome), len(items))
     return echt, phantome
 
@@ -360,8 +360,8 @@ def ergaenze_ohne_parc(items, nach_anker) -> Dict[str, int]:
             stat["schreibbar_geworden"] += 1
 
     if stat["ergaenzt"]:
-        log.info("%d Items aus dem Schema ergaenzt (%d Werte korrigiert, "
-                 "%d davon jetzt aenderbar), %d ohne passenden Datensatz",
+        log.info("Filled in %d items from the schema (%d values corrected, "
+                 "%d of them now editable), %d without a matching record",
                  stat["ergaenzt"], stat["werte_korrigiert"],
                  stat["schreibbar_geworden"], stat["ohne_datensatz"])
     return stat

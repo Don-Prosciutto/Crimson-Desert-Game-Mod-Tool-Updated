@@ -256,10 +256,10 @@ class PazPatchManager:
                 continue
             gesehen.add(path)
             if PazPatchManager._sieht_nach_spiel_aus(path):
-                log.info("Spielordner gefunden: %s", path)
+                log.info("Game folder found: %s", path)
                 return path
 
-        log.info("Spielordner nicht gefunden, %d Orte geprueft", len(gesehen))
+        log.info("Game folder not found, checked %d locations", len(gesehen))
         return ""
 
     @staticmethod
