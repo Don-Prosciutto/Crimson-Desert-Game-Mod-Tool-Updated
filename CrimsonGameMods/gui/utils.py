@@ -193,11 +193,11 @@ def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
     except ImportError:
         return False
 
-    INTERNAL_DIR = "gamedata/binary__/client/bin"
+    from table_layout import INTERNAL_DIR, archive_name
 
-    vanilla_pabgb = bytes(crimson_rs.extract_file(
+    vanilla_pabgb = bytes(dmm_parser.extract_file(
         game_path, '0008', INTERNAL_DIR, f'{pabgb_stem}.pabgb'))
-    vanilla_pabgh = bytes(crimson_rs.extract_file(
+    vanilla_pabgh = bytes(dmm_parser.extract_file(
         game_path, '0008', INTERNAL_DIR, f'{pabgb_stem}.pabgh'))
 
     existing_pabgb = None
@@ -213,10 +213,11 @@ def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
         if not os.path.isfile(paz) or not os.path.isfile(pamt):
             continue
         try:
-            pamt_data = crimson_rs.parse_pamt_bytes(open(pamt, 'rb').read())
+            pamt_data = dmm_parser.parse_pamt_bytes(open(pamt, 'rb').read())
             for directory in pamt_data.get('directories', []):
                 for f in directory.get('files', []):
-                    if f['name'] == f'{pabgb_stem}.pabgb':
+                    if f['name'].lower() in (f'{pabgb_stem}.pabgb'.lower(),
+                                             archive_name(f'{pabgb_stem}.pabgb').lower()):
                         paz_bytes = open(paz, 'rb').read()
                         existing_pabgb = paz_bytes[f['chunk_offset']:f['chunk_offset'] + f['compressed_size']]
                         existing_source = name
@@ -261,7 +262,7 @@ def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
                 old_pamt_path = os.path.join(old_dir, '0.pamt')
                 if os.path.isfile(old_pamt_path):
                     try:
-                        old_pamt = crimson_rs.parse_pamt_bytes(open(old_pamt_path, 'rb').read())
+                        old_pamt = dmm_parser.parse_pamt_bytes(open(old_pamt_path, 'rb').read())
                         old_files = []
                         for d in old_pamt.get('directories', []):
                             old_files.extend(f['name'] for f in d.get('files', []))
@@ -294,7 +295,7 @@ def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
         b.add_file(INTERNAL_DIR, f"{pabgb_stem}.pabgb", merged)
         b.add_file(INTERNAL_DIR, f"{pabgb_stem}.pabgh", new_pabgh)
         pamt_bytes = bytes(b.finish())
-        pamt_checksum = crimson_rs.parse_pamt_bytes(pamt_bytes)["checksum"]
+        pamt_checksum = dmm_parser.parse_pamt_bytes(pamt_bytes)["checksum"]
 
         dst = os.path.join(game_path, overlay_group)
         if os.path.isdir(dst):
