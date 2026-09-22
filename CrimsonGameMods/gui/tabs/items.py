@@ -69,6 +69,17 @@ class DatabaseBrowserTab(QWidget):
         self._show_guide_fn = show_guide_fn or (lambda k: None)
         self._config = config or {}
         self._build_ui()
+        # Check the item database against the game right away. Until now this
+        # only ran after a manual "Sync Items Local" - so the badge never
+        # appeared for anyone who had not already synced, which is exactly the
+        # person who needs to see it. Someone who does not know how many items
+        # the game has never notices that some are missing.
+        self._check_item_db_freshness()
+
+    def set_game_path(self, path: str) -> None:
+        """The game path changed - re-check the database against it."""
+        self._config["game_install_path"] = path
+        self._check_item_db_freshness()
 
     def update_icons(self, enabled: bool) -> None:
         self._icons_enabled = enabled
@@ -431,6 +442,9 @@ class DatabaseBrowserTab(QWidget):
             self._db_freshness_badge.setVisible(False)
             return
         try:
+            # The directory name is the pre-2.01 one on purpose: dmm_parser
+            # maps it to the current archive layout (table_layout.map_entry),
+            # so this keeps working across the rename.
             import crimson_rs
             dp = "gamedata/binary__/client/bin"
             pabgh = crimson_rs.extract_file(game_path, "0008", dp, "iteminfo.pabgh")
@@ -463,7 +477,10 @@ class DatabaseBrowserTab(QWidget):
                 self._db_freshness_badge.setToolTip(
                     f"Item database matches game ({game_count} items).")
                 self._db_freshness_badge.setVisible(True)
-        except Exception:
+        except Exception as e:  # noqa: BLE001
+            # Do not fail silently: a hidden badge looks exactly like "all
+            # good". At least the log then says why nothing is shown.
+            log.warning("Item database freshness check not possible: %s", e)
             self._db_freshness_badge.setVisible(False)
 
     def _sync_all_icons(self) -> None:

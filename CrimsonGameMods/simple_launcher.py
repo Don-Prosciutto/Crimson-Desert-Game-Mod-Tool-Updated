@@ -149,17 +149,35 @@ MOD_DEFS = [
 
 # ─── Utilities ────────────────────────────────────────────────────────
 def find_game_path() -> str:
+    """Same search as the main tool: ask Steam first, then guess.
+
+    This used to have its own short guess list that only knew
+    "SteamLibrary" on other drives and required 0.paz - so it found
+    nothing for an ordinary D:\\Steam install, and nothing with a mod
+    loader in place, where the file is called 0.paz.sebak.
+    """
+    try:
+        from paz_patcher import PazPatchManager
+        found = PazPatchManager.find_game_path()
+        if found:
+            return found
+    except Exception:  # noqa: BLE001 - the launcher must still start
+        pass
+
     candidates = []
     for letter in string.ascii_uppercase:
-        candidates.append(f"{letter}:\\SteamLibrary\\steamapps\\common\\Crimson Desert")
+        for folder in ("SteamLibrary", "Steam", "Games", "SteamGames"):
+            candidates.append(
+                f"{letter}:\\{folder}\\steamapps\\common\\Crimson Desert")
     candidates.extend([
         r"C:\Program Files (x86)\Steam\steamapps\common\Crimson Desert",
         r"C:\Program Files\Steam\steamapps\common\Crimson Desert",
         r"C:\Program Files\Epic Games\CrimsonDesert",
     ])
     for p in candidates:
-        if os.path.isfile(os.path.join(p, "0008", "0.paz")):
-            return p
+        for name in ("0.paz", "0.paz.sebak"):
+            if os.path.isfile(os.path.join(p, "0008", name)):
+                return p
     return ""
 
 

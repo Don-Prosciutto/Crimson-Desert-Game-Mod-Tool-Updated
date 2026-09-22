@@ -2489,6 +2489,8 @@ QCheckBox::indicator {{
             self._quest_mods_tab.set_game_path(path)
         if hasattr(self, '_game_browser_tab'):
             self._game_browser_tab.set_game_path(path)
+        if hasattr(self, '_database_tab'):
+            self._database_tab.set_game_path(path)
         self._warn_on_version_mismatch(path)
 
     def _warn_on_version_mismatch(self, path: str) -> None:
