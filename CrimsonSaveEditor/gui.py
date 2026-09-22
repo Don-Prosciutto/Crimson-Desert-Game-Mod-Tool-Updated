@@ -5492,12 +5492,31 @@ QCheckBox::indicator {{
             combo = row["combo"]
             unlocked = i < valid_s
             record_exists = i < len(socket_data)
-            # Frueher stand hier zusaetzlich "and has_gem" - eine leere Fassung
-            # liess sich also nicht befuellen. Der Datensatz dafuer existiert
-            # aber im Spielstand (Maske 0x00), und fill_socket_slots ist genau
-            # dafuer geschrieben. Gemessen an sieben Spielstaenden: jedes Item
-            # mit Sockeln bringt alle fuenf Datensaetze mit, auch die leeren.
-            editable = unlocked and record_exists
+            # Leere Fassungen sind wieder gesperrt - vorlaeufig.
+            #
+            # Technisch laesst sich eine leere Fassung befuellen: der Datensatz
+            # existiert, fill_socket_slots ist dafuer geschrieben, und die
+            # erzeugte Datei ist nachweislich einwandfrei (Schema, Bloecke,
+            # Verweise - jede einzelne Abweichung erklaert sich als Verweis +6).
+            # Das Spiel stuerzt trotzdem beim Start ab.
+            #
+            # Der Grund ist nicht die Datei, sondern die Paarung: Abyss Gear
+            # gehoert zu einer Ausruestungsart. Gemessen an Allans
+            # Spielstaenden gegen iteminfo 2.03.01 - Items mit
+            # gimmick_info=18020003 (Stoffhandschuhe) haben vom Spiel
+            # ausschliesslich Steine mit equipable_hash=2984113526 bekommen.
+            # Eingesetzt wurde einer mit 3142848953, der in sechs anderen
+            # Familien vorkommt, aber nie in dieser.
+            #
+            # Die genaue Regel steht in den Spieltabellen (gimmickinfo,
+            # socketinfo). Bis die gelesen ist, bietet das Tool alle 190 Steine
+            # fuer jedes Item an und kann nicht sagen, welcher passt. Solange
+            # das so ist, wird hier nichts freigeschaltet.
+            #
+            # Achtung: dieselbe Gefahr besteht beim AUSTAUSCHEN eines
+            # vorhandenen Steins. Das war schon immer so und ist unabhaengig
+            # von dieser Zeile.
+            editable = unlocked and record_exists and has_gem
 
             combo.setEnabled(editable)
             row["filter"].setEnabled(editable)
@@ -5507,15 +5526,16 @@ QCheckBox::indicator {{
                 row["label"].setText(f"Slot {i+1}:")
                 row["label"].setStyleSheet("font-weight: bold;")
                 row["label"].setToolTip("")
-            elif editable:
+            elif unlocked:
                 row["label"].setText(f"Slot {i+1} (empty):")
-                row["label"].setStyleSheet("font-weight: bold;")
+                row["label"].setStyleSheet("font-weight: bold; color: gray;")
                 row["label"].setToolTip(
-                    "Empty but unlocked — pick a gem to install it.\n\n"
-                    "If this slot is beyond the item's original socket count, the gem "
-                    "is only shown and applied while a game mod raises that count. "
-                    "Without the mod the game loads normally and simply displays fewer "
-                    "sockets; the gem stays in the save."
+                    "Empty sockets cannot be filled from here yet.\n\n"
+                    "Writing a gem into an empty socket produces a structurally "
+                    "correct save, but the game crashes on startup when the gem does "
+                    "not belong to this kind of equipment — and the editor cannot yet "
+                    "tell which gems fit which item.\n\n"
+                    "Install a gem in game first; it can then be swapped here."
                 )
             else:
                 row["label"].setText(f"Slot {i+1} (locked):")
