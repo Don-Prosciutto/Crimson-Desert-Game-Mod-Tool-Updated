@@ -238,14 +238,27 @@ def write_save_file(
 
     encrypted = chacha20_crypt(compressed, nonce, key)
 
+    # Den GANZEN Kopf des Originals uebernehmen, nicht nur die ersten 18 Byte.
+    #
+    # Vorher wurden nur `original_header[:0x12]` kopiert. Alles ab 0x4A - also
+    # hinter dem HMAC - blieb dadurch Null. Das Spiel legt dort aber etwas ab:
+    # in Allans Spielstaenden steht bei 0x74 ff. zum Beispiel
+    # `01 00 00 ff 9f 21 00 00 01 00 00 00`, und der Wert ist je Spielstand
+    # verschieden. Jede vom Editor geschriebene Datei hatte an dieser Stelle
+    # Nullen - nachgewiesen an allen Dateien in Allans Spielstandordner.
+    #
+    # Was dort steht, wissen wir nicht. Genau deshalb wird es uebernommen
+    # statt ueberschrieben: was der Editor nicht versteht, darf er nicht
+    # wegwerfen. Ueberschrieben wird nur, was sich zwangslaeufig aendert.
     header = bytearray(HEADER_SIZE)
-
-    if original_header and len(original_header) >= 0x12:
-        header[:0x12] = original_header[:0x12]
+    if original_header:
+        uebernehmen = min(len(original_header), HEADER_SIZE)
+        header[:uebernehmen] = original_header[:uebernehmen]
 
     header[0:4] = b"SAVE"
-    struct.pack_into("<H", header, VERSION_OFFSET, 2)
-    struct.pack_into("<H", header, FLAGS_OFFSET, 0x0080)
+    struct.pack_into("<H", header, VERSION_OFFSET, version)
+    if not original_header:
+        struct.pack_into("<H", header, FLAGS_OFFSET, 0x0080)
 
     struct.pack_into("<I", header, UNCOMP_SIZE_OFFSET, len(edited_blob))
     struct.pack_into("<I", header, PAYLOAD_SIZE_OFFSET, len(compressed))
