@@ -13520,17 +13520,23 @@ QCheckBox::indicator {{
             return
 
         pack_path = None
-        for base in [os.path.dirname(os.path.abspath(sys.executable)) if getattr(sys, 'frozen', False) else os.path.dirname(__file__)]:
-            for sub in ['knowledge_packs', 'dist/knowledge_packs']:
+        gesucht = []
+        for base in (self._app_dir(), self._bundle_dir()):
+            for sub in ('knowledge_packs', 'dist/knowledge_packs'):
                 p = os.path.join(base, sub, 'No Map Reveal Abyss Gate Unlock Only.json')
+                gesucht.append(p)
                 if os.path.isfile(p):
                     pack_path = p
                     break
+            if pack_path:
+                break
+        log.info("Abyss-Pack gesucht in: %s -> %s", gesucht, pack_path or "nicht gefunden")
 
         if not pack_path:
-            QMessageBox.warning(self, "Abyss Gates",
-                "Abyss gate pack not found.\n"
-                "Expected: knowledge_packs/No Map Reveal Abyss Gate Unlock Only.json")
+            QMessageBox.warning(
+                self, "Abyss Gates",
+                "Abyss gate pack not found. Looked in:\n\n" +
+                "\n".join(gesucht))
             return
 
         try:
@@ -31222,13 +31228,35 @@ QCheckBox::indicator {{
             return os.path.dirname(sys.executable)
         return os.path.dirname(os.path.abspath(__file__))
 
+    @staticmethod
+    def _bundle_dir() -> str:
+        """Ordner, in den PyInstaller die mitgelieferten Dateien entpackt.
+
+        Wichtig, weil das nicht derselbe Ordner ist wie der der EXE. Die .spec
+        packt `knowledge_packs` und `quest_packs` mit ein - die landen beim
+        Start in einem Temp-Ordner (`sys._MEIPASS`), nicht neben der EXE.
+        Gesucht wurde bisher nur neben der EXE, deshalb meldete
+        'Unlock All Abyss Gates' die Datei als fehlend, obwohl sie eingepackt
+        war. Neben der EXE liegen die Packs, die der Nutzer selbst ablegt.
+        """
+        return getattr(sys, '_MEIPASS', None) or MainWindow._app_dir()
+
     def _get_pack_dirs(self) -> list:
-        base = self._app_dir()
+        """Ordner mit Packs: die des Nutzers neben der EXE, dann die mitgelieferten."""
         dirs = []
         for folder in ['quest_packs', 'knowledge_packs']:
-            p = os.path.join(base, folder)
-            os.makedirs(p, exist_ok=True)
+            p = os.path.join(self._app_dir(), folder)
+            try:
+                os.makedirs(p, exist_ok=True)
+            except OSError:
+                pass
             dirs.append(p)
+        mit = self._bundle_dir()
+        if os.path.abspath(mit) != os.path.abspath(self._app_dir()):
+            for folder in ['quest_packs', 'knowledge_packs']:
+                p = os.path.join(mit, folder)
+                if os.path.isdir(p):
+                    dirs.append(p)
         return dirs
 
     def _pack_browser_refresh(self) -> None:
