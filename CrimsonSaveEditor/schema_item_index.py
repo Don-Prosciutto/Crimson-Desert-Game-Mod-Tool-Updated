@@ -196,9 +196,13 @@ def baue_indizes(blob) -> Tuple[Dict[Tuple[int, int], Dict[str, Feld]],
     nach_schluessel: Dict[Tuple[int, int], Dict[str, Feld]] = {}
     nach_anker: Dict[int, Dict[str, Feld]] = {}
     for felder in _lies_datensaetze(blob):
-        schluessel = (felder["_itemKey"].wert, felder["_itemNo"].wert)
-        if None not in schluessel:
-            nach_schluessel[schluessel] = felder
+        # NICHT 'schluessel' nennen - so hiess oben der Schluessel des
+        # Zwischenspeichers, und die Schleife hat ihn ueberschrieben. Gemerkt
+        # wurde dann die itemNo des letzten Datensatzes statt der Pruefsumme
+        # des Spielstands, und der Zwischenspeicher griff nie.
+        itemschluessel = (felder["_itemKey"].wert, felder["_itemNo"].wert)
+        if None not in itemschluessel:
+            nach_schluessel[itemschluessel] = felder
         itemno = felder["_itemNo"]
         if itemno.vorhanden:
             nach_anker[itemno.start - ANKER_VERSATZ] = felder
