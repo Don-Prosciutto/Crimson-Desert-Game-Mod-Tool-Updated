@@ -33,6 +33,10 @@ a = Analysis(
         ('localizationstring_eng_items.tsv', '.'),
         ('locale', 'locale'),
         ('knowledge_packs', 'knowledge_packs'),
+        # The other six packs live in the repository root and were never
+        # bundled - only the one copy in this folder was. In the EXE six of
+        # seven packs were therefore simply absent.
+        ('../knowledge_packs', 'knowledge_packs'),
         ('dmm_parser', 'dmm_parser'),
         ('crimson_rs', 'crimson_rs'),
         ('table_layout.py', '.'),

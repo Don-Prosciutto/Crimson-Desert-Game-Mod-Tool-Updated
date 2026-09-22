@@ -3084,7 +3084,13 @@ QCheckBox::indicator {{
             if os.path.isfile(_dc_path):
                 discord_btn.setIcon(QIcon(_dc_path))
                 discord_btn.setIconSize(QSize(20, 20))
-        except Exception:
+            else:
+                # There is no icons/ folder in this repository, so the icon is
+                # never found and the button used to sit there blank - 26x26
+                # pixels of nothing. A label is better than an invisible
+                # button.
+                discord_btn.setText("DC")
+        except Exception:  # noqa: BLE001
             discord_btn.setText("DC")
         discord_btn.clicked.connect(lambda: __import__('PySide6.QtGui', fromlist=['QDesktopServices']).QDesktopServices.openUrl(
             __import__('PySide6.QtCore', fromlist=['QUrl']).QUrl("https://discord.gg/6wxX5xPS")

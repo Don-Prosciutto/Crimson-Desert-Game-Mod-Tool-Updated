@@ -7146,9 +7146,11 @@ class ItemBuffsTab(QWidget):
             LEVEL_VALUES = [100000, 200000, 300000, 400000, 500000,
                             600000, 700000, 800000, 900000, 100000000000]
             target = next((e for e in items if e.get('key') == FALL_KEY), None)
-            with open("testing/buff_item_debug.json", "w+") as f:
-                json.dump(target, f, indent=2)
-            # print(target)
+            # A debug dump used to be written here, to "testing/
+            # buff_item_debug.json". That folder does not exist - not in the
+            # repository and not next to the EXE - so this button died with
+            # FileNotFoundError before it changed anything. Nothing reads the
+            # file, so it is gone.
             if target:
                 buff_data_list = target.get('buff_data_list', [])
                 for i, new_val in enumerate(LEVEL_VALUES):
