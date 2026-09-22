@@ -57,6 +57,8 @@ a = Analysis(
         'startup_splash',
         'theme_support',
         'ben_save_decrypt',
+        # wird nur innerhalb von Funktionen importiert, deshalb ausdruecklich
+        'schema_item_index',
         'table_layout',
         'dmm_parser',
         'dmm_parser.enums',
