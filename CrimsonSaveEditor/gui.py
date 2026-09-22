@@ -5585,25 +5585,51 @@ QCheckBox::indicator {{
             )
             return
 
-        # Hinweis, wenn ueber die urspruengliche Sockelzahl des Items hinaus
-        # gefuellt wird. Kein Abbruch: nachgemessen an einem Spielstand, den
-        # das Spiel selbst mit abgeschaltetem Mod geschrieben hat, bleiben
-        # ueberzaehlige Steine und die Sockelzahlen erhalten, und das Spiel
-        # laedt normal - es zeigt nur weniger Fassungen an.
+        # Bremse beim Fuellen. Stand des Wissens, gemessen an Allans Spielstaenden:
+        #
+        #   - Das Spiel selbst schreibt Items mit mehr Steinen, als ihre
+        #     urspruengliche Definition erlaubt (5 Steine bei Grenze 2), und
+        #     laedt sie anstandslos. Die Grenze allein ist also nicht die Regel.
+        #   - Trotzdem hat ein von hier aus gefuelltes Item (Tariv Cloth Gloves,
+        #     Grenze 2, fuenf Steine auf einmal) dazu gefuehrt, dass das Spiel
+        #     schon vor dem Hauptmenue abstuerzt. Die geschriebenen Bytes waren
+        #     dabei nachweislich in Ordnung: Struktur, Schema, Blockgroessen und
+        #     das Elementformat byteweise wie beim Spiel.
+        #
+        # Welche Bedingung das Spiel genau verletzt sieht, ist offen. Bis das
+        # geklaert ist, wird oberhalb der bekannten Grenze gar nicht geschrieben,
+        # und darunter nur nach ausdruecklicher Bestaetigung.
         design_limit = self._get_socket_design_limit(item.item_key)
         if fills and 0 < design_limit < new_filled:
-            reply = QMessageBox.question(
-                self, "Beyond the original socket count",
-                f"This item originally has {design_limit} socket(s); you are installing "
-                f"{new_filled}.\n\n"
-                f"The extra gems only show up in game while a mod raises this item's "
-                f"socket count. Without that mod the game still loads normally and simply "
-                f"displays {design_limit} socket(s) — the gems stay in the save file and "
-                f"reappear once the mod is active again.\n\n"
-                f"The reference table is from May 2026 and does not list every item, so "
-                f"treat {design_limit} as a hint rather than a guarantee.\n\n"
-                f"Install anyway?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
+            QMessageBox.critical(
+                self, "Refused: beyond this item's socket count",
+                f"This item's definition allows {design_limit} socket(s); this change "
+                f"would install {new_filled}.\n\n"
+                f"A save edited this way has been observed to crash the game on "
+                f"startup — before the main menu, so no save can be loaded at all "
+                f"until the file is restored.\n\n"
+                f"The editor refuses this until the exact rule is known. Installing "
+                f"up to {design_limit} gem(s) is allowed."
+            )
+            return
+
+        if fills:
+            unbekannt = design_limit == 0
+            hinweis = (
+                "This item's original socket count is not known to the editor, so it "
+                "cannot check the change against it.\n\n"
+                if unbekannt else ""
+            )
+            reply = QMessageBox.warning(
+                self, "Installing into an empty socket",
+                f"{hinweis}"
+                f"Installing gems into sockets that were empty in game is newly "
+                f"supported and not yet proven safe for every item. A save the game "
+                f"rejects can stop it from starting at all.\n\n"
+                f"The editor keeps a PRISTINE backup next to the save file. Test on a "
+                f"spare save slot first.\n\n"
+                f"Install {len(fills)} gem(s)?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
             )
             if reply != QMessageBox.Yes:
                 return
