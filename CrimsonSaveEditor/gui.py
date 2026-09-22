@@ -31762,50 +31762,50 @@ QCheckBox::indicator {{
         self._verweise_beim_laden = None
 
     def _pruefe_vor_dem_speichern(self) -> bool:
-        """Vor dem Schreiben nachrechnen, ob der Spielstand noch stimmig ist.
+        """Verify the save is still sound before writing it.
 
-        Gibt True zurueck, wenn geschrieben werden darf.
+        Returns True when writing is allowed.
 
-        Die C++-Pruefung beim Schreiben faengt diesen Fall NICHT ab: der
-        Spielstand, der das Spiel beim Start abstuerzen liess, ist durch sie
-        hindurchgegangen. Sie prueft Schema und Bloecke - der Schaden lag in
-        den Verweisen dazwischen.
+        The C++ validation during writing does NOT catch this case: the save
+        that made the game crash on startup passed straight through it. It
+        checks the schema and the blocks - the damage was in the internal
+        offsets between them.
         """
-        vorher = getattr(self, "_blob_beim_laden", None)
-        jetzt = bytes(self._save_data.decompressed_blob)
-        if vorher is None:
+        before = getattr(self, "_blob_beim_laden", None)
+        now = bytes(self._save_data.decompressed_blob)
+        if before is None:
             log.info("No load-time snapshot kept - check skipped")
             return True
 
-        lang = len(vorher) != len(jetzt)
-        if lang:
+        slow = len(before) != len(now)
+        if slow:
             self._sockel_arbeit_anzeigen(
                 "Checking the edited save before writing \u2014 this takes a few seconds…")
         try:
             import save_check
-            befund = save_check.pruefe(vorher, jetzt,
+            verdict = save_check.check(before, now,
                                        getattr(self, "_verweise_beim_laden", None))
         except Exception as e:  # noqa: BLE001
             log.warning("Pre-save check not possible: %s", e)
             return True
         finally:
-            if lang:
+            if slow:
                 self._sockel_arbeit_beenden()
 
-        if befund.ok:
-            log.info("Pre-save check: %s - %s", befund.titel, befund.text)
+        if verdict.ok:
+            log.info("Pre-save check: %s - %s", verdict.title, verdict.text)
             return True
 
         log.error("Pre-save check FAILED: %s | %s",
-                  befund.titel, befund.ausfuehrlich or befund.text)
-        antwort = QMessageBox.critical(
-            self, f"Refusing to save: {befund.titel}",
-            befund.text + "\n\n"
+                  verdict.title, verdict.detail or verdict.text)
+        answer = QMessageBox.critical(
+            self, f"Refusing to save: {verdict.title}",
+            verdict.text + "\n\n"
             "Save anyway? Only do this if you know exactly why the check is wrong \u2014 "
             "a save in this state can stop the game from starting at all.",
             QMessageBox.Cancel | QMessageBox.Save, QMessageBox.Cancel,
         )
-        return antwort == QMessageBox.Save
+        return answer == QMessageBox.Save
 
     def _do_save(self, path: str) -> None:
         try:
