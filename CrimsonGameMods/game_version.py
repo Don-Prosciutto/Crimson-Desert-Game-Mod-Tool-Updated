@@ -1,19 +1,19 @@
-"""Installierte Spielversion lesen und gegen den Stand des Parsers halten.
+"""Read the installed game version and hold it against the parser's target.
 
-Warum das noetig ist: Der Parser kennt genau ein Feld-Layout. Fuegt ein
-Spielupdate irgendwo ein Feld ein, verschiebt sich alles dahinter, und der
-Parser liest ab dieser Stelle an falschen Positionen. Manchmal bricht er ab —
-dann sieht man es. Manchmal laeuft er durch und liefert Unsinn, oder schreibt
-Tabellen verkuerzt zurueck, ohne zu warnen. Genau das ist im Sommer 2026
-monatelang unbemerkt geblieben.
+Why this is needed: the parser knows exactly one field layout. If a game
+update inserts a field somewhere, everything behind it moves, and from that
+point on the parser reads at the wrong positions. Sometimes it aborts - then
+you see it. Sometimes it runs through and delivers nonsense, or writes tables
+back truncated without a warning. That is exactly what went unnoticed for
+months in the summer of 2026.
 
-Diese Pruefung macht den Fall beim Setzen des Spielpfads sichtbar, statt ihn
-erst beim dritten beschaedigten Mod auffallen zu lassen.
+This check makes the case visible when the game path is set, instead of
+letting it surface at the third damaged mod.
 
-Erfahrungswert aus dem Update 2.03.00 -> 2.03.01: Ein Hotfix, der nur die
-dritte Zahl bewegt, brachte Inhaltszuwaechse in fuenf Tabellen, aber keine
-Layout-Aenderung. Deshalb warnt diese Pruefung nur bei abweichender
-Haupt- oder Nebenversion und erwaehnt einen abweichenden Hotfix bloss.
+Experience from the 2.03.00 -> 2.03.01 update: a hotfix that moves only the
+third number brought content growth in five tables, but no layout change.
+That is why this check only warns on a differing major or minor version and
+merely mentions a differing hotfix.
 """
 
 from __future__ import annotations
@@ -23,67 +23,66 @@ import os
 
 log = logging.getLogger(__name__)
 
-# Spielversion, fuer die der mitgelieferte Parser gebaut wurde.
-# Beim Parser-Update mit hochsetzen.
+# The game version the bundled parser was built for.
+# Raise this together with a parser update.
 PARSER_TARGET = "2.03.01"
 
 
 def read_game_version(game_path: str) -> str | None:
-    """Liest meta/0.paver. Drei u16 little-endian ergeben major.minor.patch."""
-    pfad = os.path.join(game_path or "", "meta", "0.paver")
+    """Read meta/0.paver. Three u16 little-endian give major.minor.patch."""
+    path = os.path.join(game_path or "", "meta", "0.paver")
     try:
-        with open(pfad, "rb") as f:
-            roh = f.read(6)
+        with open(path, "rb") as f:
+            raw = f.read(6)
     except OSError as e:
-        log.info("Spielversion nicht lesbar (%s): %s", pfad, e)
+        log.info("Game version not readable (%s): %s", path, e)
         return None
-    if len(roh) < 6:
+    if len(raw) < 6:
         return None
-    teile = [int.from_bytes(roh[i:i + 2], "little") for i in (0, 2, 4)]
-    return f"{teile[0]}.{teile[1]:02d}.{teile[2]:02d}"
+    parts = [int.from_bytes(raw[i:i + 2], "little") for i in (0, 2, 4)]
+    return f"{parts[0]}.{parts[1]:02d}.{parts[2]:02d}"
 
 
-def _dreiteilig(version: str) -> tuple[int, int, int]:
+def _three_parts(version: str) -> tuple[int, int, int]:
     try:
-        teile = [int(t) for t in version.split(".")]
+        parts = [int(t) for t in version.split(".")]
     except (ValueError, AttributeError):
         return (0, 0, 0)
-    teile += [0, 0, 0]
-    return tuple(teile[:3])  # type: ignore[return-value]
+    parts += [0, 0, 0]
+    return tuple(parts[:3])  # type: ignore[return-value]
 
 
 def check(game_path: str) -> tuple[str, str] | None:
-    """Gibt (Titel, Meldung) zurueck, wenn etwas zu melden ist, sonst None."""
-    installiert = read_game_version(game_path)
-    if not installiert:
+    """Return (title, message) when there is something to report, else None."""
+    installed = read_game_version(game_path)
+    if not installed:
         return None
 
-    spiel = _dreiteilig(installiert)
-    parser = _dreiteilig(PARSER_TARGET)
+    game = _three_parts(installed)
+    parser = _three_parts(PARSER_TARGET)
 
-    if spiel[:2] != parser[:2]:
-        richtung = "neuer" if spiel[:2] > parser[:2] else "aelter"
+    if game[:2] != parser[:2]:
+        direction = "newer" if game[:2] > parser[:2] else "older"
         return (
-            "Spielversion passt nicht zum Parser",
-            f"Installierte Spielversion: {installiert}\n"
-            f"Der mitgelieferte Parser zielt auf: {PARSER_TARGET}\n\n"
-            f"Das Spiel ist {richtung}. Damit koennen Tabellen falsch gelesen "
-            f"werden — und schlimmer, beim Zurueckschreiben stillschweigend "
-            f"beschaedigt werden.\n\n"
-            f"Bis ein passender Parser vorliegt: keine Mods bauen, die auf "
-            f"Spieltabellen schreiben."
+            "Game version does not match the parser",
+            f"Installed game version: {installed}\n"
+            f"The bundled parser targets: {PARSER_TARGET}\n\n"
+            f"The game is {direction}. Tables may therefore be read "
+            f"incorrectly — and worse, silently damaged when written "
+            f"back.\n\n"
+            f"Until a matching parser is available: do not build mods that "
+            f"write to game tables."
         )
 
-    if spiel[2] != parser[2]:
+    if game[2] != parser[2]:
         return (
-            "Abweichender Hotfix",
-            f"Installierte Spielversion: {installiert}\n"
-            f"Der Parser zielt auf: {PARSER_TARGET}\n\n"
-            f"Nur die letzte Zahl weicht ab. Erfahrungsgemaess aendern "
-            f"Hotfixes das Datenlayout nicht, das Tool sollte also normal "
-            f"arbeiten.\n\n"
-            f"Falls doch Tabellen nicht mehr gelesen werden, ist das der "
-            f"erste Ort zum Nachsehen."
+            "Different hotfix",
+            f"Installed game version: {installed}\n"
+            f"The parser targets: {PARSER_TARGET}\n\n"
+            f"Only the last number differs. Experience says hotfixes do not "
+            f"change the data layout, so the tool should work normally.\n\n"
+            f"If tables do stop being read correctly, this is the first place "
+            f"to look."
         )
 
     return None

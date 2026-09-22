@@ -221,103 +221,103 @@ class PazPatchManager:
 
     @staticmethod
     def find_game_path() -> str:
-        """Installationsordner suchen.
+        """Find the installation folder.
 
-        Zuerst bei Steam nachfragen, wo seine Bibliotheken liegen - Steam
-        fuehrt darueber selbst Buch. Erst danach die Rateliste.
+        Ask Steam first where its libraries are - Steam keeps track of that
+        itself. Only then fall back to the guess list.
 
-        Warum: die alte Fassung kannte auf anderen Laufwerken nur den Namen
-        "SteamLibrary", und "Steam" nur unter Program Files auf C:. Eine
-        ganz gewoehnliche Installation nach D:\\Steam\\steamapps\\common fiel
-        damit durch - gefunden wurde dann gar nichts, ohne Hinweis worauf
-        ueberhaupt gesucht wurde.
+        Why: the old version only knew the name "SteamLibrary" on other
+        drives, and "Steam" only under Program Files on C:. A perfectly
+        ordinary installation into D:\\Steam\\steamapps\\common fell through
+        that net - nothing was found at all, with no hint about where it had
+        even looked.
         """
-        gesucht = []
+        candidates = []
 
-        for basis in PazPatchManager._steam_bibliotheken():
-            gesucht.append(os.path.join(basis, "steamapps", "common", "Crimson Desert"))
+        for base in PazPatchManager._steam_libraries():
+            candidates.append(os.path.join(base, "steamapps", "common", "Crimson Desert"))
 
         for letter in string.ascii_uppercase:
-            for ordner in ("SteamLibrary", "Steam", "Games", "SteamGames"):
-                gesucht.append(
-                    f"{letter}:\\{ordner}\\steamapps\\common\\Crimson Desert")
-            gesucht.append(f"{letter}:\\Crimson Desert")
+            for folder in ("SteamLibrary", "Steam", "Games", "SteamGames"):
+                candidates.append(
+                    f"{letter}:\\{folder}\\steamapps\\common\\Crimson Desert")
+            candidates.append(f"{letter}:\\Crimson Desert")
 
-        gesucht.extend([
+        candidates.extend([
             r"C:\Program Files (x86)\Steam\steamapps\common\Crimson Desert",
             r"C:\Program Files\Steam\steamapps\common\Crimson Desert",
             r"C:\Program Files\Epic Games\CrimsonDesert",
             r"C:\Program Files (x86)\Epic Games\CrimsonDesert",
         ])
 
-        gesehen = set()
-        for path in gesucht:
-            if path in gesehen:
+        seen = set()
+        for path in candidates:
+            if path in seen:
                 continue
-            gesehen.add(path)
-            if PazPatchManager._sieht_nach_spiel_aus(path):
+            seen.add(path)
+            if PazPatchManager._looks_like_the_game(path):
                 log.info("Game folder found: %s", path)
                 return path
 
-        log.info("Game folder not found, checked %d locations", len(gesehen))
+        log.info("Game folder not found, checked %d locations", len(seen))
         return ""
 
     @staticmethod
-    def _sieht_nach_spiel_aus(path: str) -> bool:
-        """Beide Schreibweisen zulassen - mit Mod-Loader heisst die Datei anders."""
+    def _looks_like_the_game(path: str) -> bool:
+        """Accept both spellings - with a mod loader the file is named differently."""
         for name in ("0.paz", "0.paz.sebak"):
             if os.path.isfile(os.path.join(path, "0008", name)):
                 return True
         return False
 
     @staticmethod
-    def _steam_bibliotheken() -> list:
-        """Steams eigene Bibliotheksliste auslesen.
+    def _steam_libraries() -> list:
+        """Read Steam's own library list.
 
-        Steam vermerkt jede Bibliothek in steamapps/libraryfolders.vdf. Das
-        ist die einzige verlaessliche Quelle - ein Laufwerk und einen
-        Ordnernamen zu raten geht bei jeder ungewoehnlichen Installation schief.
+        Steam records every library in steamapps/libraryfolders.vdf. That is
+        the only reliable source - guessing a drive and a folder name goes
+        wrong for every unusual installation.
         """
-        wurzeln = []
+        roots = []
         try:
             import winreg
-            for zweig, schluessel in ((winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam"),
-                                      (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Valve\Steam")):
+            for hive, key_path in ((winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam"),
+                                   (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Valve\Steam")):
                 try:
-                    with winreg.OpenKey(zweig, schluessel) as k:
-                        for wert in ("SteamPath", "InstallPath"):
+                    with winreg.OpenKey(hive, key_path) as k:
+                        for value in ("SteamPath", "InstallPath"):
                             try:
-                                p = winreg.QueryValueEx(k, wert)[0]
+                                p = winreg.QueryValueEx(k, value)[0]
                                 if p:
-                                    wurzeln.append(p.replace("/", os.sep))
+                                    roots.append(p.replace("/", os.sep))
                             except OSError:
                                 pass
                 except OSError:
                     pass
         except ImportError:
-            pass  # kein Windows
+            pass  # not Windows
 
         for letter in string.ascii_uppercase:
-            wurzeln.append(f"{letter}:\\Steam")
-        wurzeln.append(r"C:\Program Files (x86)\Steam")
+            roots.append(f"{letter}:\\Steam")
+        roots.append(r"C:\Program Files (x86)\Steam")
 
-        bibliotheken = []
-        for wurzel in wurzeln:
-            if wurzel not in bibliotheken and os.path.isdir(wurzel):
-                bibliotheken.append(wurzel)
-            vdf = os.path.join(wurzel, "steamapps", "libraryfolders.vdf")
+        libraries = []
+        for root in roots:
+            if root not in libraries and os.path.isdir(root):
+                libraries.append(root)
+            vdf = os.path.join(root, "steamapps", "libraryfolders.vdf")
             if not os.path.isfile(vdf):
                 continue
             try:
                 with open(vdf, "r", encoding="utf-8", errors="replace") as f:
-                    inhalt = f.read()
+                    content = f.read()
             except OSError:
                 continue
-            for treffer in re.finditer(r'"path"\s*"([^"]+)"', inhalt):
-                p = treffer.group(1).replace("\\\\", os.sep).replace("/", os.sep)
-                if p not in bibliotheken:
-                    bibliotheken.append(p)
-        return bibliotheken
+            for hit in re.finditer(r'"path"\s*"([^"]+)"', content):
+                p = hit.group(1).replace("\\\\", os.sep).replace("/", os.sep)
+                if p not in libraries:
+                    libraries.append(p)
+        return libraries
 
     def get_paz_path(self, relative: str) -> str:
         return os.path.join(self.game_path, relative.replace("/", os.sep))

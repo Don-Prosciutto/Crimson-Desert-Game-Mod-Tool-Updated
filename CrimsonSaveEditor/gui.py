@@ -1794,7 +1794,7 @@ class QuestEditorWindow(QDialog):
             if progress is not None:
                 progress.set_stage("Refreshing backups and save browser...", 6)
             QApplication.processEvents()
-            self._merke_ladestand()
+            self._snapshot_loaded_save()
             pristine = self._create_pristine_backup(path)
             if pristine:
                 log.info("Pristine backup created: %s", pristine)
@@ -3114,7 +3114,7 @@ class MainWindow(QMainWindow):
             self._paz_manager.game_path = saved_gp
             self._global_game_path.setText(saved_gp)
             self._global_game_path.setToolTip(saved_gp)
-            QTimer.singleShot(1200, lambda: self._pruefe_itemdatenbank(saved_gp))
+            QTimer.singleShot(1200, lambda: self._check_item_database(saved_gp))
 
         self._tabs = QTabWidget()
         right_layout.addWidget(self._tabs, 1)
@@ -4967,18 +4967,18 @@ QCheckBox::indicator {{
         return b'\x00\x00\x00'
 
     @staticmethod
-    def _elementanfang(socket_data, slot_index: int, ersatz: int) -> int:
-        """Byte-Position des Sockel-Elements mit diesem Index.
+    def _element_start(socket_data, slot_index: int, fallback: int) -> int:
+        """Byte offset of the socket element with this index.
 
-        Das ist der Punkt, ab dem sich beim Austauschen eines Elements alles
-        dahinter verschiebt. Fehlt die Angabe, wird auf den Anfang der
-        Sockelliste zurueckgefallen - dann stimmt die Verschiebung nicht
-        genau, aber es wird nichts schlimmer als vorher.
+        This is the point from which everything behind it moves when an
+        element is replaced. When the information is missing, it falls back to
+        the start of the socket list - the shift is then not exact, but
+        nothing gets worse than it already was.
         """
-        for eintrag in socket_data or []:
-            if eintrag.get("slot") == slot_index and isinstance(eintrag.get("elem_start"), int):
-                return eintrag["elem_start"]
-        return ersatz
+        for entry in socket_data or []:
+            if entry.get("slot") == slot_index and isinstance(entry.get("elem_start"), int):
+                return entry["elem_start"]
+        return fallback
 
     def _compute_socket_list_offset(self, bitmask: bytes) -> int:
         offset = 0
@@ -5494,30 +5494,29 @@ QCheckBox::indicator {{
             combo = row["combo"]
             unlocked = i < valid_s
             record_exists = i < len(socket_data)
-            # Leere Fassungen sind wieder gesperrt - vorlaeufig.
+            # Empty sockets are locked again - for now.
             #
-            # Technisch laesst sich eine leere Fassung befuellen: der Datensatz
-            # existiert, fill_socket_slots ist dafuer geschrieben, und die
-            # erzeugte Datei ist nachweislich einwandfrei (Schema, Bloecke,
-            # Verweise - jede einzelne Abweichung erklaert sich als Verweis +6).
-            # Das Spiel stuerzt trotzdem beim Start ab.
+            # Technically an empty socket can be filled: the record exists,
+            # fill_socket_slots was written for it, and the resulting file is
+            # demonstrably sound (schema, blocks, internal offsets - every
+            # single deviation explains itself as an offset +6). The game
+            # crashes on startup all the same.
             #
-            # Der Grund ist nicht die Datei, sondern die Paarung: Abyss Gear
-            # gehoert zu einer Ausruestungsart. Gemessen an Allans
-            # Spielstaenden gegen iteminfo 2.03.01 - Items mit
-            # gimmick_info=18020003 (Stoffhandschuhe) haben vom Spiel
-            # ausschliesslich Steine mit equipable_hash=2984113526 bekommen.
-            # Eingesetzt wurde einer mit 3142848953, der in sechs anderen
-            # Familien vorkommt, aber nie in dieser.
+            # The reason is not the file, it is the pairing: Abyss Gear belongs
+            # to an equipment family. Measured across Allan's saves against
+            # iteminfo 2.03.01 - items with gimmick_info=18020003 (cloth
+            # gloves) have only ever been given gems with
+            # equipable_hash=2984113526 by the game. The one installed had
+            # 3142848953, which occurs in six other families, but never in
+            # this one.
             #
-            # Die genaue Regel steht in den Spieltabellen (gimmickinfo,
-            # socketinfo). Bis die gelesen ist, bietet das Tool alle 190 Steine
-            # fuer jedes Item an und kann nicht sagen, welcher passt. Solange
-            # das so ist, wird hier nichts freigeschaltet.
+            # The exact rule lives in the game tables (gimmickinfo,
+            # socketinfo). Until those are read, the tool offers all 190 gems
+            # for every item and cannot say which one fits. As long as that is
+            # the case, nothing is unlocked here.
             #
-            # Achtung: dieselbe Gefahr besteht beim AUSTAUSCHEN eines
-            # vorhandenen Steins. Das war schon immer so und ist unabhaengig
-            # von dieser Zeile.
+            # Note: the same danger exists when SWAPPING an existing gem. That
+            # has always been so and is independent of this line.
             editable = unlocked and record_exists and has_gem
 
             combo.setEnabled(editable)
@@ -5571,23 +5570,23 @@ QCheckBox::indicator {{
                     if val >= splice_point:
                         fo[name] = val + delta
 
-    def _sockel_arbeit_anzeigen(self, text: str) -> None:
-        """Sanduhr und Statuszeile setzen, bevor eine lange Aenderung laeuft.
+    def _begin_long_operation(self, text: str) -> None:
+        """Set the wait cursor and the status line before a long change runs.
 
-        Das Einsetzen oder Entfernen eines Steins zieht saemtliche internen
-        Zeiger des Spielstands nach - auf einem 6-MB-Spielstand ueber 113.000
-        Stueck, gemessen rund sieben Sekunden. Das laeuft im selben Strang wie
-        die Oberflaeche. Ohne dieses Signal sieht das Fenster in der Zeit aus
-        wie abgestuerzt, und Windows schreibt "Keine Rueckmeldung" daneben.
+        Installing or removing a gem drags every internal pointer of the save
+        along with it - on a 6 MB save more than 113,000 of them, measured at
+        roughly seven seconds. That runs on the same thread as the interface.
+        Without this signal the window looks crashed for that time, and
+        Windows writes "Not responding" next to it.
         """
         QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
         try:
             self._update_status(text)
-        except Exception:  # noqa: BLE001 - Anzeige darf die Aenderung nie kippen
+        except Exception:  # noqa: BLE001 - the display must never break the change
             pass
         QApplication.processEvents()
 
-    def _sockel_arbeit_beenden(self) -> None:
+    def _end_long_operation(self) -> None:
         QApplication.restoreOverrideCursor()
 
     def _apply_socket_changes(self) -> None:
@@ -5624,9 +5623,10 @@ QCheckBox::indicator {{
                 elif new_key != sd['gem_key']:
                     swaps[i] = new_key
 
-        # Protokollieren, was dieser Klick vorhat. Ohne das ist von aussen nicht
-        # zu unterscheiden, ob nichts passiert ist, etwas lautlos passiert ist
-        # oder etwas haengt - genau diese Frage hat uns schon Stunden gekostet.
+        # Log what this click is about to do. Without it there is no way from
+        # the outside to tell whether nothing happened, something happened
+        # silently, or something is stuck - that very question has already
+        # cost us hours.
         log.info("Socket change on %s (key %s, no %s): fill %d %s, "
                  "clear %d %s, swap %d %s",
                  self._name_db.get_name(item.item_key), item.item_key, item.item_no,
@@ -5656,20 +5656,19 @@ QCheckBox::indicator {{
             )
             return
 
-        # Bremse beim Fuellen. Stand des Wissens, gemessen an Allans Spielstaenden:
+        # Brake on filling. State of knowledge, measured on Allan's saves:
         #
-        #   - Das Spiel selbst schreibt Items mit mehr Steinen, als ihre
-        #     urspruengliche Definition erlaubt (5 Steine bei Grenze 2), und
-        #     laedt sie anstandslos. Die Grenze allein ist also nicht die Regel.
-        #   - Trotzdem hat ein von hier aus gefuelltes Item (Tariv Cloth Gloves,
-        #     Grenze 2, fuenf Steine auf einmal) dazu gefuehrt, dass das Spiel
-        #     schon vor dem Hauptmenue abstuerzt. Die geschriebenen Bytes waren
-        #     dabei nachweislich in Ordnung: Struktur, Schema, Blockgroessen und
-        #     das Elementformat byteweise wie beim Spiel.
+        #   - The game itself writes items with more gems than their original
+        #     definition allows (5 gems at a limit of 2) and loads them without
+        #     complaint. So the limit alone is not the rule.
+        #   - Even so, an item filled from here (Tariv Cloth Gloves, limit 2,
+        #     five gems at once) made the game crash before the main menu. The
+        #     bytes written were demonstrably fine: structure, schema, block
+        #     sizes and the element format byte for byte as the game writes it.
         #
-        # Welche Bedingung das Spiel genau verletzt sieht, ist offen. Bis das
-        # geklaert ist, wird oberhalb der bekannten Grenze gar nicht geschrieben,
-        # und darunter nur nach ausdruecklicher Bestaetigung.
+        # Which condition the game considers violated is an open question.
+        # Until that is settled, nothing is written above the known limit, and
+        # below it only after explicit confirmation.
         design_limit = self._get_socket_design_limit(item.item_key)
         if fills and 0 < design_limit < new_filled:
             QMessageBox.critical(
@@ -5708,20 +5707,19 @@ QCheckBox::indicator {{
         if fills:
             from parc_inserter3 import fill_socket_slots
             original_blob_size = len(blob)
-            # Verschoben wird erst ab dem ERSTEN ausgetauschten Element, nicht
-            # ab dem Anfang der Sockelliste. Sonst wandert die Position der
-            # Liste selbst mit, und danach liest die Oberflaeche 6 Byte daneben
-            # - sichtbar als "Fassung wieder leer", obwohl der Stein in der
-            # Datei steht. Schlimmer: eine zweite Aenderung in derselben
-            # Sitzung wuerde dann an der falschen Stelle schreiben.
-            ansatz_fills = self._elementanfang(socket_data, min(fills), sock_abs_pre)
-            self._sockel_arbeit_anzeigen(
+            # The shift starts at the FIRST replaced element, not at the start
+            # of the socket list. Otherwise the offset of the list itself moves
+            # along, and the interface then reads 6 bytes off - visible as
+            # "socket empty again" even though the gem is in the file. Worse, a
+            # second change in the same session would write in the wrong place.
+            splice_from = self._element_start(socket_data, min(fills), sock_abs_pre)
+            self._begin_long_operation(
                 f"Installing {len(fills)} gem(s) — updating internal offsets, "
                 f"this takes a few seconds…")
             try:
                 ok, new_blob, msg = fill_socket_slots(blob, item, fills)
             finally:
-                self._sockel_arbeit_beenden()
+                self._end_long_operation()
             if not ok:
                 QMessageBox.warning(self, "Sockets", f"Fill failed: {msg}")
                 return
@@ -5729,23 +5727,22 @@ QCheckBox::indicator {{
             blob = self._save_data.decompressed_blob
             delta = len(blob) - original_blob_size
             if delta:
-                self._shift_item_offsets_after_splice(ansatz_fills, delta)
+                self._shift_item_offsets_after_splice(splice_from, delta)
             socket_data = self._read_socket_gems(blob, item)
 
         if clears:
-            # Entfernen ist genauso gesperrt wie Einsetzen - und das ist KEINE
-            # Folge unserer Aenderungen, sondern war im Tool immer erreichbar:
-            # eine belegte Fassung auf "(Empty - remove gem)" zu stellen ruft
-            # genau diesen Weg auf.
+            # Removing is locked just like filling - and that is NOT a
+            # consequence of our changes; it was always reachable in the tool:
+            # setting an occupied socket to "(Empty - remove gem)" calls
+            # exactly this path.
             #
-            # Nachgewiesen an einem Spielstand, den das Spiel selbst mit einem
-            # Stein geschrieben hat (Save 7): Stein entfernen und direkt wieder
-            # einsetzen ergibt NICHT den Ausgangsstand. 1.832 Verweise bleiben
-            # um 6 Byte zu klein. Der Grund: nach dem Entfernen findet der
-            # Sammler 1.832 Verweise nicht mehr wieder (127.900 -> 126.068),
-            # obwohl er den Spielstand bis zum Ende durchlaeuft. Das Entfernen
-            # beschaedigt also einen Bereich, den unser Leser noch verkraftet
-            # und das Spiel nicht.
+            # Demonstrated on a save the game itself wrote with one gem
+            # (Save 7): removing the gem and putting it straight back does NOT
+            # reproduce the starting state. 1,832 internal offsets stay 6 bytes
+            # short. The reason: after the removal the collector no longer
+            # finds 1,832 offsets (127,900 -> 126,068), even though it walks
+            # the save to the end. So removing damages a region our reader
+            # still copes with and the game does not.
             QMessageBox.critical(
                 self, "Removing gems is disabled",
                 "Removing a gem rewrites thousands of internal offsets, and that "
@@ -5760,14 +5757,14 @@ QCheckBox::indicator {{
         if False:
             from parc_inserter3 import clear_socket_slots
             original_blob_size = len(blob)
-            ansatz_clears = self._elementanfang(socket_data, min(clears), sock_abs_pre)
-            self._sockel_arbeit_anzeigen(
+            ansatz_clears = self._element_start(socket_data, min(clears), sock_abs_pre)
+            self._begin_long_operation(
                 f"Removing {len(clears)} gem(s) — updating internal offsets, "
                 f"this takes a few seconds…")
             try:
                 ok, new_blob, msg = clear_socket_slots(blob, item, list(clears.keys()))
             finally:
-                self._sockel_arbeit_beenden()
+                self._end_long_operation()
             if not ok:
                 QMessageBox.warning(self, "Sockets", f"Clear failed: {msg}")
                 return
@@ -5810,24 +5807,24 @@ QCheckBox::indicator {{
             parts.append(f"swapped {len(swaps)} gem(s)")
         self._update_status(f"Sockets: {', '.join(parts)}")
 
-        # Rueckmeldung als Fenster, nicht nur als Zeile in der Statusleiste.
-        # Das Freischalten von Sockeln meldet sich seit jeher so; das
-        # Austauschen eines Steins tat es nicht, und dadurch war von aussen
-        # nicht zu erkennen, ob der Klick etwas bewirkt hat. Wer darauf wartet,
-        # haelt ein fertiges Programm fuer haengend.
-        zeilen = []
+        # Confirm in a dialog, not only as a line in the status bar. Unlocking
+        # sockets has always reported itself this way; swapping a gem did not,
+        # and so there was no way from the outside to tell whether the click
+        # did anything. Someone waiting for that takes a finished program for
+        # a hung one.
+        lines = []
         for i in sorted(swaps):
-            vorher = self.GEM_LOOKUP.get(socket_data[i].get("gem_key"), (None,))[0] \
+            before = self.GEM_LOOKUP.get(socket_data[i].get("gem_key"), (None,))[0] \
                 if i < len(socket_data) else None
-            vorher = vorher or self._name_db.get_name(
+            before = before or self._name_db.get_name(
                 socket_data[i].get("gem_key") if i < len(socket_data) else 0)
-            nachher = self.GEM_LOOKUP.get(swaps[i], (None,))[0] or \
+            after = self.GEM_LOOKUP.get(swaps[i], (None,))[0] or \
                 self._name_db.get_name(swaps[i])
-            zeilen.append(f"Slot {i+1}:  {vorher}  \u2192  {nachher}")
-        if zeilen:
+            lines.append(f"Slot {i+1}:  {before}  \u2192  {after}")
+        if lines:
             QMessageBox.information(
                 self, "Sockets",
-                "Gem swapped:\n\n" + "\n".join(zeilen) +
+                "Gem swapped:\n\n" + "\n".join(lines) +
                 "\n\nThe change is in memory only. Use 'Save edit to selected file' "
                 "to write it to the save."
             )
@@ -6939,22 +6936,22 @@ QCheckBox::indicator {{
 
 
     def _load_dye_slot_db(self) -> dict:
-        """Farbslot-Wissen laden: erst das selbst dazugelernte, sonst das mitgelieferte.
+        """Load dye-slot knowledge: what was learned here first, else what ships.
 
-        Gesucht wurde bisher nur neben der EXE. Dort liegt die Datei beim
-        ersten Start aber nicht - sie ist eingepackt und landet im Temp-Ordner.
-        In der EXE fing das Wissen deshalb jedes Mal bei Null an, obwohl 130
-        Eintraege mitgeliefert werden.
+        This used to look next to the EXE only. On a first start the file is
+        not there - it is bundled and lands in the temp folder. In the EXE the
+        knowledge therefore started from zero every time, even though 130
+        entries ship with the tool.
         """
         import json as _json
-        for basis in (self._app_dir(), self._bundle_dir()):
-            p = os.path.join(basis, 'dye_slot_counts.json')
+        for base in (self._app_dir(), self._bundle_dir()):
+            p = os.path.join(base, 'dye_slot_counts.json')
             if os.path.isfile(p):
                 try:
                     with open(p, 'r', encoding='utf-8') as f:
-                        daten = _json.load(f)
-                    log.info("Dye slot data from %s: %d entries", p, len(daten))
-                    return daten
+                        data = _json.load(f)
+                    log.info("Dye slot data from %s: %d entries", p, len(data))
+                    return data
                 except Exception as e:  # noqa: BLE001
                     log.warning("Dye slot data %s not readable: %s", p, e)
         return {}
@@ -14565,22 +14562,22 @@ QCheckBox::indicator {{
             QMessageBox.warning(self, "Knowledge", "Load a save first.")
             return
 
-        # Den Dateidialog dort oeffnen, wo wirklich Packs liegen. Neben der EXE
-        # ist der Ordner beim ersten Start leer - die mitgelieferten Packs
-        # stecken im Temp-Ordner. Wer den Dialog in einem leeren Ordner
-        # aufgehen sieht, haelt das Tool fuer leer.
+        # Open the file dialog where packs actually are. Next to the EXE the
+        # folder is empty on a first start - the bundled packs sit in the temp
+        # folder. Anyone who sees the dialog open on an empty folder takes the
+        # tool for empty.
         pack_dir = os.path.join(self._app_dir(), 'knowledge_packs')
         try:
             os.makedirs(pack_dir, exist_ok=True)
         except OSError:
             pass
-        eigene = []
+        own = []
         if os.path.isdir(pack_dir):
-            eigene = [f for f in os.listdir(pack_dir) if f.lower().endswith('.json')]
-        if not eigene:
-            mitgeliefert = os.path.join(self._bundle_dir(), 'knowledge_packs')
-            if os.path.isdir(mitgeliefert):
-                pack_dir = mitgeliefert
+            own = [f for f in os.listdir(pack_dir) if f.lower().endswith('.json')]
+        if not own:
+            bundled = os.path.join(self._bundle_dir(), 'knowledge_packs')
+            if os.path.isdir(bundled):
+                pack_dir = bundled
 
         path, _ = QFileDialog.getOpenFileName(
             self, "Load Knowledge Pack (Fast)", pack_dir, "Knowledge Pack (*.json)")
@@ -31261,19 +31258,19 @@ QCheckBox::indicator {{
 
     @staticmethod
     def _bundle_dir() -> str:
-        """Ordner, in den PyInstaller die mitgelieferten Dateien entpackt.
+        """Folder PyInstaller unpacks the bundled files into.
 
-        Wichtig, weil das nicht derselbe Ordner ist wie der der EXE. Die .spec
-        packt `knowledge_packs` und `quest_packs` mit ein - die landen beim
-        Start in einem Temp-Ordner (`sys._MEIPASS`), nicht neben der EXE.
-        Gesucht wurde bisher nur neben der EXE, deshalb meldete
-        'Unlock All Abyss Gates' die Datei als fehlend, obwohl sie eingepackt
-        war. Neben der EXE liegen die Packs, die der Nutzer selbst ablegt.
+        This matters because it is not the same folder as the EXE's. The .spec
+        bundles `knowledge_packs` and `quest_packs` - on startup those land in
+        a temp folder (`sys._MEIPASS`), not next to the EXE. The lookup used to
+        search next to the EXE only, which is why 'Unlock All Abyss Gates'
+        reported the file as missing even though it was bundled. Next to the
+        EXE are the packs the user puts there themselves.
         """
         return getattr(sys, '_MEIPASS', None) or MainWindow._app_dir()
 
     def _get_pack_dirs(self) -> list:
-        """Ordner mit Packs: die des Nutzers neben der EXE, dann die mitgelieferten."""
+        """Pack folders: the user's next to the EXE, then the bundled ones."""
         dirs = []
         for folder in ['quest_packs', 'knowledge_packs']:
             p = os.path.join(self._app_dir(), folder)
@@ -31282,10 +31279,10 @@ QCheckBox::indicator {{
             except OSError:
                 pass
             dirs.append(p)
-        mit = self._bundle_dir()
-        if os.path.abspath(mit) != os.path.abspath(self._app_dir()):
+        bundled = self._bundle_dir()
+        if os.path.abspath(bundled) != os.path.abspath(self._app_dir()):
             for folder in ['quest_packs', 'knowledge_packs']:
-                p = os.path.join(mit, folder)
+                p = os.path.join(bundled, folder)
                 if os.path.isdir(p):
                     dirs.append(p)
         return dirs
@@ -31679,7 +31676,7 @@ QCheckBox::indicator {{
             self._loaded_path = path
             self._dirty = False
             self._undo_stack.clear()
-            self._merke_ladestand()
+            self._snapshot_loaded_save()
 
             _step("Creating backup...", 2)
             pristine = self._create_pristine_backup(path)
@@ -31747,21 +31744,20 @@ QCheckBox::indicator {{
             return
         self._do_save(path)
 
-    def _merke_ladestand(self) -> None:
-        """Den Spielstand so festhalten, wie er geladen wurde.
+    def _snapshot_loaded_save(self) -> None:
+        """Keep the save exactly as it was loaded.
 
-        Grundlage fuer die Pruefung vor dem Speichern: ohne den Zustand
-        davor laesst sich nicht sagen, ob eine Aenderung etwas kaputtgemacht
-        hat. Kostet einmal die Groesse des Spielstands an Arbeitsspeicher -
-        rund 6 MB.
+        The basis for the pre-save check: without the state from before, there
+        is no way to say whether a change broke something. Costs one save's
+        worth of memory - about 6 MB.
         """
         try:
-            self._blob_beim_laden = bytes(self._save_data.decompressed_blob)
+            self._blob_at_load = bytes(self._save_data.decompressed_blob)
         except Exception:  # noqa: BLE001
-            self._blob_beim_laden = None
-        self._verweise_beim_laden = None
+            self._blob_at_load = None
+        self._offsets_at_load = None
 
-    def _pruefe_vor_dem_speichern(self) -> bool:
+    def _check_before_saving(self) -> bool:
         """Verify the save is still sound before writing it.
 
         Returns True when writing is allowed.
@@ -31771,7 +31767,7 @@ QCheckBox::indicator {{
         checks the schema and the blocks - the damage was in the internal
         offsets between them.
         """
-        before = getattr(self, "_blob_beim_laden", None)
+        before = getattr(self, "_blob_at_load", None)
         now = bytes(self._save_data.decompressed_blob)
         if before is None:
             log.info("No load-time snapshot kept - check skipped")
@@ -31779,18 +31775,18 @@ QCheckBox::indicator {{
 
         slow = len(before) != len(now)
         if slow:
-            self._sockel_arbeit_anzeigen(
+            self._begin_long_operation(
                 "Checking the edited save before writing \u2014 this takes a few seconds…")
         try:
             import save_check
             verdict = save_check.check(before, now,
-                                       getattr(self, "_verweise_beim_laden", None))
+                                       getattr(self, "_offsets_at_load", None))
         except Exception as e:  # noqa: BLE001
             log.warning("Pre-save check not possible: %s", e)
             return True
         finally:
             if slow:
-                self._sockel_arbeit_beenden()
+                self._end_long_operation()
 
         if verdict.ok:
             log.info("Pre-save check: %s - %s", verdict.title, verdict.text)
@@ -31832,7 +31828,7 @@ QCheckBox::indicator {{
                 if backup_path:
                     self._update_status(f"Backup created: {os.path.basename(backup_path)}")
 
-            if not self._pruefe_vor_dem_speichern():
+            if not self._check_before_saving():
                 self._update_status("Save cancelled - the edited save did not pass the check")
                 return
 
@@ -33724,48 +33720,49 @@ QCheckBox::indicator {{
             f"Saved {len(items)} items to:\n{path}\n\n"
             f"This pack will appear in the DropSets tab Pack dropdown.")
 
-    def _pruefe_itemdatenbank(self, game_path: str) -> None:
-        """Beim Start melden, wenn die Itemdatenbank aelter ist als das Spiel.
+    def _check_item_database(self, game_path: str) -> None:
+        """On startup, report when the item database is older than the game.
 
-        Wer nicht weiss, wieviele Items das Spiel hat, merkt nie, dass welche
-        fehlen - er findet sie einfach nicht und haelt das fuer normal. Genau
-        das ist Allan mit 6.236 statt 6.816 Items passiert.
+        Someone who does not know how many items the game has will never
+        notice that some are missing - they simply do not find them and take
+        that for normal. That is exactly what happened to Allan with 6,236
+        items instead of 6,816.
 
-        Gefragt wird hoechstens einmal je Spielversion. Ungefragt aktualisiert
-        wird nicht: der Vorgang schreibt eine Datei und dauert seine Zeit, und
-        beides gehoert nicht ungefragt in einen Programmstart.
+        The question is asked at most once per game version. Nothing is
+        updated unasked: the process writes a file and takes its time, and
+        neither belongs in a program start without being asked for.
         """
         try:
-            from item_db import datenbank_veraltet
-            veraltet, spiel, stand = datenbank_veraltet(self._name_db, game_path)
+            from item_db import database_outdated
+            outdated, game, built_from = database_outdated(self._name_db, game_path)
         except Exception as e:  # noqa: BLE001
             log.warning("Item database check skipped: %s", e)
             return
-        if veraltet is None:
+        if outdated is None:
             log.info("Item database: game version not readable, no check")
             return
         log.info("Item database: built from %s, game is %s, %d items -> %s",
-                 stand or "unbekannt", spiel, len(self._name_db.items),
-                 "out of date" if veraltet else "current")
-        if not veraltet:
+                 built_from or "unknown", game, len(self._name_db.items),
+                 "out of date" if outdated else "current")
+        if not outdated:
             return
-        if self._config.get("itemdb_hinweis_fuer") == spiel:
+        if self._config.get("itemdb_notice_for") == game:
             return
-        self._config["itemdb_hinweis_fuer"] = spiel
+        self._config["itemdb_notice_for"] = game
         self._save_config()
 
-        woher = f"built from game version {stand}" if stand else "of unknown age"
-        antwort = QMessageBox.question(
+        origin = f"built from game version {built_from}" if built_from else "of unknown age"
+        answer = QMessageBox.question(
             self, "Item database out of date",
-            f"The item database is {woher} and currently holds "
+            f"The item database is {origin} and currently holds "
             f"{len(self._name_db.items)} items.\n\n"
-            f"Your installed game is version {spiel}. Items added since then are "
+            f"Your installed game is version {game}. Items added since then are "
             f"missing here \u2014 they simply will not show up when you search.\n\n"
             f"Read the item list from your installation now? Existing display "
             f"names and categories are kept.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
         )
-        if antwort == QMessageBox.Yes:
+        if answer == QMessageBox.Yes:
             self._sync_items_local()
 
     def _sync_items_local(self) -> None:

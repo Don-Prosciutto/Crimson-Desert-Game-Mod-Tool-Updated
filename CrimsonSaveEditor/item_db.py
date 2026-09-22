@@ -25,9 +25,9 @@ class ItemNameDB:
         self.items: Dict[int, ItemInfo] = {}
         self.loaded_path: str = ""
         self.version: int = 0
-        # Spielversion, aus der diese Datenbank stammt. Leer bei den
-        # mitgelieferten Daten - die wurden irgendwann erzeugt und niemand
-        # weiss, wann. Genau deshalb wird sie ab jetzt mitgeschrieben.
+        # The game version this database was built from. Empty for the data
+        # that ships with the tool - it was generated at some point and nobody
+        # knows when. That is exactly why it is written along from now on.
         self.game_version: str = ""
         self.load_auto()
 
@@ -259,26 +259,26 @@ def _guess_item_category(internal_name: str) -> str:
     return "Misc"
 
 
-def datenbank_veraltet(db, game_path: str):
-    """Passt die Itemdatenbank zur installierten Spielversion?
+def database_outdated(db, game_path: str):
+    """Does the item database match the installed game version?
 
-    Gibt (veraltet, spielversion, datenbankversion) zurueck. `veraltet` ist
-    None, wenn sich die Frage nicht beantworten laesst - etwa ohne Spielpfad.
+    Returns (outdated, game version, database version). `outdated` is None
+    when the question cannot be answered - without a game path, for instance.
 
-    Warum das noetig ist: Die mitgelieferte Datenbank ist ein Abzug von
-    irgendwann. Wer nicht weiss, wieviele Items das Spiel hat, merkt nie,
-    dass welche fehlen - er findet sie einfach nicht und haelt das fuer
-    normal. Die Zahl allein genuegt als Merkmal nicht, weil ein Update auch
-    Items entfernen kann; deshalb die Spielversion.
+    Why this is needed: the database that ships with the tool is a snapshot
+    from some point in time. Someone who does not know how many items the game
+    has will never notice that some are missing - they simply do not find them
+    and take that for normal. The count alone is not a good enough marker,
+    because an update can also remove items; hence the game version.
     """
     if not game_path or not os.path.isdir(game_path):
         return None, "", getattr(db, "game_version", "")
     try:
         from game_version import read_game_version
-        installiert = read_game_version(game_path) or ""
+        installed = read_game_version(game_path) or ""
     except Exception:  # noqa: BLE001
         return None, "", getattr(db, "game_version", "")
-    if not installiert:
+    if not installed:
         return None, "", getattr(db, "game_version", "")
-    stand = getattr(db, "game_version", "")
-    return (stand != installiert), installiert, stand
+    built_from = getattr(db, "game_version", "")
+    return (built_from != installed), installed, built_from

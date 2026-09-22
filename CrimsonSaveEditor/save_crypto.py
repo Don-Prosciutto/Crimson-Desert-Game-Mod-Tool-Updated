@@ -238,22 +238,23 @@ def write_save_file(
 
     encrypted = chacha20_crypt(compressed, nonce, key)
 
-    # Den GANZEN Kopf des Originals uebernehmen, nicht nur die ersten 18 Byte.
+    # Carry over the WHOLE header of the original, not just the first 18
+    # bytes.
     #
-    # Vorher wurden nur `original_header[:0x12]` kopiert. Alles ab 0x4A - also
-    # hinter dem HMAC - blieb dadurch Null. Das Spiel legt dort aber etwas ab:
-    # in Allans Spielstaenden steht bei 0x74 ff. zum Beispiel
-    # `01 00 00 ff 9f 21 00 00 01 00 00 00`, und der Wert ist je Spielstand
-    # verschieden. Jede vom Editor geschriebene Datei hatte an dieser Stelle
-    # Nullen - nachgewiesen an allen Dateien in Allans Spielstandordner.
+    # Previously only `original_header[:0x12]` was copied. Everything from
+    # 0x4A on - behind the HMAC - stayed zero as a result. The game does put
+    # something there: in Allan's saves 0x74 onwards holds, for example,
+    # `01 00 00 ff 9f 21 00 00 01 00 00 00`, and the value differs per save.
+    # Every file the editor wrote had zeros in that spot - verified across
+    # every file in Allan's save folder.
     #
-    # Was dort steht, wissen wir nicht. Genau deshalb wird es uebernommen
-    # statt ueberschrieben: was der Editor nicht versteht, darf er nicht
-    # wegwerfen. Ueberschrieben wird nur, was sich zwangslaeufig aendert.
+    # What is stored there we do not know. That is exactly why it is carried
+    # over instead of overwritten: what the editor does not understand, it
+    # must not throw away. Only what necessarily changes is overwritten.
     header = bytearray(HEADER_SIZE)
     if original_header:
-        uebernehmen = min(len(original_header), HEADER_SIZE)
-        header[:uebernehmen] = original_header[:uebernehmen]
+        take = min(len(original_header), HEADER_SIZE)
+        header[:take] = original_header[:take]
 
     header[0:4] = b"SAVE"
     struct.pack_into("<H", header, VERSION_OFFSET, version)

@@ -1024,11 +1024,11 @@ def enrich_items_with_parc(
     if not parc_items:
         return 0, status
 
-    # Nach Byte-Position UND nach itemNo ablegen. Die Position ist eindeutig,
-    # die itemNo nicht: in den Messdaten stehen 8 Items zweimal im Spielstand
-    # (einmal im Inventar, einmal woanders). Eine Zuordnung allein nach itemNo
-    # nahm dort den zuletzt gefundenen Datensatz - also bei 8 von 597 Items den
-    # falschen. Eine Aenderung waere damit in einem fremden Datensatz gelandet.
+    # Key by byte offset AND by itemNo. The offset is unique, the itemNo is
+    # not: in the measured saves 8 items appear twice (once in the inventory,
+    # once elsewhere). Matching by itemNo alone took the last record found
+    # there - so the wrong one for 8 of 597 items. A change would then have
+    # landed in someone else's record.
     parc_by_offset: Dict[int, SaveItem] = {}
     parc_by_no: Dict[int, SaveItem] = {}
     for pi in parc_items:

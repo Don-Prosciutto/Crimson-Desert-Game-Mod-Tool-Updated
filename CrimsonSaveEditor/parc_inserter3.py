@@ -3010,12 +3010,12 @@ def _splice_socket_elements(
         )
 
     fp = _item_socket_field_present
-    # Zuerst die Position aus dem Schema des Spielstands. Die Berechnung
-    # darunter zaehlt feste Feldgroessen zusammen und trifft daneben, seit
-    # Spielversion 1.14 das Feld _averagePrice dazwischengeschoben hat - sie
-    # las dann eine Sockelzahl von 0 und brach ab. Dadurch waren Fuellen und
-    # Leeren unbemerkt fuer jedes Item kaputt; nur das Austauschen eines
-    # vorhandenen Steins ging noch, weil das einen anderen Weg nimmt.
+    # The offset from the save's own schema first. The calculation below adds
+    # up fixed field sizes and misses, ever since game version 1.14 pushed the
+    # field _averagePrice in between - it then read a socket count of 0 and
+    # gave up. That left filling and clearing silently broken for every item;
+    # only swapping an existing gem still worked, because it takes a different
+    # path.
     sock_abs = (item.field_offsets or {}).get("_socketSaveDataList")
     if not isinstance(sock_abs, int) or sock_abs <= 0:
         sock_rel = sum(_ITEM_SOCKET_FIELD_SIZES[i] for i in range(13) if fp(bitmask, i))
