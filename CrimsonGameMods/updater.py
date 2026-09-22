@@ -12,11 +12,14 @@ from urllib.error import URLError
 log = logging.getLogger(__name__)
 
 
-APP_VERSION = "2.1.7"
+APP_VERSION = "2.2.0"
 
 APP_VARIANT = "gamemods"
 
-UPDATE_REPO = "NattKh/CRIMSON-DESERT-SAVE-EDITOR-AND-GAME-MODS"
+# Diese Fassung wird hier gepflegt; die Updatepruefung muss auf dieses
+# Repository zeigen, sonst wuerden Nutzer auf einen Stand ohne die
+# 2.03-Korrekturen zurueckgezogen. Original: NattKh/CRIMSON-DESERT-SAVE-EDITOR-AND-GAME-MODS
+UPDATE_REPO = "Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated"
 _MANIFEST_BY_VARIANT = {
     "gamemods":   "editor_version_gamemods.json",
     "standalone": "editor_version_standalone.json",
