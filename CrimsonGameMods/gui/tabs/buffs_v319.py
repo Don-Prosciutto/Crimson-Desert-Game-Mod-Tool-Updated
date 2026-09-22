@@ -3455,13 +3455,37 @@ class ItemBuffsTab(QWidget):
         except Exception as e:
             import traceback; traceback.print_exc()
             self._buff_status_label.setText(f"Rust extraction failed: {e}")
-            QMessageBox.warning(self, "Rust Parser Failed",
+            # Frueher stand hier pauschal "your iteminfo has been modified by
+            # another mod" — das schickt in die falsche Richtung. Der mit
+            # Abstand haeufigste Grund ist ein Parser, der nicht zur
+            # installierten Spielversion passt; absurde Zahlen in der Meldung
+            # sind genau dieses Symptom. Deshalb zuerst die Versionen zeigen.
+            versionshinweis = ""
+            try:
+                import game_version
+                installiert = game_version.read_game_version(
+                    getattr(self, "_game_path", "") or "")
+                if installiert:
+                    passt = (installiert.split(".")[:2]
+                             == game_version.PARSER_TARGET.split(".")[:2])
+                    versionshinweis = (
+                        f"Installed game version: {installiert}\n"
+                        f"Parser targets: {game_version.PARSER_TARGET}"
+                        + ("" if passt else "   <-- mismatch, this is very likely the cause")
+                        + "\n\n")
+            except Exception:  # noqa: BLE001
+                pass
+
+            QMessageBox.warning(self, "Could not read iteminfo",
                 f"Failed to parse iteminfo.pabgb:\n{e}\n\n"
-                f"Your iteminfo has been modified by another mod or tool.\n"
-                f"Restore the original game files before using this feature.\n\n"
-                f"Steam > Crimson Desert > Properties > Installed Files > Verify Integrity"
+                f"{versionshinweis}"
+                f"Most likely causes, in order:\n"
+                f"  1. The bundled parser does not match your game version.\n"
+                f"     A game update moves fields; the parser then reads at the\n"
+                f"     wrong offsets and reports nonsensical sizes or counts.\n"
+                f"  2. iteminfo was replaced by another mod or tool.\n\n"
+                f"Verifying the game files only helps in case 2."
             )
-            QMessageBox.critical(self, "Rust Parser Failed", str(e))
 
 
     def _buff_import_mod_folder(self) -> None:

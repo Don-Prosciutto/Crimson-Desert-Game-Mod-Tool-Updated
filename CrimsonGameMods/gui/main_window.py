@@ -2489,6 +2489,33 @@ QCheckBox::indicator {{
             self._quest_mods_tab.set_game_path(path)
         if hasattr(self, '_game_browser_tab'):
             self._game_browser_tab.set_game_path(path)
+        self._warn_on_version_mismatch(path)
+
+    def _warn_on_version_mismatch(self, path: str) -> None:
+        """Meldet, wenn die installierte Spielversion nicht zum Parser passt.
+
+        Ein zu alter Parser liest Tabellen an falschen Stellen und kann sie
+        beim Zurueckschreiben stillschweigend beschaedigen. Diese Meldung
+        macht den Fall sofort sichtbar statt erst beim kaputten Mod. Pro
+        Spielversion wird hoechstens einmal gewarnt.
+        """
+        try:
+            import game_version
+        except ImportError:
+            return
+        try:
+            befund = game_version.check(path)
+        except Exception:  # noqa: BLE001 - eine Warnung darf nie den Start kippen
+            return
+        if not befund:
+            return
+        titel, text = befund
+        installiert = game_version.read_game_version(path)
+        if self._config.get("version_warning_seen") == installiert:
+            return
+        self._config["version_warning_seen"] = installiert
+        self._save_config()
+        QMessageBox.warning(self, titel, text)
 
     def _validate_game_path(self, path: str) -> bool:
         paz = os.path.join(path, "0008", "0.paz")
