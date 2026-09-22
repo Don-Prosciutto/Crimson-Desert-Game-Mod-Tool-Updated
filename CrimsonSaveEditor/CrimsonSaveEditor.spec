@@ -1,3 +1,5 @@
+import os
+
 a = Analysis(
     ['main.py'],
     pathex=[],
@@ -36,7 +38,7 @@ a = Analysis(
         # The other six packs live in the repository root and were never
         # bundled - only the one copy in this folder was. In the EXE six of
         # seven packs were therefore simply absent.
-        ('../knowledge_packs', 'knowledge_packs'),
+        (os.path.join(SPECPATH, '..', 'knowledge_packs'), 'knowledge_packs'),
         ('dmm_parser', 'dmm_parser'),
         ('crimson_rs', 'crimson_rs'),
         ('table_layout.py', '.'),
