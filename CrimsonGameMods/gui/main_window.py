@@ -2804,13 +2804,34 @@ QCheckBox::indicator {{
             return os.path.dirname(sys.executable)
         return os.path.dirname(os.path.abspath(__file__))
 
+    @staticmethod
+    def _bundle_dir() -> str:
+        """Ordner, in den PyInstaller die mitgelieferten Dateien entpackt.
+
+        Das ist NICHT der Ordner der EXE. Die .spec packt knowledge_packs und
+        quest_packs mit ein - die landen beim Start in einem Temp-Ordner
+        (sys._MEIPASS). Wer nur neben der EXE sucht, findet sie nie. Im
+        Quellbetrieb faellt das nicht auf, weil dort beides derselbe Ordner
+        ist; kaputt ist es nur in der fertigen EXE.
+        """
+        return getattr(sys, '_MEIPASS', None) or MainWindow._app_dir()
+
     def _get_pack_dirs(self) -> list:
-        base = self._app_dir()
+        """Ordner mit Packs: die des Nutzers neben der EXE, dann die mitgelieferten."""
         dirs = []
         for folder in ['quest_packs', 'knowledge_packs']:
-            p = os.path.join(base, folder)
-            os.makedirs(p, exist_ok=True)
+            p = os.path.join(self._app_dir(), folder)
+            try:
+                os.makedirs(p, exist_ok=True)
+            except OSError:
+                pass
             dirs.append(p)
+        mit = self._bundle_dir()
+        if os.path.abspath(mit) != os.path.abspath(self._app_dir()):
+            for folder in ['quest_packs', 'knowledge_packs']:
+                p = os.path.join(mit, folder)
+                if os.path.isdir(p):
+                    dirs.append(p)
         return dirs
 
     def _pack_browser_refresh(self) -> None:
