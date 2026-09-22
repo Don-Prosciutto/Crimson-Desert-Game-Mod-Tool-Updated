@@ -1,8 +1,8 @@
 a = Analysis(
     ['main.py'],
     pathex=[],
-    # Der Parser wird mit eingepackt; crimson_rs im Ordner ist nur eine
-    # Weiterleitung darauf.
+    # The parser is bundled; crimson_rs in the folder is only a shim that
+    # forwards to it.
     binaries=[
         ('dmm_parser/dmm_parser.pyd', 'dmm_parser'),
         ('dmm_parser/dmm_parser.abi3.so', 'dmm_parser'),
@@ -57,7 +57,7 @@ a = Analysis(
         'startup_splash',
         'theme_support',
         'ben_save_decrypt',
-        # wird nur innerhalb von Funktionen importiert, deshalb ausdruecklich
+        # imported inside functions only, hence listed explicitly
         'schema_item_index',
         'save_check',
         'game_version',
