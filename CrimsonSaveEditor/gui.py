@@ -5622,7 +5622,19 @@ QCheckBox::indicator {{
                 elif new_key != sd['gem_key']:
                     swaps[i] = new_key
 
+        # Protokollieren, was dieser Klick vorhat. Ohne das ist von aussen nicht
+        # zu unterscheiden, ob nichts passiert ist, etwas lautlos passiert ist
+        # oder etwas haengt - genau diese Frage hat uns schon Stunden gekostet.
+        log.info("Sockel-Aenderung an %s (key %s, no %s): %d fuellen %s, "
+                 "%d leeren %s, %d tauschen %s",
+                 self._name_db.get_name(item.item_key), item.item_key, item.item_no,
+                 len(fills), fills, len(clears), sorted(clears), len(swaps), swaps)
+        log.info("   Fassungen vorher: %s",
+                 [(d.get("slot"), d.get("has_gem"), d.get("gem_key")) for d in socket_data])
+
         if not fills and not clears and not swaps:
+            log.info("   nichts zu tun - Auswahl entspricht dem Ist-Zustand")
+            self._update_status("Sockets: nothing to change")
             return
 
         bitmask_pre = self._read_item_bitmask(blob, item)
@@ -5783,6 +5795,8 @@ QCheckBox::indicator {{
             ))
 
         self._dirty = True
+        log.info("   fertig: %d getauscht, Spielstand im Speicher geaendert "
+                 "(noch nicht gespeichert)", len(swap_edits))
         self._on_socket_item_changed(self._sock_item_combo.currentIndex())
 
         parts = []
@@ -5793,6 +5807,28 @@ QCheckBox::indicator {{
         if swaps:
             parts.append(f"swapped {len(swaps)} gem(s)")
         self._update_status(f"Sockets: {', '.join(parts)}")
+
+        # Rueckmeldung als Fenster, nicht nur als Zeile in der Statusleiste.
+        # Das Freischalten von Sockeln meldet sich seit jeher so; das
+        # Austauschen eines Steins tat es nicht, und dadurch war von aussen
+        # nicht zu erkennen, ob der Klick etwas bewirkt hat. Wer darauf wartet,
+        # haelt ein fertiges Programm fuer haengend.
+        zeilen = []
+        for i in sorted(swaps):
+            vorher = self.GEM_LOOKUP.get(socket_data[i].get("gem_key"), (None,))[0] \
+                if i < len(socket_data) else None
+            vorher = vorher or self._name_db.get_name(
+                socket_data[i].get("gem_key") if i < len(socket_data) else 0)
+            nachher = self.GEM_LOOKUP.get(swaps[i], (None,))[0] or \
+                self._name_db.get_name(swaps[i])
+            zeilen.append(f"Slot {i+1}:  {vorher}  \u2192  {nachher}")
+        if zeilen:
+            QMessageBox.information(
+                self, "Sockets",
+                "Gem swapped:\n\n" + "\n".join(zeilen) +
+                "\n\nThe change is in memory only. Use 'Save edit to selected file' "
+                "to write it to the save."
+            )
 
     def _max_sockets(self) -> None:
         if not self._save_data or not self._sock_current_item:
