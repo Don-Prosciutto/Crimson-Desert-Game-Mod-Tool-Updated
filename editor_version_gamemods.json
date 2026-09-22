@@ -1,5 +1,5 @@
 {
-  "version": "2.1.7",
-  "url": "https://github.com/NattKh/CRIMSON-DESERT-SAVE-EDITOR-AND-GAME-MODS/releases/download/gamemods-v2.1.7/CrimsonGameMods.exe",
-  "notes": "Crimson Game Mods v2.1.7 — client buff names + transmog equip-context match"
+  "version": "2.2.0",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/gamemods-2.03.01/CrimsonGameMods.exe",
+  "notes": "Game 2.03.01 \u2014 parser update, archive name fixes, working client data sync"
 }

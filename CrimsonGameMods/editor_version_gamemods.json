@@ -1,5 +1,5 @@
 {
-  "version": "2.0.1",
-  "url": "https://github.com/NattKh/CRIMSON-DESERT-SAVE-EDITOR-AND-GAME-MODS/releases/tag/gamemods-v2.0.1",
-  "notes": "Fix cooltime struct serialization, fix infinite stamina for all buff types, add spirit support"
+  "version": "2.2.0",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/gamemods-2.03.01/CrimsonGameMods.exe",
+  "notes": "Game 2.03.01 \u2014 parser update, archive name fixes, working client data sync"
 }
