@@ -202,76 +202,113 @@ class ItemNameDB:
         self.save()
         return True, f"Synced v{remote_version}: {added} new, {updated} updated."
 
-    def sync_from_local_game(self, game_path: str) -> tuple[bool, str]:
+    # Sprachpakete des Spiels: Gruppennummer je Sprachkuerzel. Wird nur als
+    # Startpunkt benutzt; findet sich die Gruppe dort nicht, wird gesucht.
+    _SPRACHGRUPPEN = {
+        "kor": "0019", "eng": "0020", "jpn": "0021", "rus": "0022", "tur": "0023",
+        "spa-es": "0024", "spa-mx": "0025", "fre": "0026", "ger": "0027",
+        "ita": "0028", "pol": "0029", "por-br": "0030", "zho-tw": "0031",
+        "zho-cn": "0032", "ara": "0033",
+    }
+
+    @staticmethod
+    def _finde_sprachgruppe(dmm_parser, game_path: str, lang: str) -> str:
+        """Gruppennummer des Sprachpakets, notfalls durch Suche im Spielordner."""
+        kandidat = ItemNameDB._SPRACHGRUPPEN.get(lang)
+        gesucht = f"gamedata/stringtable/binary__/{lang}"
+        if kandidat:
+            pfad = os.path.join(game_path, kandidat, "0.pamt")
+            if os.path.isfile(pfad):
+                try:
+                    pamt = dmm_parser.parse_pamt_file(pfad)
+                    for d in pamt.get("directories", []):
+                        if d.get("path", "").replace("\\", "/").lower() == gesucht and d.get("files"):
+                            return kandidat
+                except Exception:
+                    pass
         try:
-            import crimson_rs
-        except ImportError:
-            return False, "crimson_rs module not available."
-
-        dp = "gamedata/binary__/client/bin"
-        try:
-            pabgh_data = crimson_rs.extract_file(game_path, "0008", dp, "iteminfo.pabgh")
-            pabgb_data = crimson_rs.extract_file(game_path, "0008", dp, "iteminfo.pabgb")
-        except Exception as e:
-            return False, f"Failed to extract iteminfo: {e}"
-
-        count = struct.unpack_from('<H', pabgh_data, 0)[0]
-        header_entries = []
-        for i in range(count):
-            base = 2 + i * 8
-            key = struct.unpack_from('<I', pabgh_data, base)[0]
-            off = struct.unpack_from('<I', pabgh_data, base + 4)[0]
-            header_entries.append((key, off))
-
-        items_raw = []
-        for idx, (hdr_key, rec_off) in enumerate(header_entries):
+            gruppen = sorted(n for n in os.listdir(game_path)
+                             if n.isdigit() and len(n) == 4)
+        except OSError:
+            return ""
+        for grp in gruppen:
+            pfad = os.path.join(game_path, grp, "0.pamt")
+            if not os.path.isfile(pfad):
+                continue
             try:
-                rec_end = header_entries[idx + 1][1] if idx + 1 < len(header_entries) else len(pabgb_data)
-                if rec_off + 20 > len(pabgb_data):
-                    continue
-                pos = rec_off
-                item_key = struct.unpack_from('<I', pabgb_data, pos)[0]; pos += 4
-                str_len = struct.unpack_from('<I', pabgb_data, pos)[0]; pos += 4
-                if str_len > 200 or pos + str_len > rec_end:
-                    continue
-                internal_name = pabgb_data[pos:pos + str_len].decode('ascii', errors='replace'); pos += str_len
-                pos += 1
-                max_stack = struct.unpack_from('<Q', pabgb_data, pos)[0]; pos += 8
-                pos += 1
-                if pos + 8 > rec_end:
-                    continue
-                loc_index = struct.unpack_from('<Q', pabgb_data, pos)[0]
-                items_raw.append((item_key, internal_name, loc_index, max_stack))
+                pamt = dmm_parser.parse_pamt_file(pfad)
             except Exception:
                 continue
+            for d in pamt.get("directories", []):
+                if d.get("path", "").replace("\\", "/").lower() == gesucht and d.get("files"):
+                    return grp
+        return ""
+
+    def sync_from_local_game(self, game_path: str, language: str = "eng") -> tuple[bool, str]:
+        """Liest Items und Anzeigenamen direkt aus der installierten Spielversion.
+
+        Frueher wurden die Datensaetze hier aus den Rohbytes gelesen — mit fest
+        verdrahteten Feldoffsets und dem Archivverzeichnis von vor Spielversion
+        2.01. Beides bricht bei jedem Update, weshalb die mitgelieferten Daten
+        veraltet sind. Jetzt uebernimmt dmm_parser das Lesen, damit die Daten mit
+        dem Spiel mitwachsen statt zu altern.
+        """
+        try:
+            import dmm_parser
+        except ImportError:
+            return False, "dmm_parser-Modul nicht verfuegbar."
+
+        try:
+            from table_layout import INTERNAL_DIR
+        except ImportError:
+            INTERNAL_DIR = "gamedata/binarystaticinfo__/bin"
+
+        try:
+            pabgb_data = bytes(dmm_parser.extract_file(
+                game_path, "0008", INTERNAL_DIR, "iteminfo.pabgb"))
+        except Exception as e:
+            return False, f"iteminfo konnte nicht entpackt werden: {e}"
+
+        try:
+            geparst = dmm_parser.parse_iteminfo_from_bytes(pabgb_data)
+        except Exception as e:
+            return False, f"iteminfo konnte nicht gelesen werden: {e}"
+
+        items_raw = []
+        for it in geparst:
+            namensfeld = it.get("item_name") or {}
+            items_raw.append((
+                int(it.get("key") or 0),
+                str(it.get("string_key") or ""),
+                int(namensfeld.get("index") or 0),
+                int(it.get("max_stack_count") or 0),
+            ))
 
         if not items_raw:
-            return False, "No items found in iteminfo.pabgb."
+            return False, "iteminfo enthielt keine Datensaetze."
 
+        # ── Anzeigenamen aus der Lokalisierung des Spiels ──────────────────
         loc_map: Dict[int, str] = {}
         paloc_source = ""
-        try:
-            paloc_data = crimson_rs.extract_file(
-                game_path, "0020", "gamedata", "localizationstring_eng.paloc")
-            pos = 0
-            while pos < len(paloc_data) - 12:
-                pos += 8
-                if pos + 4 > len(paloc_data):
-                    break
-                kl = struct.unpack_from('<I', paloc_data, pos)[0]; pos += 4
-                if kl == 0 or kl > 100 or pos + kl > len(paloc_data):
-                    break
-                ks = paloc_data[pos:pos + kl].decode('ascii', errors='replace'); pos += kl
-                if pos + 4 > len(paloc_data):
-                    break
-                vl = struct.unpack_from('<I', paloc_data, pos)[0]; pos += 4
-                if vl > 50000 or pos + vl > len(paloc_data):
-                    break
-                vs = paloc_data[pos:pos + vl].decode('utf-8', errors='replace'); pos += vl
-                if ks.isdigit():
-                    loc_map[int(ks)] = vs
-            paloc_source = "game localization"
-        except Exception:
+        for lang in dict.fromkeys([language, "eng"]):
+            grp = self._finde_sprachgruppe(dmm_parser, game_path, lang)
+            if not grp:
+                continue
+            try:
+                paloc = bytes(dmm_parser.extract_file(
+                    game_path, grp,
+                    f"gamedata/stringtable/binary__/{lang}", "item.paloc"))
+                for eintrag in dmm_parser.parse_paloc_bytes(paloc):
+                    schluessel = str(eintrag.get("string_key") or "")
+                    if schluessel.isdigit():
+                        loc_map[int(schluessel)] = str(eintrag.get("string_value") or "")
+            except Exception:
+                continue
+            if loc_map:
+                paloc_source = f"Spiel-Lokalisierung ({lang}, Gruppe {grp})"
+                break
+
+        if not loc_map:
             tsv_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
                 "localizationstring_eng_items.tsv")
@@ -282,13 +319,19 @@ class ItemNameDB:
                             parts = line.strip().split(";", 1)
                             if len(parts) == 2 and parts[0].isdigit():
                                 loc_map[int(parts[0])] = parts[1]
-                    paloc_source = "bundled TSV"
+                    paloc_source = "mitgelieferte TSV (veraltet)"
                 except Exception:
                     pass
 
         if not loc_map:
             paloc_source = "none (using internal names)"
 
+        # Die vorhandenen Kategorien sind gepflegt und lassen sich aus den
+        # Spieldaten nicht gleichwertig rekonstruieren: die Namens-Heuristik
+        # allein wuerde 'Equipment' von 2.284 auf 18 Eintraege druecken.
+        # Bestehende Zuordnungen bleiben deshalb stehen; nur wirklich neue
+        # Items werden eingeordnet.
+        alte_kategorien = {k: v.category for k, v in self.items.items() if v.category}
         old_keys = set(self.items.keys())
         self.items.clear()
         matched = 0
@@ -300,26 +343,41 @@ class ItemNameDB:
                 matched += 1
             else:
                 display_name = internal_name.replace('_', ' ')
+            kategorie = alte_kategorien.get(item_key) or _guess_item_category(internal_name)
             self.items[item_key] = ItemInfo(
                 item_key=item_key,
                 name=display_name,
                 internal_name=internal_name,
-                category=_guess_item_category(internal_name),
+                category=kategorie,
                 max_stack=max_stack,
             )
+
+        # Items, die das Spiel nicht mehr kennt, bleiben stehen: darunter
+        # koennen selbst angelegte Eintraege sein. Sie werden nur gemeldet.
+        verwaist = sorted(old_keys - set(self.items.keys()))
 
         self.version += 1
         self.save()
 
         new_keys = set(self.items.keys()) - old_keys
-        new_count = len(new_keys)
+        neu_ohne_kategorie = sum(
+            1 for k in new_keys if self.items[k].category == 'Misc')
 
-        return True, (
-            f"Synced {len(self.items)} items from game client.\n"
-            f"New items: {new_count}\n"
-            f"Names matched: {matched} (source: {paloc_source})\n"
-            f"Unmatched: {len(self.items) - matched}"
-        )
+        zeilen = [
+            f"{len(self.items)} Items aus der Spielinstallation gelesen.",
+            f"Neu hinzugekommen: {len(new_keys)}",
+            f"Namen zugeordnet: {matched} (Quelle: {paloc_source})",
+            f"Ohne Namen: {len(self.items) - matched}",
+        ]
+        if new_keys:
+            zeilen.append(
+                f"Davon ohne erkennbare Kategorie (als 'Misc' eingeordnet): "
+                f"{neu_ohne_kategorie}")
+        if verwaist:
+            zeilen.append(
+                f"{len(verwaist)} Eintraege kennt das Spiel nicht mehr — "
+                f"sie bleiben erhalten, falls es eigene Items sind.")
+        return True, "\n".join(zeilen)
 
 
 def _guess_item_category(internal_name: str) -> str:

@@ -836,6 +836,29 @@ _ITEMINFO_UNCOMPRESSED = 4775790
 _ITEMINFO_PAMT_OFFSET  = 0x00096731
 
 
+def _table_name_variants(filename: str) -> tuple:
+    """Beide Schreibweisen eines Tabellennamens.
+
+    Bis Spielversion 2.00 hiessen die statischen Tabellen im Archiv
+    `<name>.pabgb` / `<name>.pabgh`. Seit 2.01.00 heissen dieselben Dateien
+    `<name>.staticinfobody` / `<name>.staticinfoheader`. Alle Werkzeuge und
+    alle V3-Mods sprechen weiter die alten Namen, deshalb muss die Suche im
+    PAMT-Index beide akzeptieren.
+    """
+    low = (filename or "").lower()
+    try:
+        from table_layout import archive_name
+    except Exception:
+        return (low,)
+    return tuple({low, archive_name(low).lower()})
+
+
+def _pamt_path_matches(path: str, filename: str) -> bool:
+    """Trifft ein PAMT-Eintrag den gesuchten Tabellennamen, egal in welcher Schreibweise?"""
+    p = (path or "").lower()
+    return any(v in p for v in _table_name_variants(filename))
+
+
 def _find_pabgb_in_pamt(game_path: str, filename: str):
     pamt_path = os.path.join(game_path, "0008", "0.pamt")
     if not os.path.isfile(pamt_path):
@@ -857,7 +880,7 @@ def _find_pabgb_in_pamt(game_path: str, filename: str):
         entries = parse_pamt(pamt_path, paz_dir=paz_dir)
 
         for e in entries:
-            if filename in e.path.lower():
+            if _pamt_path_matches(e.path, filename):
                 target = struct.pack('<III', e.offset, e.comp_size, e.orig_size)
                 pamt_pos = pamt_data.find(target)
                 pamt_comp_offset = pamt_pos + 4 if pamt_pos >= 0 else -1
@@ -970,11 +993,16 @@ class ItemBuffPatcher:
 
     def extract_iteminfo(self) -> bytes:
         try:
-            import crimson_rs
+            # dmm_parser ist der gepflegte Nachfolger von crimson_rs und kennt
+            # das aktuelle Spielformat. crimson_rs bleibt als Rueckfallebene.
+            try:
+                import dmm_parser as crimson_rs
+            except Exception:
+                import crimson_rs
             pamt = crimson_rs.parse_pamt_file(self.pamt_path)
             for d in pamt['directories']:
                 for f in d.get('files', []):
-                    if f.get('name', '').lower() == 'iteminfo.pabgb':
+                    if f.get('name', '').lower() in _table_name_variants('iteminfo.pabgb'):
                         paz_path = os.path.join(os.path.dirname(self.pamt_path),
                                                 f"{f['chunk_id']}.paz")
                         with open(paz_path, "rb") as fh:
@@ -1959,7 +1987,7 @@ class MountPatcher:
             pamt_path = os.path.join(self.game_path, "0008", "0.pamt")
             entries = parse_pamt(pamt_path, paz_dir=os.path.join(self.game_path, "0008"))
             for e in entries:
-                if filename in e.path.lower():
+                if _pamt_path_matches(e.path, filename):
                     return e
         except Exception as ex:
             log.warning("PAMT lookup for %s failed: %s", filename, ex)
@@ -2163,7 +2191,7 @@ class ItemEffectPatcher:
             pamt_path = os.path.join(self.game_path, "0008", "0.pamt")
             entries = parse_pamt(pamt_path, paz_dir=os.path.join(self.game_path, "0008"))
             for e in entries:
-                if filename in e.path.lower():
+                if _pamt_path_matches(e.path, filename):
                     return e
         except Exception as ex:
             log.warning("PAMT lookup for %s failed: %s", filename, ex)

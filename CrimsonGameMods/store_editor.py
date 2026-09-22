@@ -74,9 +74,10 @@ class StoreInfoParser:
         header_entry = None
         body_entry = None
         for e in entries:
-            if 'storeinfo.pabgh' in e.path.lower():
+            _p = e.path.lower()
+            if 'storeinfo.pabgh' in _p or 'storeinfo.staticinfoheader' in _p:
                 header_entry = e
-            elif 'storeinfo.pabgb' in e.path.lower():
+            elif 'storeinfo.pabgb' in _p or 'storeinfo.staticinfobody' in _p:
                 body_entry = e
 
         if not header_entry or not body_entry:
@@ -329,7 +330,7 @@ class StoreInfoParser:
 
             body_entry = None
             for e in entries:
-                if 'storeinfo.pabgb' in e.path.lower():
+                if 'storeinfo.pabgb' in e.path.lower() or 'storeinfo.staticinfobody' in e.path.lower():
                     body_entry = e
 
             if not body_entry:
