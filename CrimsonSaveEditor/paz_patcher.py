@@ -4,6 +4,7 @@ import io
 import logging
 import os
 import shutil
+import re
 import string
 import struct
 from dataclasses import dataclass, field
@@ -220,26 +221,103 @@ class PazPatchManager:
 
     @staticmethod
     def find_game_path() -> str:
-        candidates = []
+        """Installationsordner suchen.
+
+        Zuerst bei Steam nachfragen, wo seine Bibliotheken liegen - Steam
+        fuehrt darueber selbst Buch. Erst danach die Rateliste.
+
+        Warum: die alte Fassung kannte auf anderen Laufwerken nur den Namen
+        "SteamLibrary", und "Steam" nur unter Program Files auf C:. Eine
+        ganz gewoehnliche Installation nach D:\\Steam\\steamapps\\common fiel
+        damit durch - gefunden wurde dann gar nichts, ohne Hinweis worauf
+        ueberhaupt gesucht wurde.
+        """
+        gesucht = []
+
+        for basis in PazPatchManager._steam_bibliotheken():
+            gesucht.append(os.path.join(basis, "steamapps", "common", "Crimson Desert"))
 
         for letter in string.ascii_uppercase:
-            candidates.append(
-                f"{letter}:\\SteamLibrary\\steamapps\\common\\Crimson Desert"
-            )
+            for ordner in ("SteamLibrary", "Steam", "Games", "SteamGames"):
+                gesucht.append(
+                    f"{letter}:\\{ordner}\\steamapps\\common\\Crimson Desert")
+            gesucht.append(f"{letter}:\\Crimson Desert")
 
-        candidates.extend([
+        gesucht.extend([
             r"C:\Program Files (x86)\Steam\steamapps\common\Crimson Desert",
             r"C:\Program Files\Steam\steamapps\common\Crimson Desert",
+            r"C:\Program Files\Epic Games\CrimsonDesert",
+            r"C:\Program Files (x86)\Epic Games\CrimsonDesert",
         ])
 
-        candidates.append(r"C:\Program Files\Epic Games\CrimsonDesert")
-
-        for path in candidates:
-            paz = os.path.join(path, "0008", "0.paz")
-            if os.path.isfile(paz):
+        gesehen = set()
+        for path in gesucht:
+            if path in gesehen:
+                continue
+            gesehen.add(path)
+            if PazPatchManager._sieht_nach_spiel_aus(path):
+                log.info("Spielordner gefunden: %s", path)
                 return path
 
+        log.info("Spielordner nicht gefunden, %d Orte geprueft", len(gesehen))
         return ""
+
+    @staticmethod
+    def _sieht_nach_spiel_aus(path: str) -> bool:
+        """Beide Schreibweisen zulassen - mit Mod-Loader heisst die Datei anders."""
+        for name in ("0.paz", "0.paz.sebak"):
+            if os.path.isfile(os.path.join(path, "0008", name)):
+                return True
+        return False
+
+    @staticmethod
+    def _steam_bibliotheken() -> list:
+        """Steams eigene Bibliotheksliste auslesen.
+
+        Steam vermerkt jede Bibliothek in steamapps/libraryfolders.vdf. Das
+        ist die einzige verlaessliche Quelle - ein Laufwerk und einen
+        Ordnernamen zu raten geht bei jeder ungewoehnlichen Installation schief.
+        """
+        wurzeln = []
+        try:
+            import winreg
+            for zweig, schluessel in ((winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam"),
+                                      (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Valve\Steam")):
+                try:
+                    with winreg.OpenKey(zweig, schluessel) as k:
+                        for wert in ("SteamPath", "InstallPath"):
+                            try:
+                                p = winreg.QueryValueEx(k, wert)[0]
+                                if p:
+                                    wurzeln.append(p.replace("/", os.sep))
+                            except OSError:
+                                pass
+                except OSError:
+                    pass
+        except ImportError:
+            pass  # kein Windows
+
+        for letter in string.ascii_uppercase:
+            wurzeln.append(f"{letter}:\\Steam")
+        wurzeln.append(r"C:\Program Files (x86)\Steam")
+
+        bibliotheken = []
+        for wurzel in wurzeln:
+            if wurzel not in bibliotheken and os.path.isdir(wurzel):
+                bibliotheken.append(wurzel)
+            vdf = os.path.join(wurzel, "steamapps", "libraryfolders.vdf")
+            if not os.path.isfile(vdf):
+                continue
+            try:
+                with open(vdf, "r", encoding="utf-8", errors="replace") as f:
+                    inhalt = f.read()
+            except OSError:
+                continue
+            for treffer in re.finditer(r'"path"\s*"([^"]+)"', inhalt):
+                p = treffer.group(1).replace("\\\\", os.sep).replace("/", os.sep)
+                if p not in bibliotheken:
+                    bibliotheken.append(p)
+        return bibliotheken
 
     def get_paz_path(self, relative: str) -> str:
         return os.path.join(self.game_path, relative.replace("/", os.sep))

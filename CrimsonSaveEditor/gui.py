@@ -20575,9 +20575,13 @@ QCheckBox::indicator {{
         if detected:
             self._set_game_path(detected)
         else:
-            QMessageBox.warning(self, "Not Found",
-                "Could not auto-detect Crimson Desert.\n"
-                "Use Browse to set the path manually.")
+            QMessageBox.warning(
+                self, "Not Found",
+                "Could not auto-detect Crimson Desert.\n\n"
+                "Searched Steam's own library list plus the usual folders on "
+                "every drive. See logs.txt for how many locations were checked.\n\n"
+                "Use Browse to set the path manually \u2014 pick the folder that "
+                "contains the numbered folders 0000, 0001, \u2026")
 
     def _paz_browse_game_path(self) -> None:
         current = self._paz_game_path.text().strip() or self._config.get("game_install_path", "")
