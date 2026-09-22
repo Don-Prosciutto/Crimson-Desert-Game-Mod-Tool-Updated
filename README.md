@@ -75,12 +75,52 @@ localization, and corrects 287 wrong names.
 Existing item categories are preserved deliberately: re-deriving them from the
 built-in name heuristic alone would drop `Equipment` from 2,284 entries to 18.
 
+### 5. Things that failed without saying so
+
+- **Auto-detect** only knew `SteamLibrary` on other drives and required `0008/0.paz`.
+  A plain `D:\Steam\...` install, or any install with a mod loader active
+  (`0.paz.sebak`), was never found. It now asks Steam itself (registry and
+  `libraryfolders.vdf`) first.
+- **Export Skill Field JSON** and **No Fall Damage** wrote debug files to relative
+  folders that do not exist next to the EXE and died with `FileNotFoundError` before
+  doing anything. Fixed.
+- **Knowledge packs:** only one of the seven packs was bundled. All seven ship now.
+- **Item database badge** ("N new items in game") only refreshed after a manual sync,
+  so it never showed for the people who needed it. It now checks on startup.
+
+---
+
+## Save Editor
+
+The Save Editor ships in the same release (`CrimsonSaveEditorStandalone.exe`).
+
+- **No more phantom items.** The byte-pattern scan reported random byte runs as items
+  (126 of them in a fresh unmodded game, with stacks in the quadrillions). The save's
+  own schema now decides what is a real item. Zero real items lost across nine test saves.
+- **Equipment shows correct values and can be edited.** Items behind a pointer (all
+  equipped gear, 243 items in one test save) showed packed socket counts as
+  "endurance" and could not be changed at all.
+- **Duplicate item numbers** no longer send an edit to the wrong record.
+- **The save header is kept intact.** Previously bytes the game writes after the HMAC
+  were zeroed on every save.
+- **Check before saving.** If an edit changed the save's size, the editor counts the
+  internal offsets before writing and refuses when any went missing — the exact
+  signature of a save that stops the game from starting.
+- **Stale item database** is reported on startup, per game version.
+
+### Known limitation: sockets
+
+**Swapping** an existing gem works. **Filling an empty socket or removing a gem is
+disabled.** Both rewrite thousands of internal offsets, and a save edited that way
+crashed the game before the main menu in testing. The pre-save check also catches it.
+
 ---
 
 ## Install
 
-Download the release, put the `.exe` in a folder of its own, run it. Point the Game
-Path bar at your Crimson Desert install if auto-detect does not find it.
+Download both files from the release, put each `.exe` in a folder of its own, run it.
+Point the Game Path bar at your Crimson Desert install if auto-detect does not find it.
+Back up your save folder before editing saves.
 
 ## Build from source
 
@@ -111,5 +151,6 @@ are trademarks of RicePaddySoftware and are used here descriptively only.
 - **gek**, **LukeFZ**, **fire** — see `CrimsonGameMods/CREDITS.md`
 
 Unofficial, non-commercial modding utilities for Crimson Desert (© Pearl Abyss).
-No game assets or proprietary data are redistributed — extraction happens locally
-from your own installed copy.
+Like the original project, the repository carries reference copies of a few game
+tables (`vanilla_tables/`, `CrimsonGameMods/game_baselines/`) that the tools compare
+against. Everything else is extracted locally from your own installed copy.

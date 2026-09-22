@@ -1,5 +1,5 @@
 {
   "version": "2.2.0",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/gamemods-2.03.01/CrimsonGameMods.exe",
-  "notes": "Game 2.03.01 \u2014 parser update, archive name fixes, working client data sync"
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/game-2.03.01/CrimsonGameMods.exe",
+  "notes": "Game 2.03.01 \u2014 parser update, archive name fixes, working client data sync, Steam auto-detect"
 }
