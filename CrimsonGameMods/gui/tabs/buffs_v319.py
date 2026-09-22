@@ -7630,23 +7630,37 @@ class ItemBuffsTab(QWidget):
             pass
 
         # Priority 2: vanilla_tables on disk
+        #
+        # The path used to go four levels up from gui/tabs - one level past
+        # the repository - and then append 'vanilla_tables' twice, so it
+        # pointed at <parent>/vanilla_tables/vanilla_tables and never existed.
+        # This branch therefore did nothing and every run without a game path
+        # silently landed on the 1.07 constants below.
         if not app_hash:
             try:
                 import os
-                vt_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..',
-                                      'vanilla_tables')
-                vt_dir = os.path.normpath(vt_dir)
-                body_path = os.path.join(vt_dir, 'vanilla_tables', 'characterinfo.pabgb')
-                gh_path   = os.path.join(vt_dir, 'vanilla_tables', 'characterinfo.pabgh')
-                if os.path.exists(body_path) and os.path.exists(gh_path):
-                    with open(body_path, 'rb') as f: ci_body = f.read()
-                    with open(gh_path,   'rb') as f: ci_gh   = f.read()
-                    app_hash, prefab_hash, lookup_24, lookup_25, flag_c = _read_from_bytes(ci_body, ci_gh)
-            except Exception:
-                pass
+                repo_root = os.path.normpath(
+                    os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+                for vt_dir in (os.path.join(repo_root, 'vanilla_tables'),
+                               os.path.join(getattr(sys, '_MEIPASS', '') or repo_root,
+                                            'vanilla_tables')):
+                    body_path = os.path.join(vt_dir, 'characterinfo.pabgb')
+                    gh_path   = os.path.join(vt_dir, 'characterinfo.pabgh')
+                    if os.path.exists(body_path) and os.path.exists(gh_path):
+                        with open(body_path, 'rb') as f: ci_body = f.read()
+                        with open(gh_path,   'rb') as f: ci_gh   = f.read()
+                        app_hash, prefab_hash, lookup_24, lookup_25, flag_c = _read_from_bytes(ci_body, ci_gh)
+                        log.info("Character hashes read from %s", body_path)
+                        break
+            except Exception as e:  # noqa: BLE001
+                log.warning("vanilla_tables fallback not usable: %s", e)
 
         # Priority 3: verified 1.07 fallback values (document_kliff_hashes.rs)
         if not app_hash:
+            # Worth a log line: these are values from game version 1.07. If
+            # they are wrong for the installed game, this is where it started.
+            log.warning("Character hashes: neither the game nor vanilla_tables "
+                        "could be read - falling back to the 1.07 constants")
             app_hash    = 1767116530   # hash("Player_PHW")
             prefab_hash = 3755051597   # hash("Player_PHW_Lower")
             lookup_24   = 2831867940   # hash("character/model/1_pc/2_phw/phw_01.pab")
