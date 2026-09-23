@@ -2835,17 +2835,27 @@ class ItemBuffsTab(QWidget):
         filt_row.addWidget(self._eb_socket_type_filter, 1)
         filt_row.addWidget(QLabel("Tier:"))
         self._eb_socket_tier_filter = QComboBox()
+        # No tier numbers in brackets: "Legendary (5)" next to a button that
+        # says "-> 5 Sockets" read as "5 items match".
         for _label, _rng in (("All tiers", (0, 99)),
-                             ("Legendary (5)", (5, 5)),
-                             ("Epic and above (4+)", (4, 99)),
-                             ("Rare and above (3+)", (3, 99)),
-                             ("Epic (4)", (4, 4)),
-                             ("Rare (3)", (3, 3)),
-                             ("Uncommon (2)", (2, 2)),
-                             ("Common (1)", (1, 1))):
+                             ("Legendary", (5, 5)),
+                             ("Epic and above", (4, 99)),
+                             ("Rare and above", (3, 99)),
+                             ("Epic", (4, 4)),
+                             ("Rare", (3, 3)),
+                             ("Uncommon", (2, 2)),
+                             ("Common", (1, 1))):
             self._eb_socket_tier_filter.addItem(_label, _rng)
         filt_row.addWidget(self._eb_socket_tier_filter)
         sgl.addLayout(filt_row)
+
+        # The actual number of matching items, updated whenever Type or Tier
+        # changes - so the count is visible before anything is clicked.
+        self._eb_socket_match_label = QLabel("Extract first to see how many items match.")
+        self._eb_socket_match_label.setStyleSheet(f"color: {COLORS['text_dim']};")
+        sgl.addWidget(self._eb_socket_match_label)
+        self._eb_socket_type_filter.currentIndexChanged.connect(self._eb_update_socket_match_count)
+        self._eb_socket_tier_filter.currentIndexChanged.connect(self._eb_update_socket_match_count)
 
         socket_filtered_btn = QPushButton("Matching items \u2192 5 Sockets")
         socket_filtered_btn.setStyleSheet(
@@ -3452,6 +3462,7 @@ class ItemBuffsTab(QWidget):
             import json, zlib
             _py_lookup = {int(it['key']): it for it in rust_items}
             self._buff_rust_items = rust_items
+            self._eb_update_socket_match_count()
             self._buff_rust_lookup = _py_lookup
             self._buff_use_rust = True
             self._buff_rust_items_original_z = zlib.compress(
@@ -3606,6 +3617,7 @@ class ItemBuffsTab(QWidget):
         # Load vanilla as baseline, mod as current state — same shape as Extract.
         self._buff_data = bytearray(vanilla_raw)
         self._buff_rust_items = mod_items
+        self._eb_update_socket_match_count()
         import zlib
         self._buff_rust_items_original_z = zlib.compress(
             json.dumps(vanilla_items).encode(), 1)
@@ -8245,6 +8257,31 @@ class ItemBuffsTab(QWidget):
         rest = sorted(l for l in by_label if l not in first)
         return [(self._EQUIP_TYPE_LABELS.get(l, l), by_label[l]) for l in first + rest]
 
+    def _eb_socket_filter_matches(self) -> list:
+        """Equipment items matching the Type and Tier boxes."""
+        hashes = self._eb_socket_type_filter.currentData()
+        lo, hi = self._eb_socket_tier_filter.currentData() or (0, 99)
+        out = []
+        for it in (getattr(self, '_buff_rust_items', None) or []):
+            if not it.get('drop_default_data') or not it.get('equip_type_info'):
+                continue
+            if hashes is not None and it.get('equip_type_info') not in hashes:
+                continue
+            if not (lo <= (it.get('item_tier') or 0) <= hi):
+                continue
+            out.append(it)
+        return out
+
+    def _eb_update_socket_match_count(self, *_args) -> None:
+        label = getattr(self, '_eb_socket_match_label', None)
+        if label is None:
+            return
+        if not getattr(self, '_buff_rust_items', None):
+            label.setText("Extract first to see how many items match.")
+            return
+        n = len(self._eb_socket_filter_matches())
+        label.setText(f"{n} item{'s' if n != 1 else ''} match this filter.")
+
     def _eb_extend_filtered_sockets_to_5(self) -> None:
         """Like "All -> 5 Sockets", limited to one equipment type and/or tier."""
         if not getattr(self, '_buff_rust_items', None):
@@ -8254,8 +8291,6 @@ class ItemBuffsTab(QWidget):
 
         TARGET = 5
         DEFAULT_COSTS = [500, 1000, 2000, 3000, 4000, 5000, 6000, 7000]
-        hashes = self._eb_socket_type_filter.currentData()
-        lo, hi = self._eb_socket_tier_filter.currentData() or (0, 99)
         what = (f"{self._eb_socket_type_filter.currentText()}, "
                 f"{self._eb_socket_tier_filter.currentText()}")
 
@@ -8263,15 +8298,8 @@ class ItemBuffsTab(QWidget):
             ddd = it.get('drop_default_data') or {}
             return (ddd.get('add_socket_material_item_list') or []) if ddd.get('use_socket') else []
 
-        matching = []
-        for it in self._buff_rust_items:
-            if not it.get('drop_default_data') or not it.get('equip_type_info'):
-                continue
-            if hashes is not None and it.get('equip_type_info') not in hashes:
-                continue
-            if not (lo <= (it.get('item_tier') or 0) <= hi):
-                continue
-            matching.append(it)
+        matching = self._eb_socket_filter_matches()
+        self._eb_update_socket_match_count()
 
         if not matching:
             QMessageBox.information(self, "Sockets", f"No equipment matches: {what}.")
@@ -12738,6 +12766,7 @@ class ItemBuffsTab(QWidget):
                 import crimson_rs
                 rust_items = _iteminfo_parse(bytes(data))
                 self._buff_rust_items = rust_items
+                self._eb_update_socket_match_count()
                 self._buff_rust_lookup = {int(it['key']): it for it in rust_items}
                 self._buff_use_rust = True
 
