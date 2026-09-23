@@ -42,8 +42,10 @@ def find_qt_libs() -> tuple[str, str]:
     for base in paths:
         if not base:
             continue
-        pyside = sorted(glob.glob(os.path.join(base, "PySide6", "libpyside6*.so*")))
-        shiboken = sorted(glob.glob(os.path.join(base, "shiboken6", "libshiboken6*.so*")))
+        pyside = sorted(glob.glob(os.path.join(base, "PySide6", "libpyside6*.so*"))
+                        + glob.glob(os.path.join(base, "PySide6", "pyside6*.dll")))
+        shiboken = sorted(glob.glob(os.path.join(base, "shiboken6", "libshiboken6*.so*"))
+                          + glob.glob(os.path.join(base, "shiboken6", "shiboken6*.dll")))
         if pyside and shiboken:
             return pyside[0], shiboken[0]
     raise SystemExit("Unable to locate PySide6/shiboken6 shared libraries")
@@ -66,8 +68,6 @@ def main() -> int:
 
     target = project["targets"][args.target]
     root = project["root"]
-    pyside_lib, shiboken_lib = find_qt_libs()
-
     for cache in root.rglob("__pycache__"):
         shutil.rmtree(cache, ignore_errors=True)
 
@@ -77,6 +77,11 @@ def main() -> int:
         shutil.rmtree(dist, ignore_errors=True)
         run([sys.executable, "-m", "PyInstaller", str(spec), "--noconfirm"], cwd=root)
         return 0
+
+    # Only the Nuitka build needs the Qt library paths. Looking them up
+    # first made the default PyInstaller build fail on Windows, where the
+    # files end in .dll, not .so ("Unable to locate PySide6/shiboken6").
+    pyside_lib, shiboken_lib = find_qt_libs()
 
     build_dir = root / target["out"]
     shutil.rmtree(build_dir, ignore_errors=True)
