@@ -2855,8 +2855,10 @@ class ItemBuffsTab(QWidget):
         filt_row.addWidget(self._eb_socket_tier_filter)
         self._eb_filter_owned = QCheckBox("Only items in my loaded save")
         self._eb_filter_owned.setToolTip(
-            "Limit the filter to items that are in the save loaded via the Save Browser -\n"
-            "e.g. only the two Legendary boots you actually wear, not all 18.")
+            "Limit the filter to items that are in your save - e.g. only the two\n"
+            "Legendary boots you actually wear, not all 18.\n\n"
+            "Load the save first: 'Save Browser' (top right) or File -> Open Save File.\n"
+            "The save is only read here, nothing is written to it.")
         filt_row.addWidget(self._eb_filter_owned)
         fgl.addLayout(filt_row)
 
@@ -8393,7 +8395,7 @@ class ItemBuffsTab(QWidget):
             return
         n = len(self._eb_socket_filter_matches())
         if self._eb_owned_keys() == set():
-            label.setText("No save loaded - load one in the Save Browser to filter by what you own.")
+            label.setText("No save loaded - open one via 'Save Browser' (top right) or File -> Open Save File.")
         else:
             label.setText(f"{n} item{'s' if n != 1 else ''} match this filter.")
         # Show the count for every tier of the selected type right in the
@@ -8422,8 +8424,9 @@ class ItemBuffsTab(QWidget):
             return None
         if self._eb_owned_keys() == set():
             QMessageBox.information(self, title,
-                "'Only items in my loaded save' is ticked, but no save is loaded.\n"
-                "Load one in the Save Browser first, or untick the box.")
+                "'Only items in my loaded save' is ticked, but no save is loaded.\n\n"
+                "Open one via 'Save Browser' (top right) or File -> Open Save File,\n"
+                "or untick the box.")
             return None
         matching = self._eb_socket_filter_matches()
         if not matching:
@@ -8540,8 +8543,9 @@ class ItemBuffsTab(QWidget):
 
         if self._eb_owned_keys() == set():
             QMessageBox.information(self, "Sockets",
-                "'Only items in my loaded save' is ticked, but no save is loaded.\n"
-                "Load one in the Save Browser first, or untick the box.")
+                "'Only items in my loaded save' is ticked, but no save is loaded.\n\n"
+                "Open one via 'Save Browser' (top right) or File -> Open Save File,\n"
+                "or untick the box.")
             return
         matching = self._eb_socket_filter_matches()
         self._eb_update_socket_match_count()
