@@ -19,6 +19,15 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+# Draw splash.png from updater.APP_VERSION on every build. The PNG in the
+# repository still said v2.0.7 long after the version had moved on, because
+# regenerating it (tools/regen_splash.py) was a manual step nobody ran.
+try:
+    import runpy as _runpy
+    _runpy.run_path(os.path.join(SPECPATH, 'tools', 'regen_splash.py'), run_name='__main__')
+except Exception as _e:  # the build must not fail over a picture
+    print(f"WARNING: splash.png not regenerated ({_e}); the old image is used")
+
 # Read version from updater.py so splash always matches
 import re as _re
 with open('updater.py', 'r') as _f:
