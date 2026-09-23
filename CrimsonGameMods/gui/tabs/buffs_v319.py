@@ -10352,6 +10352,15 @@ class ItemBuffsTab(QWidget):
         # Ensure docking_child_data matches the current 2.01 schema
         _patch_docking_108(self._buff_rust_items)
 
+        # Queued transmog swaps. The tooltip always promised they go into this
+        # export, but only Apply to Game applied them - a Field JSON exported
+        # here and installed with DMM had no transmog at all. Apply them to
+        # the items first (same as Apply to Game) so the diff below picks up
+        # the changed prefab_data_list.
+        if getattr(self, '_transmog_swaps', None):
+            _tm = self._apply_transmog_swaps(bytearray())
+            log.info("Export v3: applied %d queued transmog swap(s)", _tm)
+
         # Check for global flags
         apply_stacks = hasattr(self, '_stack_check') and self._stack_check.isChecked()
         apply_inf_dura = hasattr(self, '_inf_dura_check') and self._inf_dura_check.isChecked()
