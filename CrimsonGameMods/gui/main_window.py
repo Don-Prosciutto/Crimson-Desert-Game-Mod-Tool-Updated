@@ -1657,6 +1657,14 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
+        check_mods_act = QAction("Check Mods Against This Game...", self)
+        check_mods_act.setToolTip(
+            "Test Field JSON mods against the installed game without writing anything")
+        check_mods_act.triggered.connect(self._check_mods_dialog)
+        file_menu.addAction(check_mods_act)
+
+        file_menu.addSeparator()
+
         exit_act = QAction("Exit", self)
         exit_act.setShortcut(QKeySequence("Alt+F4"))
         exit_act.triggered.connect(self.close)
@@ -2492,6 +2500,60 @@ QCheckBox::indicator {{
         if hasattr(self, '_database_tab'):
             self._database_tab.set_game_path(path)
         self._warn_on_version_mismatch(path)
+
+    def _check_mods_dialog(self) -> None:
+        """Pick Field JSON mods and report whether they still fit this game.
+
+        Every intent is applied in memory to the unmodded table, the same way
+        the tools write it - so the answer is the parser's own, not a guess.
+        Nothing is written. See mod_check.py.
+        """
+        game_path = self._config.get("game_install_path", "")
+        if not game_path or not os.path.isdir(game_path):
+            QMessageBox.warning(self, "Check Mods",
+                                "Set the game path first (Browse or Auto-Detect).")
+            return
+        start = self._config.get("mod_check_dir", "") or self._app_dir()
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Pick Field JSON mods to check", start,
+            "Field JSON (*.field.json *.json);;All files (*)")
+        if not paths:
+            return
+        self._config["mod_check_dir"] = os.path.dirname(paths[0])
+        self._save_config()
+
+        from PySide6.QtGui import QCursor
+        from PySide6.QtWidgets import QApplication, QDialog, QVBoxLayout, QPlainTextEdit, \
+            QDialogButtonBox
+        QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+        try:
+            import mod_check
+            import game_version
+            results = mod_check.check_mods(paths, game_path)
+            report = mod_check.format_report(results, game_version.read_game_version(game_path) or "")
+        except Exception as e:  # noqa: BLE001
+            log.exception("Mod check failed")
+            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(self, "Check Mods", f"The check could not run:\n\n{e}")
+            return
+        QApplication.restoreOverrideCursor()
+        for r in results:
+            log.info("Mod check: %s -> %s (%d/%d applied)", r.path, r.verdict, r.applied, r.total)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Check Mods - {len(results)} file(s)")
+        dlg.resize(820, 520)
+        lay = QVBoxLayout(dlg)
+        text = QPlainTextEdit(report)
+        text.setReadOnly(True)
+        text.setStyleSheet("font-family: Consolas, 'Courier New', monospace;")
+        lay.addWidget(text)
+        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        copy_btn = buttons.addButton("Copy report", QDialogButtonBox.ActionRole)
+        copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(report))
+        buttons.rejected.connect(dlg.reject)
+        lay.addWidget(buttons)
+        dlg.exec()
 
     def _warn_on_version_mismatch(self, path: str) -> None:
         """Report when the installed game version does not match the parser.
