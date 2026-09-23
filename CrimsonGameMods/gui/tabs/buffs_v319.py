@@ -12082,16 +12082,21 @@ class ItemBuffsTab(QWidget):
 
             player_keys = self._PLAYER_CHAR_KEYS
             player_records = [r for r in es_records if r['key'] in player_keys]
-            category_hashes: dict[tuple[int, int], set[int]] = {}
+            # Grouped by slot_index, like the Universal Proficiency v3 button.
+            # category_a/category_b no longer exist since game 1.12; with them
+            # this step failed with KeyError 'category_a' and Enable
+            # Everything skipped the equipslotinfo half of Universal
+            # Proficiency (checked on 2.03.02: slot_index adds 51 hashes).
+            category_hashes: dict[int, set[int]] = {}
             for rec in player_records:
                 for e in rec['entries']:
-                    key = (e['category_a'], e['category_b'])
+                    key = e['slot_index']
                     category_hashes.setdefault(key, set()).update(e['etl_hashes'])
             for rec in es_records:
                 if rec['key'] not in player_keys:
                     continue
                 for e in rec['entries']:
-                    key = (e['category_a'], e['category_b'])
+                    key = e['slot_index']
                     pool = category_hashes.get(key, set())
                     to_add = sorted(pool - set(e['etl_hashes']))
                     if to_add:
@@ -12162,7 +12167,7 @@ class ItemBuffsTab(QWidget):
             f"passive (Canta helmet etc.), and quest reward (stamina/MP\n"
             f"boost) counts. Exceeding ~23 lines causes infinite loading\n"
             f"+ RAM leak. Don't fill every socket with abyss gems on\n"
-            f"every equipment slot \ufffd\ufffd spread them across a few key pieces.")
+            f"every equipment slot \u2014 spread them across a few key pieces.")
 
 
     def _max_charges_all_items(self) -> None:
