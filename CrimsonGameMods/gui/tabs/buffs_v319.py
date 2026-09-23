@@ -3701,7 +3701,9 @@ class ItemBuffsTab(QWidget):
             if use_structural:
                 self._buff_items = self._buff_patcher.find_items(bytes(self._buff_data))
             else:
-                self._buff_items = self._buff_find_items_original(bytes(self._buff_data))
+                # The "original scanner" is gone; the structural one is the
+                # only item finder left.
+                self._buff_items = self._buff_patcher.find_items(bytes(self._buff_data))
 
             self._buff_use_structural = use_structural
             self._buff_status_label.setText(
@@ -3717,7 +3719,11 @@ class ItemBuffsTab(QWidget):
         if self._buff_data is None:
             if silent:
                 return
-            self._buff_extract_iteminfo(use_structural=False)
+            # Nothing extracted yet: run the normal Extract first. The old
+            # route called _buff_find_items_original, which no longer exists
+            # ("'ItemBuffsTab' object has no attribute ...") - so My Inventory
+            # failed whenever it was clicked before Extract.
+            self._buff_extract_rust()
             if self._buff_data is None:
                 return
 
