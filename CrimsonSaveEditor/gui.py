@@ -2912,6 +2912,20 @@ class MainWindow(QMainWindow):
                 pass
         return {}
 
+    def _remember_dock_widths(self) -> None:
+        """Keep the widths of Save Browser and Pack Browser for the next start."""
+        changed = False
+        for dock, key in ((getattr(self, "_save_dock", None), "save_browser_width"),
+                          (getattr(self, "_pack_dock", None), "pack_browser_width")):
+            if dock is not None and dock.isVisible() and not dock.isFloating():
+                self._config[key] = int(dock.width())
+                changed = True
+        if changed:
+            try:
+                self._save_config()
+            except Exception:
+                pass
+
     def _save_config(self) -> None:
         try:
             with open(self._get_config_path(), "w") as f:
@@ -3118,6 +3132,12 @@ class MainWindow(QMainWindow):
 
         self._tabs = QTabWidget()
         right_layout.addWidget(self._tabs, 1)
+        # The tab pages ask for ~1,000 px of width. Qt gives the central area
+        # at least that much before the docks, so in a smaller window the
+        # Save Browser and Pack Browser were squeezed to 65 px and their edges
+        # could not be dragged. An explicit minimum replaces that hint; the
+        # pages behave as before, the docks can now take room from them.
+        right_panel.setMinimumWidth(420)
         self.setCentralWidget(right_panel)
 
         from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem
@@ -3225,7 +3245,18 @@ class MainWindow(QMainWindow):
         )
         self.addDockWidget(Qt.RightDockWidgetArea, self._pack_dock)
 
-        self.resizeDocks([self._save_dock, self._pack_dock], [260, 260], Qt.Horizontal)
+        # Usable minimum, and the width from the last session. resizeDocks()
+        # only takes effect once the window is on screen, hence the timer.
+        self._save_dock.setMinimumWidth(160)
+        self._pack_dock.setMinimumWidth(160)
+        _sbw = max(int(self._config.get("save_browser_width", 0) or 260), 160)
+        _pbw = max(int(self._config.get("pack_browser_width", 0) or 260), 160)
+        self.resizeDocks([self._save_dock, self._pack_dock], [_sbw, _pbw], Qt.Horizontal)
+        QTimer.singleShot(0, lambda: self.resizeDocks(
+            [self._save_dock, self._pack_dock], [_sbw, _pbw], Qt.Horizontal))
+        _app = QApplication.instance()
+        if _app is not None:
+            _app.aboutToQuit.connect(self._remember_dock_widths)
 
         self._sb_collapsed = False
         self._ps_collapsed = False
