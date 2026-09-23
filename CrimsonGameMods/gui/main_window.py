@@ -940,6 +940,7 @@ class MainWindow(QMainWindow):
         self._tabs = _real_tabs
         self._real_tabs = _real_tabs
         self._build_save_editor_area()
+        self._build_nav_sidebar()
         self._update_experimental_tabs()
 
         # Register all tabs with the stacker for Pull All Edits
@@ -1124,6 +1125,11 @@ class MainWindow(QMainWindow):
         if not self._config.get("save_browser_width"):
             self._sb_saved_width = 300     # its top buttons are cut off below that
         self._apply_save_browser_mode(True, show=True)
+        # Navigation list on the left, Save Browser (and, in the save areas,
+        # the Pack Browser below it) on the right.
+        self.addDockWidget(Qt.RightDockWidgetArea, win._save_dock)
+        self.addDockWidget(Qt.RightDockWidgetArea, win._pack_dock)
+        self.splitDockWidget(win._save_dock, win._pack_dock, Qt.Vertical)
         btn = getattr(self, "_btn_toggle_save_browser", None)
         if btn is not None:
             try:
@@ -1192,6 +1198,9 @@ class MainWindow(QMainWindow):
             return result
         win._do_save = _se_saved
 
+        if getattr(self, "_nav", None) is not None:
+            self._nav_rebuild()
+
         # View menu lists the Save Editor's pages too.
         self._save_tabs = save_page
         self._world_tabs = world_page
@@ -1250,6 +1259,164 @@ class MainWindow(QMainWindow):
                     json.dump(cfg, f, indent=2)
         except Exception as e:  # noqa: BLE001
             log.warning("Could not pass the game path to the Save Editor: %s", e)
+
+    # ── Navigation: one list on the left instead of tabs top and bottom ──
+    # The areas (Game Mods, Save Editor, World, Items, Backup) and their
+    # pages stay the same widgets; only their tab bars are hidden and this
+    # list drives them. Pages with their own sub-pages (ItemBuffs) keep those
+    # at the top of the page.
+
+    def _build_nav_sidebar(self) -> None:
+        from PySide6.QtWidgets import QTreeWidget
+        rt = self._real_tabs
+        holder = rt.parentWidget()
+        lay = holder.layout()
+        pos = lay.indexOf(rt)
+        lay.removeWidget(rt)
+
+        box = QWidget()
+        h = QHBoxLayout(box)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(0)
+
+        side = QWidget()
+        side.setObjectName("navSide")
+        side.setFixedWidth(215)
+        v = QVBoxLayout(side)
+        v.setContentsMargins(0, 0, 0, 6)
+        v.setSpacing(6)
+        nav = QTreeWidget()
+        nav.setObjectName("navTree")
+        nav.setHeaderHidden(True)
+        nav.setRootIsDecorated(False)
+        nav.setIndentation(14)
+        nav.setFocusPolicy(Qt.NoFocus)
+        nav.setStyleSheet(
+            f"QTreeWidget#navTree {{ background: {COLORS['panel']}; border: none; "
+            f"padding-top: 6px; font-size: 12px; }}"
+            f"QTreeWidget#navTree::item {{ padding: 4px 6px; border-left: 3px solid transparent; }}"
+            f"QTreeWidget#navTree::item:hover {{ background: {COLORS['header']}; }}"
+            f"QTreeWidget#navTree::item:selected {{ background: {COLORS['selected']}; "
+            f"color: {COLORS['text']}; border-left: 3px solid {COLORS['accent']}; }}")
+        v.addWidget(nav, 1)
+        # The Save Browser toggle used to sit in the tab bar corner.
+        corner = rt.cornerWidget(Qt.TopRightCorner)
+        if corner is not None:
+            rt.setCornerWidget(None, Qt.TopRightCorner)
+            corner.setParent(side)
+            v.addWidget(corner)
+            corner.show()
+        side.setStyleSheet(
+            f"QWidget#navSide {{ background: {COLORS['panel']}; "
+            f"border-right: 1px solid {COLORS['border']}; }}")
+
+        h.addWidget(side)
+        h.addWidget(rt, 1)
+        lay.insertWidget(pos, box, 1)
+        rt.tabBar().hide()
+        rt.setDocumentMode(True)
+
+        self._nav = nav
+        self._nav_watched = set()
+        nav.itemClicked.connect(self._nav_clicked)
+        rt.currentChanged.connect(lambda _i: self._nav_sync())
+        self._nav_rebuild()
+
+    def _nav_scope(self, page) -> str:
+        if page is getattr(self, "_mods_tabs", None):
+            return "game"
+        if page in getattr(self, "_se_area_widgets", ()):
+            return "save"
+        return ""
+
+    def _nav_rebuild(self) -> None:
+        from PySide6.QtWidgets import QTreeWidgetItem
+        from PySide6.QtGui import QFont
+        nav, rt = self._nav, self._real_tabs
+        expanded = self._config.get("nav_collapsed", [])
+        nav.blockSignals(True)
+        nav.clear()
+        for i in range(rt.count()):
+            page, label = rt.widget(i), rt.tabText(i)
+            scope = self._nav_scope(page)
+            if isinstance(page, QTabWidget) and page.count() > 0:
+                page.tabBar().hide()
+                page.setDocumentMode(True)
+                grp = QTreeWidgetItem([label.upper()])
+                f = QFont(nav.font())
+                f.setBold(True)
+                f.setPointSizeF(max(7.0, f.pointSizeF() - 1.5))
+                f.setLetterSpacing(QFont.PercentageSpacing, 108)
+                grp.setFont(0, f)
+                color = {"game": COLORS["scope_game"], "save": COLORS["scope_save"]}.get(
+                    scope, COLORS["text_dim"])
+                grp.setForeground(0, QColor(color))
+                grp.setToolTip(0, {"game": "Changes GAME FILES (all saves)",
+                                   "save": "Changes your SAVE FILE"}.get(scope, ""))
+                grp.setFlags(Qt.ItemIsEnabled)
+                grp.setData(0, Qt.UserRole, ("group", label))
+                nav.addTopLevelItem(grp)
+                for j in range(page.count()):
+                    if hasattr(page, "isTabVisible") and not page.isTabVisible(j):
+                        continue
+                    it = QTreeWidgetItem(grp, [page.tabText(j)])
+                    it.setData(0, Qt.UserRole, ("page", page, page.widget(j)))
+                    tip = page.tabToolTip(j)
+                    if tip:
+                        it.setToolTip(0, tip)
+                grp.setExpanded(label not in expanded)
+                if id(page) not in self._nav_watched:
+                    page.currentChanged.connect(lambda _i: self._nav_sync())
+                    self._nav_watched.add(id(page))
+            else:
+                it = QTreeWidgetItem([label])
+                it.setData(0, Qt.UserRole, ("page", rt, page))
+                if scope == "save":
+                    it.setToolTip(0, "Changes your SAVE FILE")
+                nav.addTopLevelItem(it)
+        nav.blockSignals(False)
+        self._nav_sync()
+
+    def _nav_clicked(self, item, _col=0) -> None:
+        data = item.data(0, Qt.UserRole)
+        if not data:
+            return
+        if data[0] == "group":
+            item.setExpanded(not item.isExpanded())
+            collapsed = [self._nav.topLevelItem(k).data(0, Qt.UserRole)[1]
+                         for k in range(self._nav.topLevelItemCount())
+                         if (self._nav.topLevelItem(k).data(0, Qt.UserRole) or ("",))[0] == "group"
+                         and not self._nav.topLevelItem(k).isExpanded()]
+            self._config["nav_collapsed"] = collapsed
+            self._save_config()
+            self._nav_sync()
+            return
+        _kind, holder, widget = data
+        rt = self._real_tabs
+        if holder is rt:
+            rt.setCurrentWidget(widget)
+        else:
+            rt.setCurrentWidget(holder)
+            holder.setCurrentWidget(widget)
+
+    def _nav_sync(self) -> None:
+        nav = getattr(self, "_nav", None)
+        if nav is None:
+            return
+        rt = self._real_tabs
+        page = rt.currentWidget()
+        target = page.currentWidget() if isinstance(page, QTabWidget) and page.count() else page
+        from PySide6.QtWidgets import QTreeWidgetItemIterator
+        itr = QTreeWidgetItemIterator(nav)
+        while itr.value():
+            it = itr.value()
+            d = it.data(0, Qt.UserRole)
+            if d and d[0] == "page" and d[2] is target:
+                nav.blockSignals(True)
+                nav.setCurrentItem(it)
+                nav.blockSignals(False)
+                return
+            itr += 1
 
     def _apply_save_browser_mode(self, pinned: bool, show: bool) -> None:
         """Docked on the left (pinned) or a floating window (the default)."""
@@ -2694,6 +2861,8 @@ QCheckBox {{
                     parent.removeTab(idx)
         if hasattr(self, '_view_menu'):
             self._rebuild_view_tab_list()
+        if getattr(self, '_nav', None) is not None:
+            self._nav_rebuild()
 
 
     def _check_for_update(self) -> None:

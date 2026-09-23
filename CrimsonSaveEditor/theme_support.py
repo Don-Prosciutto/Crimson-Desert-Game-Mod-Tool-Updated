@@ -15,13 +15,22 @@ CLASSIC_COLORS = {
     "selected": "#5c4320", "border": "#554430", "input_bg": "#1e1610",
     "panel_text": "#f0e6d4", "primary_text": "#f0e6d4", "accent_text": "#111111", "selection_text": "#FFFFFF", "success": "#9cc470", "warning": "#f0b040", "error": "#d44f40",
 }
-# GitHub Dark - the default since v2.2.1, same palette as the Game Mod Tool.
-DARK_COLORS = {
+# Graphite - neutral mid grey, the default since v2.3.0, same palette as the
+# Game Mod Tool.
+GRAPHITE_COLORS = {
+    "bg": "#2b2d30", "panel": "#323438", "header": "#3c3f43",
+    "accent": "#548af7", "text": "#dfe1e5", "text_dim": "#a0a3aa",
+    "selected": "#2e436e", "border": "#4a4d52", "input_bg": "#26282b",
+    "panel_text": "#dfe1e5", "primary_text": "#dfe1e5", "accent_text": "#FFFFFF", "selection_text": "#FFFFFF", "success": "#6aab73", "warning": "#d8ab4e", "error": "#f07178",
+}
+# GitHub Dark - the default in v2.2.1.
+GITHUB_DARK_COLORS = {
     "bg": "#0d1117", "panel": "#161b22", "header": "#21262d",
     "accent": "#2f81f7", "text": "#e6edf3", "text_dim": "#8b949e",
     "selected": "#1f3a5f", "border": "#30363d", "input_bg": "#0a0d12",
     "panel_text": "#e6edf3", "primary_text": "#e6edf3", "accent_text": "#FFFFFF", "selection_text": "#FFFFFF", "success": "#3fb950", "warning": "#d29922", "error": "#f85149",
 }
+DARK_COLORS = GRAPHITE_COLORS
 LIGHT_COLORS = {
     "bg": "#f5f5f5", "panel": "#ffffff", "header": "#d8d8d8",
     "accent": "#8B3A00", "text": "#111111", "text_dim": "#3d3d3d",
@@ -48,8 +57,10 @@ def _palette(bg, panel, header, accent, text, dim, selected, border, input_bg,
 
 
 THEME_PRESETS = {
-    "dark": {"name": "GitHub Dark", "description": "Neutral dark grey with a clear blue accent. The default.",
-             "colors": DARK_COLORS, "tab": ("#1f2a3a", "#ffffff", "#2f81f7")},
+    "dark": {"name": "Graphite", "description": "Neutral mid grey with a calm blue accent. The default.",
+             "colors": GRAPHITE_COLORS, "tab": ("#3a4a66", "#ffffff", "#548af7")},
+    "github_dark": {"name": "GitHub Dark", "description": "Very dark grey with a clear blue accent.",
+             "colors": GITHUB_DARK_COLORS, "tab": ("#1f2a3a", "#ffffff", "#2f81f7")},
     "classic_gold": {"name": "Classic Gold", "description": "The original warm brown and gold Crimson theme.",
              "colors": CLASSIC_COLORS, "tab": ("#2a3040", "#e0eaff", "#70a8ff")},
     "obsidian_blue": {"name": "Obsidian Blue", "description": "Deep navy panels with a clean electric-blue accent.",
@@ -222,7 +233,7 @@ class AppearanceDialog(QDialog):
         branding_layout.addWidget(self._save_load_title_edit, 1, 1)
         right.addWidget(branding)
         body.addLayout(right, 1); root.addLayout(body, 1)
-        bottom = QHBoxLayout(); classic = QPushButton("Reset to GitHub Dark"); classic.clicked.connect(lambda: self._select("dark")); bottom.addWidget(classic); bottom.addStretch()
+        bottom = QHBoxLayout(); classic = QPushButton("Reset to Graphite"); classic.clicked.connect(lambda: self._select("dark")); bottom.addWidget(classic); bottom.addStretch()
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel); buttons.accepted.connect(self.accept); buttons.rejected.connect(self.reject); bottom.addWidget(buttons); root.addLayout(bottom)
         self._update_preview(self._original)
 

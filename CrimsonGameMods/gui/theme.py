@@ -6,8 +6,36 @@ import base64 as _b64
 # (primary / success / warn / danger / neutral), not a fixed hex per button,
 # so every theme colours them consistently. See button_css().
 
-# GitHub Dark - the default since v2.2.1.
-DARK_COLORS = {
+# Graphite - neutral mid grey, the default since v2.3.0 (all-in-one).
+GRAPHITE_COLORS = {
+    "bg": "#2b2d30",
+    "panel": "#323438",
+    "header": "#3c3f43",
+    "accent": "#548af7",
+    "accent_hover": "#6d9bf8",
+    "on_accent": "#ffffff",
+    "text": "#dfe1e5",
+    "text_dim": "#a0a3aa",
+    "selected": "#2e436e",
+    "border": "#4a4d52",
+    "input_bg": "#26282b",
+    "success": "#6aab73",
+    "warning": "#d8ab4e",
+    "error": "#f07178",
+    "scope_save": "#8fb5f5",
+    "scope_game": "#d8ab4e",
+    "tab_bg": "#3a4a66",
+    "tab_text": "#ffffff",
+    "tab_border": "#548af7",
+    "btn_primary": ("#3574f0", "#ffffff", "#4a86f7"),
+    "btn_success": ("#3d7a45", "#ffffff", "#4e8a55"),
+    "btn_warn": ("#4b3f23", "#e3c07a", "#8a6d2b"),
+    "btn_danger": ("#4a2c2e", "#f28b82", "#b3413c"),
+    "btn_neutral": ("#3c3f43", "#dfe1e5", "#4a4d52"),
+}
+
+# GitHub Dark - the default in v2.2.1.
+GITHUB_DARK_COLORS = {
     "bg": "#0d1117",
     "panel": "#161b22",
     "header": "#21262d",
@@ -90,8 +118,11 @@ LIGHT_COLORS = {
     "btn_neutral": ("#eaeef2", "#1f2328", "#afb8c1"),
 }
 
+DARK_COLORS = GRAPHITE_COLORS
+
 THEMES = {
-    "dark": ("GitHub Dark (default)", DARK_COLORS),
+    "dark": ("Graphite (default)", GRAPHITE_COLORS),
+    "github_dark": ("GitHub Dark", GITHUB_DARK_COLORS),
     "classic": ("Classic (brown / gold)", CLASSIC_COLORS),
     "light": ("Light (high contrast)", LIGHT_COLORS),
 }

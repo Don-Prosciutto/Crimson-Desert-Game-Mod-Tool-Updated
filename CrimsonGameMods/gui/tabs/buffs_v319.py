@@ -638,9 +638,10 @@ class ItemBuffsTab(QWidget):
   
             return more_menu
 
-        def build_action_row() -> QHBoxLayout:
-            action_row = QHBoxLayout()
-            action_row.setSpacing(4)
+        def build_action_row():
+            # Wraps onto a second line instead of cutting the labels off.
+            from gui.flow_layout import FlowLayout
+            action_row = FlowLayout(spacing=4)
 
             extract_rust_btn = QPushButton("Extract")
             extract_rust_btn.setObjectName("accentBtn")
@@ -1999,24 +2000,30 @@ class ItemBuffsTab(QWidget):
         ]   
         
         def gen_styles(font_color: str, bkg_color: str):
+            # Calm cards instead of 14 loud colours: neutral surface, the
+            # preset's own colour kept as a stripe on the left.
             return f"""
-            QPushButton, QToolTip {{
+            QPushButton {{
                 font-size: 13px;
                 font-weight: bold;
+                text-align: left;
+                padding: 14px 18px;
+                background-color: {COLORS['header']};
+                color: {COLORS['text']};
+                border: 1px solid {COLORS['border']};
+                border-left: 5px solid {bkg_color};
+                border-radius: 6px;
             }}
-            
-            QPushButton {{
-                color: {font_color};
-                background-color: {bkg_color};
-                padding: 16px 24px;
+            QPushButton:hover {{
+                background-color: {COLORS['selected']};
+                border-color: {COLORS['accent']};
+                border-left: 5px solid {bkg_color};
             }}
-            
-            QToolTip {{
-                color: black;
-                background-color: white;
-                border: 1px solid black;
+            QPushButton:pressed {{
+                background-color: {COLORS['accent']};
+                color: {COLORS['on_accent']};
             }}
-            """        
+            """
         
         page = QWidget()
         pl = QVBoxLayout(page)
