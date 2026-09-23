@@ -2823,6 +2823,40 @@ class ItemBuffsTab(QWidget):
         socket_bulk_btn.clicked.connect(self._eb_extend_all_sockets_to_5)
         sgl.addWidget(socket_bulk_btn)
 
+        # Filtered bulk: one equipment type and/or tier at a time - between
+        # "every item in the game" above and one item after another.
+        filt_row = QHBoxLayout()
+        filt_row.setSpacing(6)
+        filt_row.addWidget(QLabel("Type:"))
+        self._eb_socket_type_filter = QComboBox()
+        self._eb_socket_type_filter.addItem("All equipment", None)
+        for _label, _hashes in self._equip_type_choices():
+            self._eb_socket_type_filter.addItem(_label, _hashes)
+        filt_row.addWidget(self._eb_socket_type_filter, 1)
+        filt_row.addWidget(QLabel("Tier:"))
+        self._eb_socket_tier_filter = QComboBox()
+        for _label, _rng in (("All tiers", (0, 99)),
+                             ("Legendary (5)", (5, 5)),
+                             ("Epic and above (4+)", (4, 99)),
+                             ("Rare and above (3+)", (3, 99)),
+                             ("Epic (4)", (4, 4)),
+                             ("Rare (3)", (3, 3)),
+                             ("Uncommon (2)", (2, 2)),
+                             ("Common (1)", (1, 1))):
+            self._eb_socket_tier_filter.addItem(_label, _rng)
+        filt_row.addWidget(self._eb_socket_tier_filter)
+        sgl.addLayout(filt_row)
+
+        socket_filtered_btn = QPushButton("Matching items \u2192 5 Sockets")
+        socket_filtered_btn.setStyleSheet(
+            "background-color: #1565C0; color: white; font-weight: bold; "
+            "padding: 8px;")
+        socket_filtered_btn.setToolTip(
+            "Extend only the items that match Type and Tier to 5 sockets,\n"
+            "e.g. all Legendary gloves. Shows the count and asks before changing anything.")
+        socket_filtered_btn.clicked.connect(self._eb_extend_filtered_sockets_to_5)
+        sgl.addWidget(socket_filtered_btn)
+
         pl.addWidget(sockets_grp)
 
         # ── Dragon Speed Boost ───────────────────────────────────────────────
@@ -3760,6 +3794,17 @@ class ItemBuffsTab(QWidget):
         table.setSortingEnabled(False)
         table.setRowCount(len(results))
 
+        # Several items share one display name - among equipment 110 names
+        # cover 326 items. Two different "Helms Leather Boots" exist, one with
+        # two sockets and one with none, and the list showed them identically:
+        # you picked one at random and the change landed on the wrong item.
+        # Where a name repeats, the internal name and socket count follow it.
+        def _shown_name(it) -> str:
+            n = self._name_db.get_name(it.item_key)
+            return it.name if n.startswith("Unknown") else n
+        from collections import Counter as _Counter
+        _name_counts = _Counter(_shown_name(it) for it in results)
+
         for row, item in enumerate(results):
             icon_cell = QTableWidgetItem()
             if self._buff_icons_enabled:
@@ -3768,9 +3813,14 @@ class ItemBuffsTab(QWidget):
                     icon_cell.setIcon(QIcon(px))
             table.setItem(row, 0, icon_cell)
 
-            display_name = self._name_db.get_name(item.item_key)
-            if display_name.startswith("Unknown"):
-                display_name = item.name
+            display_name = _shown_name(item)
+            if _name_counts[display_name] > 1:
+                _ri = self._buff_rust_lookup.get(item.item_key) or {}
+                _ddd = _ri.get('drop_default_data') or {}
+                _n = (len(_ddd.get('add_socket_material_item_list') or [])
+                      if _ddd.get('use_socket') else 0)
+                _sock = f"{_n} socket{'s' if _n != 1 else ''}" if _n else "no sockets"
+                display_name = f"{display_name}  ({item.name} \u00b7 {_sock})"
             name_cell = QTableWidgetItem(display_name)
             tip = f"Internal: {item.name}\nKey: {item.item_key}"
             rust_info = self._buff_rust_lookup.get(item.item_key)
@@ -3867,7 +3917,8 @@ class ItemBuffsTab(QWidget):
         display_name = self._name_db.get_name(item.item_key) if hasattr(self, '_name_db') else item.name
         if display_name.startswith("Unknown"):
             display_name = item.name
-        self._buff_selected_label.setText(f"Editing: {display_name}  (key {item.item_key})")
+        self._buff_selected_label.setText(
+            f"Editing: {display_name}  (key {item.item_key}, {item.name})")
         self._buff_selected_label.setStyleSheet(
             f"color: {COLORS['accent']}; font-weight: bold; padding: 2px 4px;"
         )
@@ -8132,6 +8183,141 @@ class ItemBuffsTab(QWidget):
                 f"Bulk sockets: +{changed} extended, +{force_enabled} force-enabled "
                 f"({TARGET} slots). Export / Apply to write.")
 
+
+    # Armour and accessories first in the Type list, everything else after.
+    _EQUIP_TYPE_PREFERRED = ("Helm", "UpperBody", "Hand", "Foot", "LowerBody",
+                             "Cloak", "Necklace", "Ring", "Earring", "Mask",
+                             "Crown", "Backpack", "Lantern")
+    _EQUIP_TYPE_LABELS = {"Hand": "Gloves (Hand)", "Foot": "Boots (Foot)",
+                          "Helm": "Helmets", "UpperBody": "Chest armour",
+                          "LowerBody": "Leg armour"}
+
+    def _equip_type_choices(self) -> list:
+        """(label, set of equip_type hashes) for the socket filter.
+
+        Read from data/equip_type_hash_map.json. Several hashes can share one
+        label (three kinds of backpack, two of rings); they are merged under a
+        single entry. If the file cannot be read the list stays empty and only
+        "All equipment" is offered - that is logged, not hidden.
+        """
+        try:
+            from data_db import _load_json_fallback
+            data = _load_json_fallback("equip_type_hash_map.json") or {}
+        except Exception as e:  # noqa: BLE001
+            log.warning("Equip type list for the socket filter not loaded: %s", e)
+            data = {}
+        by_label: dict = {}
+        for h, label in (data.get("hashes") or {}).items():
+            try:
+                by_label.setdefault(label, set()).add(int(h, 16))
+            except (TypeError, ValueError):
+                continue
+        if not by_label:
+            log.warning("Equip type list for the socket filter is empty")
+        first = [l for l in self._EQUIP_TYPE_PREFERRED if l in by_label]
+        rest = sorted(l for l in by_label if l not in first)
+        return [(self._EQUIP_TYPE_LABELS.get(l, l), by_label[l]) for l in first + rest]
+
+    def _eb_extend_filtered_sockets_to_5(self) -> None:
+        """Like "All -> 5 Sockets", limited to one equipment type and/or tier."""
+        if not getattr(self, '_buff_rust_items', None):
+            QMessageBox.warning(self, "Sockets",
+                "Extract with Rust parser first (click 'Extract (Rust)').")
+            return
+
+        TARGET = 5
+        DEFAULT_COSTS = [500, 1000, 2000, 3000, 4000, 5000, 6000, 7000]
+        hashes = self._eb_socket_type_filter.currentData()
+        lo, hi = self._eb_socket_tier_filter.currentData() or (0, 99)
+        what = (f"{self._eb_socket_type_filter.currentText()}, "
+                f"{self._eb_socket_tier_filter.currentText()}")
+
+        def _sockets(it) -> list:
+            ddd = it.get('drop_default_data') or {}
+            return (ddd.get('add_socket_material_item_list') or []) if ddd.get('use_socket') else []
+
+        matching = []
+        for it in self._buff_rust_items:
+            if not it.get('drop_default_data') or not it.get('equip_type_info'):
+                continue
+            if hashes is not None and it.get('equip_type_info') not in hashes:
+                continue
+            if not (lo <= (it.get('item_tier') or 0) <= hi):
+                continue
+            matching.append(it)
+
+        if not matching:
+            QMessageBox.information(self, "Sockets", f"No equipment matches: {what}.")
+            return
+
+        to_extend = [it for it in matching if 0 < len(_sockets(it)) < TARGET]
+        already = sum(1 for it in matching if len(_sockets(it)) >= TARGET)
+        without = [it for it in matching if not _sockets(it)]
+
+        summary = (f"{len(matching)} items match: {what}\n\n"
+                   f"  {len(to_extend):>5}  have sockets and will be extended to {TARGET}\n"
+                   f"  {already:>5}  already have {TARGET} or more\n"
+                   f"  {len(without):>5}  have no sockets at all\n")
+        include_without = False
+        if without:
+            reply = QMessageBox.question(
+                self, "Sockets",
+                summary + "\n"
+                f"Also give {TARGET} sockets to the {len(without)} items that have none?\n\n"
+                "Yes = also those\n"
+                "No = only extend items that already have sockets (recommended)\n\n"
+                "Items without sockets are often variants the game never meant to\n"
+                "have any; whether the game accepts them is not tested for every type.",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, QMessageBox.No)
+            if reply == QMessageBox.Cancel:
+                return
+            include_without = (reply == QMessageBox.Yes)
+        elif not to_extend:
+            QMessageBox.information(self, "Sockets",
+                summary + "\nNothing to change.")
+            return
+        else:
+            reply = QMessageBox.question(
+                self, "Sockets", summary + "\nApply?",
+                QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Ok)
+            if reply != QMessageBox.Ok:
+                return
+
+        def _build_list(existing: list) -> list:
+            new_list = list(existing)
+            while len(new_list) < TARGET:
+                cost = DEFAULT_COSTS[len(new_list)] if len(new_list) < len(DEFAULT_COSTS) else 5000
+                new_list.append({'item': 1, 'value': cost})
+            return new_list
+
+        extended = enabled = 0
+        for it in to_extend:
+            ddd = it['drop_default_data']
+            ddd['add_socket_material_item_list'] = _build_list(ddd.get('add_socket_material_item_list') or [])
+            ddd['socket_valid_count'] = TARGET
+            extended += 1
+        if include_without:
+            for it in without:
+                ddd = it['drop_default_data']
+                ddd['use_socket'] = 1
+                ddd['add_socket_material_item_list'] = _build_list([])
+                ddd['socket_valid_count'] = TARGET
+                enabled += 1
+
+        log.info("Filtered sockets (%s): %d extended, %d enabled, %d already at %d",
+                 what, extended, enabled, already, TARGET)
+        if extended or enabled:
+            self._buff_modified = True
+            self._buff_status_label.setText(
+                f"Sockets ({what}): {extended} extended, {enabled} newly enabled. "
+                f"Export / Apply to write.")
+        QMessageBox.information(
+            self, "Sockets",
+            f"{extended} items extended to {TARGET} sockets"
+            + (f", {enabled} items given sockets" if enabled else "") + ".\n\n"
+            "Export Field JSON v3 or Apply to write the change.\n\n"
+            "In testing, items already in your inventory showed the new socket\n"
+            "count as well, not only newly bought or dropped ones.")
 
     def _eb_add_imbue_to_selected(self) -> None:
         try:
