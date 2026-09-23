@@ -962,8 +962,17 @@ class MainWindow(QMainWindow):
             dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
             dock.setFloating(False)
             self.addDockWidget(Qt.LeftDockWidgetArea, dock)
-            self.resizeDocks([dock], [self._sb_saved_width or 260], Qt.Horizontal)
+            # Docked, the panel was squeezed to its 40 px minimum and could
+            # not be widened (reported from the first build): resizeDocks()
+            # before the window is on screen has no effect, and the main area
+            # claimed all the room. A real minimum plus a resize once the
+            # event loop runs fixes both; the splitter can still widen it.
+            dock.setMinimumWidth(220)
+            width = max(self._config.get("save_browser_width", 0) or 0,
+                        self._sb_saved_width or 260, 220)
+            QTimer.singleShot(0, lambda: self.resizeDocks([dock], [width], Qt.Horizontal))
         else:
+            dock.setMinimumWidth(0)
             dock.setFloating(True)
             dock.setAllowedAreas(Qt.NoDockWidgetArea)
             dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
