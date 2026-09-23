@@ -1089,6 +1089,19 @@ class MainWindow(QMainWindow):
         # The Save Editor navigates with self._tabs / self._real_tabs.
         win._tabs = rt
         win._real_tabs = rt
+        # Its "Item Database" buttons (e.g. in Knowledge) pointed at its own
+        # item list, which is not shown any more - send them to this one.
+        se_goto = win._goto_subtab
+
+        def _se_goto_subtab(group_widget, tab_widget):
+            if group_widget is items_page:
+                rt.setCurrentWidget(self._items_tabs)
+                db = getattr(self, "_database_tab", None)
+                if db is not None and self._items_tabs.indexOf(db) >= 0:
+                    self._items_tabs.setCurrentWidget(db)
+                return
+            se_goto(group_widget, tab_widget)
+        win._goto_subtab = _se_goto_subtab
 
         # One Save Browser and one Pack Browser: the Save Editor's.
         for old in (getattr(self, "_save_dock", None), getattr(self, "_pack_dock", None)):
