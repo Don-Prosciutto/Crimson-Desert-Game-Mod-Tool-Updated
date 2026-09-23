@@ -653,11 +653,11 @@ class MainWindow(QMainWindow):
         self._sb_collapsed = True
         self._ps_collapsed = True
 
-        self._save_dock.setFloating(True)
-        self._save_dock.setAllowedAreas(Qt.NoDockWidgetArea)
-        self._save_dock.setFeatures(
-            QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable
-        )
+        # Floating window by default, as the author built it. With
+        # View -> Show / Hide Panels -> "Pin Save Browser to the left" it
+        # stays docked on the left instead and comes back on the next start.
+        self._apply_save_browser_mode(self._config.get("save_browser_pinned", False),
+                                      show=self._config.get("save_browser_pinned", False))
 
         _corner = QWidget()
         _corner_layout = QHBoxLayout(_corner)
@@ -667,11 +667,12 @@ class MainWindow(QMainWindow):
         self._btn_toggle_save_browser = QPushButton("Save Browser")
         self._btn_toggle_save_browser.setCheckable(True)
         self._btn_toggle_save_browser.setToolTip(
-            "Open the Save Browser as a floating window"
+            "Show or hide the Save Browser.\n"
+            "View -> Show / Hide Panels -> 'Pin Save Browser to the left' keeps it docked."
         )
         self._btn_toggle_save_browser.clicked.connect(
             lambda checked: (
-                self._save_dock.setFloating(True),
+                self._save_dock.setFloating(not self._config.get("save_browser_pinned", False)),
                 self._save_dock.setVisible(checked),
                 self._save_dock.raise_() if checked else None,
             )
@@ -679,6 +680,9 @@ class MainWindow(QMainWindow):
         self._save_dock.visibilityChanged.connect(
             self._btn_toggle_save_browser.setChecked
         )
+        # The dock may already have been shown (pinned) before this button
+        # existed; the window is not visible yet, so ask the setting.
+        self._btn_toggle_save_browser.setChecked(self._config.get("save_browser_pinned", False))
         _corner_layout.addWidget(self._btn_toggle_save_browser)
 
         self._tabs.setCornerWidget(_corner, Qt.TopRightCorner)
@@ -754,7 +758,7 @@ class MainWindow(QMainWindow):
 
         def _pop_save_browser() -> None:
             if hasattr(self, "_save_dock"):
-                self._save_dock.setFloating(True)
+                self._save_dock.setFloating(not self._config.get("save_browser_pinned", False))
                 self._save_dock.show()
                 self._save_dock.raise_()
                 self._save_dock.activateWindow()
@@ -949,6 +953,26 @@ class MainWindow(QMainWindow):
 
         if self._config.get("ui_scale", 100) != 100 or self._config.get("compact_mode", False):
             self._apply_ui_settings()
+
+    def _apply_save_browser_mode(self, pinned: bool, show: bool) -> None:
+        """Docked on the left (pinned) or a floating window (the default)."""
+        dock = self._save_dock
+        if pinned:
+            dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+            dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
+            dock.setFloating(False)
+            self.addDockWidget(Qt.LeftDockWidgetArea, dock)
+            self.resizeDocks([dock], [self._sb_saved_width or 260], Qt.Horizontal)
+        else:
+            dock.setFloating(True)
+            dock.setAllowedAreas(Qt.NoDockWidgetArea)
+            dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
+        dock.setVisible(show)
+
+    def _menu_pin_save_browser(self, pinned: bool) -> None:
+        self._config["save_browser_pinned"] = bool(pinned)
+        self._save_config()
+        self._apply_save_browser_mode(bool(pinned), show=bool(pinned) or self._save_dock.isVisible())
 
     def _toggle_save_sidebar(self) -> None:
         if self._save_dock.isVisible():
@@ -1791,6 +1815,12 @@ class MainWindow(QMainWindow):
             self._config.get("show_gamepath_bar", True))
         self._show_gamepath_action.triggered.connect(self._menu_toggle_gamepath)
         panels_menu.addAction(self._show_gamepath_action)
+
+        self._pin_save_browser_action = QAction("Pin Save Browser to the left", self)
+        self._pin_save_browser_action.setCheckable(True)
+        self._pin_save_browser_action.setChecked(self._config.get("save_browser_pinned", False))
+        self._pin_save_browser_action.toggled.connect(self._menu_pin_save_browser)
+        panels_menu.addAction(self._pin_save_browser_action)
 
         view_menu.addSeparator()
 
