@@ -2847,7 +2847,8 @@ class ItemBuffsTab(QWidget):
         self._eb_socket_target = QSpinBox()
         self._eb_socket_target.setRange(1, 5)
         self._eb_socket_target.setValue(5)
-        self._eb_socket_target.setFixedWidth(60)
+        # 60 px left the digit half under the arrow buttons.
+        self._eb_socket_target.setFixedWidth(76)
         self._eb_socket_target.setToolTip(
             "How many sockets the matching items should have.\n"
             "Items that already have this many or more are not changed.")
