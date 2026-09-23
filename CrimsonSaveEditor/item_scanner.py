@@ -941,6 +941,14 @@ BAG_KEY_NAMES = {
     12: "Recovery",
     13: "Kuku",
     14: "Invisible",
+    # Since game 2.0x (names from the game's inventory table / English UI):
+    15: "Wardrobe",            # Housing_Dresser
+    16: "KukuCooler",          # Housing_Refrigerator
+    17: "HousingSymbol",
+    18: "CollectiblesChest",   # Housing_Collecting
+    19: "GatherablesChest",    # Housing_GatheredMaterials
+    20: "BirdFeeder",
+    21: "Ship",
 }
 
 

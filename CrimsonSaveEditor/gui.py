@@ -4485,6 +4485,8 @@ QCheckBox::indicator {{
             self._ride_check_btn.setVisible(self._experimental_mode)
         if hasattr(self, '_unlock_all_dev_btn'):
             self._unlock_all_dev_btn.setVisible(self._experimental_mode)
+        if hasattr(self, '_dye_add_btn'):
+            self._dye_add_btn.setVisible(self._experimental_mode)
         if False:
             pass
         if hasattr(self, '_buff_apply_game_btn'):
@@ -4566,21 +4568,46 @@ QCheckBox::indicator {{
 
         from PySide6.QtWidgets import QTabBar
         self._inv_subtabs = QTabBar()
+        # Labels follow the game's own names. In the game both storages are
+        # just called "Storage" - the one at the camp and the one in towns.
+        # Chests and bags that are empty in the loaded save are hidden.
         self._inv_subtab_filters = [
             ("All", None, None),
             ("Equipment", "source", "Equipment"),
             ("Inventory", "bag", "Character"),
             ("Quest", "bag", "Quest"),
-            ("Camp Warehouse", "bag", "CampWarehouse"),
-            ("Warehouse", "bag", "Warehouse"),
+            ("Camp Storage", "bag", "CampWarehouse"),
+            ("Storage", "bag", "Warehouse"),
             ("Bank", "bag", "Bank"),
-            ("Kuku", "bag", "Kuku"),
+            ("Kuku Pot", "bag", "Kuku"),
+            ("Wardrobe", "bag", "Wardrobe"),
+            ("Collectibles Chest", "bag", "CollectiblesChest"),
+            ("Gatherables Chest", "bag", "GatherablesChest"),
+            ("Kuku Cooler", "bag", "KukuCooler"),
+            ("Bird Feeder", "bag", "BirdFeeder"),
+            ("Feed Bin", "bag", "CampStraw"),
+            ("Wagon", "bag", "Wagon"),
+            ("Ship", "bag", "Ship"),
             ("Money", "bag", "Money"),
             ("Vendor", "source_vendor", None),
             ("Mercenary", "source", "Mercenary"),
         ]
+        self._inv_subtab_always = {"All", "Equipment", "Inventory", "Camp Storage", "Storage"}
+        _inv_tips = {
+            "Camp Storage": "The storage at your camp (in the game: \"Storage\")",
+            "Storage": "The storage in towns (in the game: \"Storage\")",
+            "Kuku Pot": "In the game: Kuku Pot",
+            "Wardrobe": "Housing: wardrobe",
+            "Collectibles Chest": "Housing: collectibles chest",
+            "Gatherables Chest": "Housing: gatherables chest",
+            "Kuku Cooler": "Housing: Kuku cooler",
+        }
         for label, _, _ in self._inv_subtab_filters:
-            self._inv_subtabs.addTab(label)
+            i = self._inv_subtabs.addTab(label)
+            if label in _inv_tips:
+                self._inv_subtabs.setTabToolTip(i, _inv_tips[label])
+            if hasattr(self._inv_subtabs, "setTabVisible"):
+                self._inv_subtabs.setTabVisible(i, label in self._inv_subtab_always)
         self._inv_subtabs.setExpanding(False)
         self._inv_subtabs.setDocumentMode(True)
         self._inv_subtabs.currentChanged.connect(self._on_inv_subtab_changed)
@@ -7297,6 +7324,10 @@ QCheckBox::indicator {{
             "Requires at least one other item in the save to have been dyed (for schema)."
         )
         self._dye_add_btn.clicked.connect(self._dye_add_to_item)
+        # Inserting dye data needs the exact slot count; a wrong one breaks the
+        # save. Dyeing once in the game is the safe way, so this stays behind
+        # the experimental switch.
+        self._dye_add_btn.setVisible(bool(getattr(self, '_experimental_mode', False)))
         quick_row.addWidget(self._dye_add_btn)
 
         right_layout.addLayout(quick_row)
@@ -7474,7 +7505,10 @@ QCheckBox::indicator {{
         self._dye_updating = False
 
         if not entries:
-            self._dye_status.setText(f"'{self._dye_current_item['item_name']}' — no dye data (item was never dyed in-game)")
+            self._dye_status.setText(
+                f"'{self._dye_current_item['item_name']}' has no dye data yet. Dye it once in the "
+                f"game (any colour), save, load the save here again - then you can change the "
+                f"colours freely.")
         else:
             self._dye_status.setText(f"'{self._dye_current_item['item_name']}': {len(entries)} dye parts — click a part then pick a color")
 
@@ -32280,6 +32314,13 @@ QCheckBox::indicator {{
             else:
                 count = 0
             self._inv_subtabs.setTabText(idx, f"{label} ({count})" if count else label)
+            if hasattr(self._inv_subtabs, "setTabVisible"):
+                self._inv_subtabs.setTabVisible(
+                    idx, bool(count) or label in getattr(self, "_inv_subtab_always", ()))
+        cur = self._inv_subtabs.currentIndex()
+        if hasattr(self._inv_subtabs, "isTabVisible") and cur >= 0 \
+                and not self._inv_subtabs.isTabVisible(cur):
+            self._inv_subtabs.setCurrentIndex(0)
 
     def _get_selected_items(self, table: QTableWidget) -> List[SaveItem]:
         rows = set(idx.row() for idx in table.selectedIndexes())

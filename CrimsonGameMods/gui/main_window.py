@@ -58,6 +58,7 @@ from gui.theme import (
     THEMES, stylesheet_for, button_css, checkbox_css, _combo_arrow_uri,
 )
 from gui.utils import _num_item
+from gui.selftest_ui import SelfTestMixin
 
 
 def find_save_files() -> List[dict]:
@@ -176,7 +177,7 @@ def _enable_drag_drop_under_uipi(hwnd: int) -> None:
         func(ctypes.c_void_p(hwnd), msg, MSGFLT_ALLOW, None)
 
 
-class MainWindow(QMainWindow):
+class MainWindow(SelfTestMixin, QMainWindow):
 
     _icon_ready = Signal(int)
     _parc_step = Signal(int)
@@ -265,6 +266,8 @@ class MainWindow(QMainWindow):
         self._build_main_layout()
         self._setup_lazy_tab_loading()
         self._build_status_bar()
+        self._selftest_build_status()
+        QTimer.singleShot(1500, self._selftest_start)
 
         # Re-apply after construction in case a lazy widget creation path
         # changed COLORS. No-op if already applied, safe either way.
@@ -1037,6 +1040,8 @@ class MainWindow(QMainWindow):
                 setattr(win, _n, lambda *a, **k: None)
             self._se_window = win
             self._se_merge(win)
+            if hasattr(win, '_dye_add_btn'):
+                win._dye_add_btn.setVisible(self._experimental_mode)
             self._update_status("Save Editor ready")
             log.info("Save Editor merged into the main window")
         except Exception as e:  # noqa: BLE001
@@ -1395,6 +1400,7 @@ class MainWindow(QMainWindow):
                 it.setFirstColumnSpanned(True)
         nav.blockSignals(False)
         self._nav_sync()
+        self._selftest_apply_to_nav()
 
     def _nav_clicked(self, item, _col=0) -> None:
         data = item.data(0, Qt.UserRole)
@@ -2190,6 +2196,20 @@ class MainWindow(QMainWindow):
         check_mods_act.triggered.connect(self._check_mods_dialog)
         file_menu.addAction(check_mods_act)
 
+        conflicts_act = QAction("Check DMM Mods for Conflicts...", self)
+        conflicts_act.setToolTip(
+            "Find active DMM mods that change the same fields or files - reads only")
+        conflicts_act.triggered.connect(lambda: __import__(
+            "gui.mod_conflicts_ui", fromlist=["run"]).run(self))
+        file_menu.addAction(conflicts_act)
+
+        game_check_act = QAction("Check Game Compatibility", self)
+        game_check_act.setToolTip(
+            "Read and write back every table the tool edits - shows whether the "
+            "parser still fits the installed game")
+        game_check_act.triggered.connect(lambda: self._selftest_start(force=True))
+        file_menu.addAction(game_check_act)
+
         file_menu.addSeparator()
 
         exit_act = QAction("Exit", self)
@@ -2848,6 +2868,12 @@ QCheckBox {{
             self._unlock_all_dev_btn.setVisible(self._experimental_mode)
         if hasattr(self, '_dye_tab'):
             self._dye_tab.set_experimental_mode(self._experimental_mode)
+        # Save Editor pages: only the switches that are safe to flip from here
+        # (its own _update_experimental_tabs would also move pages around).
+        se = getattr(self, '_se_window', None)
+        if se is not None:
+            if hasattr(se, '_dye_add_btn'):
+                se._dye_add_btn.setVisible(self._experimental_mode)
         # Game Mods tab export buttons (dev-gated, unsupported)
         for tab_attr in ('_field_edit_tab_obj', '_patches_tab', '_store_tab',
                          '_dropset_tab', '_spawn_tab', '_mercpets_tab'):
@@ -3046,7 +3072,9 @@ QCheckBox {{
             self._game_browser_tab.set_game_path(path)
         if hasattr(self, '_database_tab'):
             self._database_tab.set_game_path(path)
-        self._warn_on_version_mismatch(path)
+        # The game check replaces the old version warning: it tests the
+        # tables themselves instead of guessing from the version number.
+        self._selftest_start(path)
 
     def _check_mods_dialog(self) -> None:
         """Pick Field JSON mods and report whether they still fit this game.
