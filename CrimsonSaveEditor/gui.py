@@ -2826,6 +2826,9 @@ class MainWindow(QMainWindow):
         self._pack_mgr = PackManager()
         self._set_mgr = SetManager()
         self._icon_cache = IconCache()
+        # Downloaded pictures fill into the inventory list as they arrive.
+        if hasattr(self._icon_cache, "arrived"):
+            self._icon_cache.arrived.connect(self._icon_ready.emit)
 
         self._max_enchant_map: dict = {}
         try:
@@ -3307,7 +3310,8 @@ class MainWindow(QMainWindow):
         self._build_quest_database_tab()
         self._build_waypoint_tab()
         self._build_knowledge_tab()
-        self._build_teleport_tab()
+        # Teleport page removed: it only said the teleporter was gone
+        # (use Dameon's standalone Crimson Desert Teleporter).
         self._build_faction_tab()
 
         self._tabs = _real_tabs
@@ -32221,13 +32225,8 @@ QCheckBox::indicator {{
         if hasattr(self, '_global_icons_btn'):
             self._global_icons_btn.setText(btn_text)
 
-        if self._icons_enabled and self._icon_cache.coverage == 0:
-            QMessageBox.information(
-                self, "Local icon pack not found",
-                "No local icons were found. Place the optional icons_local folder next to "
-                "the editor executable, then restart or toggle Local Icons again.\n\n"
-                "This editor never downloads icons.",
-            )
+        # Icons now download on first use (see icon_cache.py); the old
+        # "no local icon pack" notice is gone with that.
 
         for tbl in [self._inv_table, self._equip_table, self._repurch_table, self._db_table, self._swap_list, self._merc_table]:
             tbl.setColumnWidth(0, (ICON_SIZE + 16) if self._icons_enabled else 0)

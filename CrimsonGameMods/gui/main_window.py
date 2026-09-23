@@ -1095,6 +1095,8 @@ class MainWindow(QMainWindow):
 
         # One icon cache for both halves (one download folder).
         win._icon_cache = self._icon_cache
+        if hasattr(self._icon_cache, "arrived") and hasattr(win, "_icon_ready"):
+            self._icon_cache.arrived.connect(win._icon_ready.emit)
 
         # The Save Editor navigates with self._tabs / self._real_tabs.
         win._tabs = rt
@@ -1288,6 +1290,11 @@ class MainWindow(QMainWindow):
         nav = QTreeWidget()
         nav.setObjectName("navTree")
         nav.setHeaderHidden(True)
+        nav.setColumnCount(2)          # page name | scope badge on group rows
+        from PySide6.QtWidgets import QHeaderView as _QHV
+        nav.header().setStretchLastSection(False)
+        nav.header().setSectionResizeMode(0, _QHV.Stretch)
+        nav.header().setSectionResizeMode(1, _QHV.ResizeToContents)
         nav.setRootIsDecorated(False)
         nav.setIndentation(14)
         nav.setFocusPolicy(Qt.NoFocus)
@@ -1351,8 +1358,18 @@ class MainWindow(QMainWindow):
                 color = {"game": COLORS["scope_game"], "save": COLORS["scope_save"]}.get(
                     scope, COLORS["text_dim"])
                 grp.setForeground(0, QColor(color))
-                grp.setToolTip(0, {"game": "Changes GAME FILES (all saves)",
-                                   "save": "Changes your SAVE FILE"}.get(scope, ""))
+                tip = {"game": "Changes GAME FILES (all saves)",
+                       "save": "Changes your SAVE FILE"}.get(scope, "")
+                grp.setToolTip(0, tip)
+                badge = {"game": "GAME FILES", "save": "SAVE FILE"}.get(scope, "")
+                if badge:
+                    grp.setText(1, badge + " ")
+                    bf = QFont(f)
+                    bf.setBold(False)
+                    grp.setFont(1, bf)
+                    grp.setForeground(1, QColor(color))
+                    grp.setTextAlignment(1, Qt.AlignRight | Qt.AlignVCenter)
+                    grp.setToolTip(1, tip)
                 grp.setFlags(Qt.ItemIsEnabled)
                 grp.setData(0, Qt.UserRole, ("group", label))
                 nav.addTopLevelItem(grp)
@@ -1361,6 +1378,7 @@ class MainWindow(QMainWindow):
                         continue
                     it = QTreeWidgetItem(grp, [page.tabText(j)])
                     it.setData(0, Qt.UserRole, ("page", page, page.widget(j)))
+                    it.setFirstColumnSpanned(True)
                     tip = page.tabToolTip(j)
                     if tip:
                         it.setToolTip(0, tip)
@@ -1374,6 +1392,7 @@ class MainWindow(QMainWindow):
                 if scope == "save":
                     it.setToolTip(0, "Changes your SAVE FILE")
                 nav.addTopLevelItem(it)
+                it.setFirstColumnSpanned(True)
         nav.blockSignals(False)
         self._nav_sync()
 

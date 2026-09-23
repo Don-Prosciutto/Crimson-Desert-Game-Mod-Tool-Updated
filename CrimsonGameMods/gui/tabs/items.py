@@ -10,7 +10,7 @@ from data_db import get_connection
 
 from typing import Callable, Dict, List, Optional, Tuple
 
-from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtCore import Qt, QSize, Signal, QTimer
 from PySide6.QtGui import QBrush, QColor, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QColorDialog, QComboBox,
@@ -212,6 +212,41 @@ class DatabaseBrowserTab(QWidget):
         self._filter_database()
 
 
+    def _db_schedule_icon_fetch(self, *_a) -> None:
+        if not self._icons_enabled:
+            return
+        timer = getattr(self, "_db_icon_timer", None)
+        if timer is None:
+            timer = self._db_icon_timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.setInterval(150)
+            timer.timeout.connect(self._db_fetch_visible_icons)
+            self._db_table.verticalScrollBar().valueChanged.connect(self._db_schedule_icon_fetch)
+        timer.start()
+
+    def _db_fetch_visible_icons(self) -> None:
+        table = self._db_table
+        if table.rowCount() == 0:
+            return
+        top = max(0, table.rowAt(0))
+        bottom = table.rowAt(table.viewport().height() - 1)
+        if bottom < 0:
+            bottom = table.rowCount() - 1
+        for row in range(top, min(bottom + 3, table.rowCount())):
+            icon_cell, key_cell = table.item(row, 0), table.item(row, 1)
+            if icon_cell is None or key_cell is None or not icon_cell.icon().isNull():
+                continue
+            key = key_cell.data(Qt.UserRole)
+            if not key:
+                continue
+
+            def _arrived(_k, px, cell=icon_cell):
+                try:
+                    cell.setIcon(QIcon(px))
+                except RuntimeError:        # list rebuilt meanwhile
+                    pass
+            self._icon_cache.request_icon(int(key), _arrived)
+
     def _filter_database(self) -> None:
         table = self._db_table
         table.setSortingEnabled(False)
@@ -234,11 +269,12 @@ class DatabaseBrowserTab(QWidget):
 
             icon_item = QTableWidgetItem()
             if self._icons_enabled:
-                px = self._icon_cache.get_pixmap(info.item_key)
+                # Pictures on disk right away; missing ones are fetched for
+                # the rows on screen only (see _db_fetch_visible_icons) - not
+                # all 6,900 at once.
+                px = self._icon_cache.get_pixmap(info.item_key, fetch=False)
                 if px:
                     icon_item.setIcon(QIcon(px))
-                elif self._icon_cache.has_icon(info.item_key):
-                    self._icon_cache.request_icon(info.item_key, lambda k, px: None)
             table.setItem(row, 0, icon_item)
 
             key_item = QTableWidgetItem(str(info.item_key))
@@ -258,6 +294,8 @@ class DatabaseBrowserTab(QWidget):
             table.setItem(row, 5, QTableWidgetItem(str(info.max_stack)))
 
         table.setSortingEnabled(True)
+        if self._icons_enabled:
+            self._db_schedule_icon_fetch()
         self._db_info_label.setText(
             f"Showing {len(items)} of {len(self._name_db.items)} items  |  "
             f"DB version: {self._name_db.version}  |  "

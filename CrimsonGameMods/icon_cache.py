@@ -21,7 +21,7 @@ import logging
 import os
 import sys
 import threading
-from concurrent.futures import ThreadPoolExecutor
+import queue
 from typing import Callable, Dict, List, Optional
 from urllib.request import urlopen, Request
 
@@ -67,6 +67,7 @@ def _search_dirs(cache_dir: str) -> List[str]:
 
 class _Notifier(QObject):
     fetched = Signal(int, bool)
+    arrived = Signal(int)          # a downloaded picture is ready (UI thread)
 
 
 class IconCache:
@@ -84,9 +85,15 @@ class IconCache:
         except OSError:
             pass
         self._dirs = _search_dirs(self._local_dir) or [self._local_dir]
-        self._pool = ThreadPoolExecutor(max_workers=6, thread_name_prefix="icons")
+        # Six daemon workers. (A ThreadPoolExecutor would make the program
+        # wait on exit until every queued download is done.)
+        self._queue: "queue.Queue[int]" = queue.Queue()
+        self._workers: List[threading.Thread] = []
         self._notifier = _Notifier()
         self._notifier.fetched.connect(self._on_fetched)
+        # Lists that only ask get_pixmap() can listen here and fill in the
+        # picture when its download is done.
+        self.arrived = self._notifier.arrived
 
     # ── lookup ──────────────────────────────────────────────────────────
 
@@ -112,18 +119,60 @@ class IconCache:
         self._pixmaps[item_key] = px
         return px
 
-    def get_pixmap(self, item_key: int) -> Optional[QPixmap]:
-        """The picture if it is on disk; never downloads."""
+    def get_pixmap(self, item_key: int, fetch: bool = True) -> Optional[QPixmap]:
+        """The picture if it is on disk. If not, a download starts in the
+        background (fetch=True) and `arrived` fires when it is there - most
+        lists only ever call this, so this is what makes them fill up."""
         if item_key in self._pixmaps:
             return self._pixmaps[item_key]
-        return self._load(item_key)
+        px = self._load(item_key)
+        if px is None and fetch:
+            self._schedule(item_key)
+        return px
+
+    def _schedule(self, item_key: int) -> None:
+        try:
+            item_key = int(item_key)
+        except (TypeError, ValueError):
+            return
+        if item_key <= 0:
+            return
+        with self._lock:
+            if item_key in self._missing or item_key in self._pending:
+                return
+            self._pending.add(item_key)
+        self._enqueue(item_key)
+
+    @property
+    def coverage(self) -> int:
+        """Number of pictures on disk (0 is fine now - they download)."""
+        n = 0
+        for d in self._dirs:
+            try:
+                n += sum(1 for f in os.listdir(d) if f.endswith(".webp"))
+            except OSError:
+                pass
+        return n
+
+    def get_merc_pixmap(self, char_key: int) -> Optional[QPixmap]:
+        cache_key = f"merc_{char_key}"
+        if cache_key in self._pixmaps:
+            return self._pixmaps[cache_key]
+        for d in self._dirs:
+            p = os.path.join(os.path.dirname(d), "icons_mercenary", f"{char_key}.webp")
+            if os.path.isfile(p):
+                px = QPixmap(p)
+                if not px.isNull():
+                    self._pixmaps[cache_key] = px
+                    return px
+        return None
 
     # ── fetching ────────────────────────────────────────────────────────
 
     def request_icon(self, item_key: int, callback: Callable[[int, QPixmap], None]) -> None:
         """Call callback(key, pixmap) on the UI thread as soon as the picture
         is available - right away if it is on disk, else after a download."""
-        px = self.get_pixmap(item_key)
+        px = self.get_pixmap(item_key, fetch=False)
         if px is not None:
             callback(item_key, px)
             return
@@ -134,7 +183,7 @@ class IconCache:
             if item_key in self._pending:
                 return
             self._pending.add(item_key)
-        self._pool.submit(self._fetch, item_key)
+        self._enqueue(item_key)
 
     def preload_keys(self, keys: list, callback: Callable[[int, QPixmap], None]) -> None:
         for key in keys:
@@ -159,6 +208,22 @@ class IconCache:
                 log.debug("Icon %s from %s: %s", item_key, base, e)
         return False
 
+    def _enqueue(self, item_key: int) -> None:
+        if len(self._workers) < 6:
+            t = threading.Thread(target=self._worker, name=f"icons-{len(self._workers)}",
+                                 daemon=True)
+            self._workers.append(t)
+            t.start()
+        self._queue.put(item_key)
+
+    def _worker(self) -> None:
+        while True:
+            key = self._queue.get()
+            try:
+                self._fetch(key)
+            except Exception:  # noqa: BLE001
+                pass
+
     def _fetch(self, item_key: int) -> None:          # worker thread: bytes only
         ok = False
         try:
@@ -180,9 +245,10 @@ class IconCache:
                 cb(item_key, px)
             except Exception as e:  # noqa: BLE001
                 log.debug("Icon callback for %s failed: %s", item_key, e)
+        self._notifier.arrived.emit(item_key)
 
     def download_icon_sync(self, item_key: int) -> Optional[QPixmap]:
-        px = self.get_pixmap(item_key)
+        px = self.get_pixmap(item_key, fetch=False)
         if px is not None:
             return px
         if item_key in self._missing:
