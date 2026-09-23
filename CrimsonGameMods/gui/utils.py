@@ -321,10 +321,10 @@ def make_help_btn(guide_key: str, show_guide_fn) -> QPushButton:
     btn.setFixedSize(28, 28)
     btn.setToolTip("Show help for this tab")
     btn.setStyleSheet(
-        f"QPushButton {{ background-color: {COLORS['error']}; color: white; "
-        f"font-weight: bold; font-size: 14px; border: 2px solid {COLORS['error']}; "
+        f"QPushButton {{ background-color: {COLORS['accent']}; color: {COLORS['on_accent']}; "
+        f"font-weight: bold; font-size: 14px; border: 2px solid {COLORS['accent']}; "
         f"border-radius: 14px; padding: 0; }}"
-        f"QPushButton:hover {{ background-color: #ff6655; border-color: #ff6655; }}"
+        f"QPushButton:hover {{ background-color: {COLORS['accent_hover']}; border-color: {COLORS['accent_hover']}; }}"
     )
     btn.clicked.connect(lambda: show_guide_fn(guide_key))
     return btn

@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (QSpinBox,
     QVBoxLayout, QWidget,
 )
 
-from gui.theme import COLORS
+from gui.theme import COLORS, button_css
 
 log = logging.getLogger(__name__)
 
@@ -224,7 +224,7 @@ class SkillTreeTab(QWidget):
 
 
         self._btn_skill_export = QPushButton("Export Field JSON v3")
-        self._btn_skill_export.setStyleSheet("background-color: #0277BD; color: white; font-weight: bold;")
+        self._btn_skill_export.setStyleSheet(button_css("primary") + " font-weight: bold;")
         self._btn_skill_export.setToolTip(
             "Export current modifications as Format 3 field-name JSON.\n"
             "This format survives game updates.")
@@ -256,7 +256,7 @@ class SkillTreeTab(QWidget):
             btn = QPushButton(label)
             btn.setToolTip(f"Apply Stamina Preset: {tip}")
             btn.setStyleSheet(
-                "QPushButton { background-color: #00695C; color: white; "
+                "QPushButton { " + button_css("success") + " "
                 "font-weight: bold; padding: 4px 10px; }")
             btn.clicked.connect(
                 lambda _c=False, f=factor: self._on_stamina_preset(f))
@@ -280,7 +280,7 @@ class SkillTreeTab(QWidget):
             btn = QPushButton(label)
             btn.setToolTip(tip)
             btn.setStyleSheet(
-                "QPushButton { background-color: #B71C1C; color: white; "
+                "QPushButton { " + button_css("danger") + " "
                 "font-weight: bold; padding: 4px 10px; }")
             btn.clicked.connect(handler)
             bulk_row.addWidget(btn)

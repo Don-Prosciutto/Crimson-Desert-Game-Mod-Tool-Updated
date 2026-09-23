@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QBrush, QColor
 
-from gui.theme import COLORS
+from gui.theme import COLORS, button_css
 
 log = logging.getLogger(__name__)
 
@@ -128,13 +128,13 @@ class _SubTableEditor(QWidget):
         if self._table_key == "quest":
             auto = QHBoxLayout()
             btn = QPushButton("Unlock All Characters")
-            btn.setStyleSheet("background-color: #7B1FA2; color: white; font-weight: bold;")
+            btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
             btn.setToolTip("Patch start_player_list on all restricted quests to [Kliff, Damiane, Oongka]")
             btn.clicked.connect(self._unlock_all_characters)
             auto.addWidget(btn)
 
             btn2 = QPushButton("Make All Repeatable")
-            btn2.setStyleSheet("background-color: #00695C; color: white; font-weight: bold;")
+            btn2.setStyleSheet(button_css("success") + " font-weight: bold;")
             btn2.clicked.connect(self._make_all_repeatable)
             auto.addWidget(btn2)
             auto.addStretch()
@@ -143,7 +143,7 @@ class _SubTableEditor(QWidget):
         if self._table_key == "mission":
             auto = QHBoxLayout()
             btn = QPushButton("Unlock All Mission Characters")
-            btn.setStyleSheet("background-color: #7B1FA2; color: white; font-weight: bold;")
+            btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
             btn.setToolTip("Patch start_player_list on all missions to [Kliff, Damiane, Oongka]")
             btn.clicked.connect(self._unlock_all_characters)
             auto.addWidget(btn)
@@ -160,7 +160,7 @@ class _SubTableEditor(QWidget):
 
             auto = QHBoxLayout()
             btn = QPushButton("Unlock All Stage Characters")
-            btn.setStyleSheet("background-color: #7B1FA2; color: white; font-weight: bold;")
+            btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
             btn.setToolTip("Clear forbidden lists, set start_player_list to all 3, clear hide_mercenary on all 70 restricted stages")
             btn.clicked.connect(self._unlock_all_stage_characters)
             auto.addWidget(btn)
@@ -451,7 +451,7 @@ class QuestModsTab(QWidget):
 
         unlock_all_btn = QPushButton("Unlock All Characters (one-click)")
         unlock_all_btn.setStyleSheet(
-            "background-color: #7B1FA2; color: white; font-weight: bold;")
+            button_css("neutral") + " font-weight: bold;")
         unlock_all_btn.setToolTip(
             "Extracts all 3 tables, patches character restrictions, and deploys in one click.\n"
             "Quests: 72 restricted -> all 3 characters\n"
@@ -463,7 +463,7 @@ class QuestModsTab(QWidget):
         top.addStretch()
 
         export_btn = QPushButton("Export Field JSON v3")
-        export_btn.setStyleSheet("background-color: #1565C0; color: white; font-weight: bold;")
+        export_btn.setStyleSheet(button_css("primary") + " font-weight: bold;")
         export_btn.clicked.connect(self._export_field_json)
         top.addWidget(export_btn)
 

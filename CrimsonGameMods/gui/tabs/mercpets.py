@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
     QApplication, QComboBox,
 )
 
-from gui.theme import COLORS
+from gui.theme import COLORS, button_css
 
 log = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class MercPetsTab(QWidget):
         top_row.addStretch()
 
         apply_btn = QPushButton("Apply to Game")
-        apply_btn.setStyleSheet("background-color: #B71C1C; color: white; font-weight: bold;")
+        apply_btn.setStyleSheet(button_css("danger") + " font-weight: bold;")
         apply_btn.clicked.connect(self._apply_to_game)
         top_row.addWidget(apply_btn)
 
@@ -117,7 +117,7 @@ class MercPetsTab(QWidget):
         top_row.addWidget(self._overlay_spin)
 
         export_field_btn = QPushButton("Export Field JSON")
-        export_field_btn.setStyleSheet("background-color: #00695C; color: white; font-weight: bold;")
+        export_field_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         export_field_btn.setToolTip(
             "Export edits as Format 3 field-name JSON.\n"
             "Uses field names — survives game updates.")
@@ -132,13 +132,13 @@ class MercPetsTab(QWidget):
         top_row.addWidget(import_field_btn)
 
         restore_btn = QPushButton("Restore")
-        restore_btn.setStyleSheet("background-color: #37474F; color: white; font-weight: bold;")
+        restore_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         restore_btn.clicked.connect(self._restore)
         top_row.addWidget(restore_btn)
 
         reset_btn = QPushButton("Reset Edits")
         reset_btn.setToolTip("Revert all spinners back to the loaded vanilla values.")
-        reset_btn.setStyleSheet("background-color: #37474F; color: white; font-weight: bold;")
+        reset_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         reset_btn.clicked.connect(lambda: self._apply_preset(None))
         top_row.addWidget(reset_btn)
 

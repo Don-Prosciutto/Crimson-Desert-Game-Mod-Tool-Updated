@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (QSpinBox,
     QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from gui.theme import COLORS
+from gui.theme import COLORS, button_css
 from gui.utils import make_scope_label
 from i18n import tr
 
@@ -156,7 +156,7 @@ class FieldEditTab(QWidget):
 
         mesh_swap_btn = QPushButton(tr("🎭 Mesh Swap (Pets / Mounts / NPCs)"))
         mesh_swap_btn.setStyleSheet(
-            "background-color: #4A148C; color: white; font-weight: bold; "
+            button_css("neutral") + " font-weight: bold; "
             "padding: 8px 14px; font-size: 13px;")
         mesh_swap_btn.setToolTip(
             "Visual Transmog for ANY character in the game.\n\n"
@@ -174,7 +174,7 @@ class FieldEditTab(QWidget):
         top_row.addWidget(mesh_swap_btn)
 
         mount_btn = QPushButton(tr("Enable Mounts Everywhere"))
-        mount_btn.setStyleSheet("background-color: #7B1FA2; color: white; font-weight: bold;")
+        mount_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         mount_btn.setToolTip(
             "Patches 3 game files to allow mounts everywhere:\n"
             "1. vehicleinfo: allow all mounts in safe zones\n"
@@ -184,7 +184,7 @@ class FieldEditTab(QWidget):
         top_row.addWidget(mount_btn)
 
         invincible_mounts_btn = QPushButton(tr("Invincible Mounts"))
-        invincible_mounts_btn.setStyleSheet("background-color: #4527A0; color: white; font-weight: bold;")
+        invincible_mounts_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         invincible_mounts_btn.setToolTip(
             "Sets four_flags.flag_a (_invincibility=1) on all mount\n"
             "characterinfo entries via dmm_parser (vehicle_info != 0\n"
@@ -193,7 +193,7 @@ class FieldEditTab(QWidget):
         top_row.addWidget(invincible_mounts_btn)
 
         killall_btn = QPushButton(tr("Make All NPCs Killable"))
-        killall_btn.setStyleSheet("background-color: #B71C1C; color: white; font-weight: bold;")
+        killall_btn.setStyleSheet(button_css("danger") + " font-weight: bold;")
         killall_btn.setToolTip(
             "Sets _isAttackable=1 and _invincibility=0 on all non-mount NPCs\n"
             "via dmm_parser field-level edits (four_flags.flag_a/flag_b).\n\n"
@@ -223,15 +223,20 @@ class FieldEditTab(QWidget):
         self._fieldedit_overlay_spin.valueChanged.connect(
             lambda v: self._config.update({"fieldedit_overlay_dir": int(v)}))
         top_row.addWidget(self._fieldedit_overlay_spin)
+        # Second row for the export / import buttons - on one row they were
+        # cut off ("Expo...") in a normal-sized window.
+        top_row.addStretch(1)
+        layout.addLayout(top_row)
+        top_row = QHBoxLayout()
 
         export_field_json_v3_btn = QPushButton(tr("Export Field JSON v3"))
-        export_field_json_v3_btn.setStyleSheet("background-color: #0277BD; color: white; font-weight: bold;")
+        export_field_json_v3_btn.setStyleSheet(button_css("primary") + " font-weight: bold;")
         export_field_json_v3_btn.setToolTip("Export all FieldEdit changes as Format 3.1 field JSON.")
         export_field_json_v3_btn.clicked.connect(self._field_edit_export_field_json_v3)
         top_row.addWidget(export_field_json_v3_btn)
 
         import_field_json_v3_btn = QPushButton(tr("Import Field JSON v3"))
-        import_field_json_v3_btn.setStyleSheet("background-color: #4527A0; color: white; font-weight: bold;")
+        import_field_json_v3_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         import_field_json_v3_btn.setToolTip(
             "Import a Format 3 field JSON mod and apply its intents\n"
             "to the current FieldEdit data for further editing.\n"
@@ -242,7 +247,7 @@ class FieldEditTab(QWidget):
 
         # Export buttons — only visible in Advanced/Dev mode (unsupported)
         export_mod_btn = QPushButton(tr("Export as Mod"))
-        export_mod_btn.setStyleSheet("background-color: #2E7D32; color: white; font-weight: bold;")
+        export_mod_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         export_mod_btn.setToolTip(
             "ADVANCED — UNSUPPORTED. Contact mod loader dev for help.\n\n"
             "Export as raw-pabgb mod for generic mod loaders.")
@@ -251,7 +256,7 @@ class FieldEditTab(QWidget):
         top_row.addWidget(export_mod_btn)
 
         export_btn = QPushButton(tr("Export as CDUMM Mod"))
-        export_btn.setStyleSheet("background-color: #1B5E20; color: white; font-weight: bold;")
+        export_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         export_btn.setToolTip(
             "ADVANCED — UNSUPPORTED. Contact mod loader dev for help.\n\n"
             "Export as pre-packed PAZ mod for JMM / CDUMM / DMM.")
@@ -260,7 +265,7 @@ class FieldEditTab(QWidget):
         top_row.addWidget(export_btn)
 
         export_json_btn = QPushButton(tr("Export as JSON"))
-        export_json_btn.setStyleSheet("background-color: #0D47A1; color: white; font-weight: bold;")
+        export_json_btn.setStyleSheet(button_css("primary") + " font-weight: bold;")
         export_json_btn.setToolTip(
             "ADVANCED — UNSUPPORTED. Contact mod loader dev for help.\n\n"
             "Export all changes as a portable JSON patch file.")
@@ -292,7 +297,7 @@ class FieldEditTab(QWidget):
         ally_row.addWidget(ally_label)
 
         wipe_btn = QPushButton(tr("Wipe Ally Lists (Path B)"))
-        wipe_btn.setStyleSheet("background-color: #AD1457; color: white; font-weight: bold;")
+        wipe_btn.setStyleSheet(button_css("danger") + " font-weight: bold;")
         wipe_btn.setToolTip(
             "Path B — PROBABLE. Zeros _addOnAllyGroupList hashes across all\n"
             "50 AllyGroup entries. Effect: no group is allied with any other.\n"
@@ -302,7 +307,7 @@ class FieldEditTab(QWidget):
         ally_row.addWidget(wipe_btn)
 
         intruder2_btn = QPushButton(tr("Intruder Flag (slot 2)"))
-        intruder2_btn.setStyleSheet("background-color: #4A148C; color: white; font-weight: bold;")
+        intruder2_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         intruder2_btn.setToolTip(
             "Path C — EXPERIMENT. Sets u8 flag slot #2 = 1 on all 50 groups.\n"
             "Likely _isIntruder (flag distribution suggests it). Test in-game\n"
@@ -465,7 +470,7 @@ class FieldEditTab(QWidget):
 
         self._weapon_slot_inspector_btn = QPushButton(tr("Slot Inspector / Patch..."))
         self._weapon_slot_inspector_btn.setStyleSheet(
-            "background-color: #1B5E20; color: white; font-weight: bold;")
+            button_css("success") + " font-weight: bold;")
         self._weapon_slot_inspector_btn.setToolTip(tr(
             "SURGICAL XML PATCH for action-chart packages.\n\n"
             "The runtime-package SWAP above replaces the whole package — that\n"
@@ -483,7 +488,7 @@ class FieldEditTab(QWidget):
 
         self._weapon_actionchart_btn = QPushButton(tr("Action Chart Browser..."))
         self._weapon_actionchart_btn.setStyleSheet(
-            "background-color: #4A148C; color: white; font-weight: bold;")
+            button_css("neutral") + " font-weight: bold;")
         self._weapon_actionchart_btn.setToolTip(tr(
             "Browse the .paa_metabin ANIMATION files in PAZ 0010 (the layer BELOW\n"
             "the runtime packages above — actual per-action animation metadata).\n\n"
@@ -1848,7 +1853,7 @@ class FieldEditTab(QWidget):
 
         inject_btn = QPushButton(tr("→ Apply Selected Injections to Target"))
         inject_btn.setStyleSheet(
-            "background-color: #2E7D32; color: white; font-weight: bold; padding: 6px;")
+            button_css("success") + " font-weight: bold; padding: 6px;")
         inject_btn.setEnabled(False)
         diff_layout.addWidget(inject_btn)
 
@@ -1893,7 +1898,7 @@ class FieldEditTab(QWidget):
 
         deploy_btn = QPushButton(tr("Deploy as 0010 Overlay"))
         deploy_btn.setStyleSheet(
-            "background-color: #4A148C; color: white; font-weight: bold;")
+            button_css("neutral") + " font-weight: bold;")
         deploy_btn.setToolTip(tr(
             "Pack the modified XML into a PAZ overlay and deploy to the game.\n"
             "Restart the game for the change to take effect.\n"
@@ -3335,7 +3340,7 @@ class FieldEditTab(QWidget):
             "to match the source character. Targets characterinfo.pabgb.\n"
             "Compatible with Stacker Tool and DMM mod loader.")
         export_field_btn.setStyleSheet(
-            "QPushButton { background-color: #1565C0; color: white; font-weight: bold; }")
+            "QPushButton { " + button_css("primary") + " font-weight: bold; }")
         btn_row.addWidget(add_btn)
         btn_row.addWidget(change_all_btn)
         btn_row.addWidget(remove_btn)

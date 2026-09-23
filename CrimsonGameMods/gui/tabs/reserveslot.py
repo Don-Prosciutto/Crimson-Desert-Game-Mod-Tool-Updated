@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QListWidget, QListWidgetItem,
 )
 
-from gui.theme import COLORS
+from gui.theme import COLORS, button_css
 
 log = logging.getLogger(__name__)
 
@@ -106,18 +106,18 @@ class ReserveSlotTab(QWidget):
         top_row.addWidget(self._overlay_spin)
 
         apply_btn = QPushButton("Apply to Game")
-        apply_btn.setStyleSheet("background-color: #B71C1C; color: white; font-weight: bold;")
+        apply_btn.setStyleSheet(button_css("danger") + " font-weight: bold;")
         apply_btn.clicked.connect(self._apply_to_game)
         top_row.addWidget(apply_btn)
 
         export_btn = QPushButton("Export Field JSON")
-        export_btn.setStyleSheet("background-color: #00695C; color: white; font-weight: bold;")
+        export_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         export_btn.setToolTip("Export edits as Format 3 field-name JSON.")
         export_btn.clicked.connect(self._export_field_json)
         top_row.addWidget(export_btn)
 
         restore_btn = QPushButton("Restore")
-        restore_btn.setStyleSheet("background-color: #37474F; color: white; font-weight: bold;")
+        restore_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         restore_btn.clicked.connect(self._restore)
         top_row.addWidget(restore_btn)
 

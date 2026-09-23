@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QPushButton, QTableWidget, QTableWidgetItem,
     QVBoxLayout, QWidget,
 )
+from gui.theme import button_css
 
 log = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ class AddCustomItemToSaveDialog(QDialog):
 
         swap_btn = QPushButton(f"↻ Swap Selected → Key {self._custom_key}")
         swap_btn.setStyleSheet(
-            "background-color: #B71C1C; color: white; font-weight: bold; "
+            button_css("danger") + " font-weight: bold; "
             "padding: 8px 14px;")
         swap_btn.setToolTip(
             "Pick a vendor item above, then click to change its key\n"

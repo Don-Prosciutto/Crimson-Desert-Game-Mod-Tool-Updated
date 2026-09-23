@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
     QApplication, QSizePolicy, QFrame, QListWidget, QListWidgetItem,
     QCheckBox, QToolButton,
 )
+from gui.theme import button_css
 
 
 def _size_button(btn: QPushButton, extra_px: int = 28, primary: bool = False) -> QPushButton:
@@ -1594,7 +1595,7 @@ class StackerTab(QWidget):
         self._send_buffs_btn = _size_button(QPushButton("→ Push to ItemBuff"))
         self._send_buffs_btn.setObjectName("flatBtn")
         self._send_buffs_btn.setStyleSheet(
-            "QPushButton { background-color: #2E7D32; color: white; font-weight: bold; }")
+            "QPushButton { " + button_css("success") + " font-weight: bold; }")
         self._send_buffs_btn.setToolTip(
             "Load the merged dict list into ItemBuffs for hand-tuning.")
         self._send_buffs_btn.clicked.connect(self._send_to_buffs)
@@ -1804,7 +1805,7 @@ class StackerTab(QWidget):
 
         add_btn = _size_button(QPushButton("+ Add"), extra_px=44)
         add_btn.setStyleSheet(
-            "QPushButton { background-color: #2E7D32; color: white; "
+            "QPushButton { " + button_css("success") + " "
             "font-weight: bold; font-size: 14px; padding: 6px 18px; }")
         add_btn.clicked.connect(self._pick_files)
         blay.addWidget(add_btn)
@@ -1812,7 +1813,7 @@ class StackerTab(QWidget):
         pull_btn = _size_button(QPushButton("⇅ Pull ItemBuff"), extra_px=52)
         pull_btn.setObjectName("flatBtn")
         pull_btn.setStyleSheet(
-            "QPushButton { background-color: #B71C1C; color: white; font-weight: bold; }")
+            "QPushButton { " + button_css("danger") + " font-weight: bold; }")
         pull_btn.setToolTip(
             "Snapshot the current ItemBuffs tab edits (dict edits, Max Stacks, "
             "Inf Durability, cooldowns, transmog, VFX, staged skill/equipslot "
@@ -1823,7 +1824,7 @@ class StackerTab(QWidget):
         pull_all_btn = _size_button(QPushButton("⇅ Pull All Edits"), extra_px=52)
         pull_all_btn.setObjectName("flatBtn")
         pull_all_btn.setStyleSheet(
-            "QPushButton { background-color: #00695C; color: white; font-weight: bold; }")
+            "QPushButton { " + button_css("success") + " font-weight: bold; }")
         pull_all_btn.setToolTip(
             "Pull edits from ALL tabs: ItemBuffs + FieldEdit + SpawnEdit + "
             "BagSpace + ReserveSlot + DropSets. Creates one mod entry per "

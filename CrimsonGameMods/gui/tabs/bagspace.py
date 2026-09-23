@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from gui.theme import COLORS
+from gui.theme import COLORS, button_css
 from gui.utils import make_scope_label
 
 
@@ -122,7 +122,7 @@ class BagSpaceTab(QWidget):
         top_row.addWidget(export_btn)
 
         export_field_btn = QPushButton("Export Field JSON")
-        export_field_btn.setStyleSheet("background-color: #00695C; color: white; font-weight: bold;")
+        export_field_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         export_field_btn.setToolTip(
             "Export edits as Format 3 field-name JSON.\n"
             "Uses field names — survives game updates.")

@@ -43,7 +43,7 @@ from PySide6.QtWidgets import (
 )
 
 from .helpers import extract_file_data
-from gui.theme import COLORS, CATEGORY_COLORS
+from gui.theme import COLORS, CATEGORY_COLORS, button_css
 from gui.iteminfo_index import IteminfoIndex
 
 _DOCKING_DEFAULTS = {
@@ -664,7 +664,7 @@ class ItemBuffsTab(QWidget):
 
             apply_game_btn = QPushButton("Apply to Game")
             apply_game_btn.setStyleSheet("QPushButton {"
-                "background-color: #B71C1C; color: white; font-weight: bold; }")
+                "" + button_css("danger") + " font-weight: bold; }")
             apply_game_btn.setToolTip(
                 "Deploy modified iteminfo.pabgb directly to the game.\n"
                 "Creates a PAZ overlay — original files are NOT modified.\n"
@@ -677,7 +677,7 @@ class ItemBuffsTab(QWidget):
 
             import_mod_btn = QPushButton("Import")
             import_mod_btn.setStyleSheet("QPushButton {"
-                "background-color: #00695C; color: white; font-weight: bold; }")
+                "" + button_css("success") + " font-weight: bold; }")
             
             # START Import Menu
             import_mod_menu = QMenu(self)
@@ -710,7 +710,7 @@ class ItemBuffsTab(QWidget):
             
             export_mod_btn = QPushButton("Export")
             export_mod_btn.setStyleSheet("QPushButton {"
-                "background-color: #00695C; color: white; font-weight: bold; }")
+                "" + button_css("success") + " font-weight: bold; }")
 
             export_mod_menu = QMenu(self)
             export_mod_menu.setToolTipsVisible(True)
@@ -738,7 +738,7 @@ class ItemBuffsTab(QWidget):
             
             transmog_btn = QPushButton("Transmog (Armor / Weapon Visual Swap)")
             transmog_btn.setStyleSheet("QPushButton {"
-                "background-color: #6A1B9A; color: white; font-weight: bold; }")
+                "" + button_css("neutral") + " font-weight: bold; }")
             transmog_btn.setToolTip(
                 "Visual Transmog for ANY armor or weapon you own.\n\n"
                 "• Make your endgame armor look like a fancy starter set\n"
@@ -753,7 +753,7 @@ class ItemBuffsTab(QWidget):
 
             create_item_btn = QPushButton("⚒ Create Custom Item")
             create_item_btn.setStyleSheet(
-                "QPushButton { background-color: #00695C; color: white; "
+                "QPushButton { " + button_css("success") + " "
                 "font-weight: bold; font-size: 13px; }")
             create_item_btn.setToolTip(
                 "Design a brand-new item by cloning an existing donor.\n\n"
@@ -776,7 +776,7 @@ class ItemBuffsTab(QWidget):
             # an already-deployed custom item to additional saves.
             add_save_btn = QPushButton("🎒 Add Custom Item to Save")
             add_save_btn.setStyleSheet(
-                "QPushButton { background-color: #1565C0; color: white; "
+                "QPushButton { " + button_css("primary") + " "
                 "font-weight: bold; font-size: 13px; }")
             add_save_btn.setToolTip(
                 "Open the Add-to-Save dialog for an ALREADY-deployed custom item.\n"
@@ -1002,7 +1002,7 @@ class ItemBuffsTab(QWidget):
 
             export_field_btn = QPushButton("Export as Field JSON v3")
             export_field_btn.setStyleSheet(
-                "background-color: #00695C; color: white; font-weight: bold;")
+                button_css("success") + " font-weight: bold;")
             export_field_btn.setToolTip(
                 "Export all edits as a Format 3 field-name JSON.\n"
                 "Uses field names instead of byte offsets — survives game updates.\n"
@@ -1015,7 +1015,7 @@ class ItemBuffsTab(QWidget):
             # Primary action 1: Create Item (green)
             create_item_btn = QPushButton("Create Item")
             create_item_btn.setStyleSheet(
-                "background-color: #00695C; color: white; font-weight: bold;")
+                button_css("success") + " font-weight: bold;")
             create_item_btn.setToolTip(
                 "Create a new custom item by cloning an existing one.\n"
                 "Pick a donor item, customize name and stats, deploy.\n"
@@ -1026,7 +1026,7 @@ class ItemBuffsTab(QWidget):
             # Primary action 2: Apply to Game (red)
             apply_game_btn = QPushButton("Apply to Game")
             apply_game_btn.setStyleSheet(
-                "background-color: #B71C1C; color: white; font-weight: bold;")
+                button_css("danger") + " font-weight: bold;")
             apply_game_btn.setToolTip(
                 "Deploy modified iteminfo.pabgb directly to the game.\n"
                 "Creates a PAZ overlay — original files are NOT modified.\n"
@@ -1040,7 +1040,7 @@ class ItemBuffsTab(QWidget):
             # Primary action 3: Import Mod Folder (teal, power-user friendly)
             import_mod_btn = QPushButton("Import Mod Folder")
             import_mod_btn.setStyleSheet(
-                "background-color: #00695C; color: white; font-weight: bold;")
+                button_css("success") + " font-weight: bold;")
             import_mod_btn.setToolTip(
                 "Reverse-engineer any CDUMM/PAZ mod folder back into an editable "
                 "config.\nPoint at a mod's files/gamedata/binarystaticinfo__/bin/"
@@ -1054,9 +1054,9 @@ class ItemBuffsTab(QWidget):
             more_btn.setPopupMode(QToolButton.InstantPopup)
             more_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
             more_btn.setStyleSheet(
-                "QToolButton { padding: 6px 12px; border: 1px solid #554430; "
-                "border-radius: 4px; background: #3d2e1a; color: #f0e6d4; } "
-                "QToolButton:hover { background: #5c4320; } "
+                "QToolButton { padding: 6px 12px; "
+                + button_css("neutral") + " } "
+                "QToolButton:hover { background: " + COLORS['selected'] + "; } "
                 "QToolButton::menu-indicator { image: none; width: 0; }"
             )
             more_menu = QMenu(self)
@@ -1728,7 +1728,7 @@ class ItemBuffsTab(QWidget):
             "Inject full God Mode stats: Invincible + Great Thief, max DDD/DPV, "
             "max regen, max speed/crit/resist, 8 equipment buffs.")
         god_mode_btn.setStyleSheet(
-            "background-color: #cc3333; color: white; font-weight: bold;")
+            button_css("danger") + " font-weight: bold;")
         
         def enable_normal_mode_list():
             self._eb_passive_combo.clear()
@@ -1827,7 +1827,7 @@ class ItemBuffsTab(QWidget):
 
         apply_gimmick_btn = QPushButton("Apply Gimmick")
         apply_gimmick_btn.setStyleSheet(
-            "background-color: #006064; color: white; font-weight: bold;")
+            button_css("success") + " font-weight: bold;")
         apply_gimmick_btn.setToolTip(
             "Apply the selected gimmick to the current item.\n"
             "Replaces any existing gimmick slot — one gimmick per item.")
@@ -2393,7 +2393,7 @@ class ItemBuffsTab(QWidget):
 
         imbue_btn = QPushButton("Add to Selected")
         imbue_btn.setStyleSheet(
-            "background-color: #7B1FA2; color: white; font-weight: bold;")
+            button_css("neutral") + " font-weight: bold;")
         imbue_btn.setToolTip(
             "One-click imbue. Adds the passive to the selected item and "
             "opens the weapon class if needed.")
@@ -2402,7 +2402,7 @@ class ItemBuffsTab(QWidget):
 
         preview_btn = QPushButton("\U0001f441 Preview Item")
         preview_btn.setStyleSheet(
-            "background-color: #1565C0; color: white; font-weight: bold;")
+            button_css("primary") + " font-weight: bold;")
         preview_btn.setToolTip(
             "Show a preview of how the selected item will look in-game.")
         preview_btn.clicked.connect(self._buff_preview_item)
@@ -2429,7 +2429,7 @@ class ItemBuffsTab(QWidget):
         # combo that picks its target passive. Same handler as before.
         bulk_imbue_btn = QPushButton("Imbue All Weapons")
         bulk_imbue_btn.setStyleSheet(
-            "background-color: #4A148C; color: white; font-weight: bold; "
+            button_css("neutral") + " font-weight: bold; "
             "padding: 10px;")
         bulk_imbue_btn.setToolTip(
             "Apply the passive picked above (Lightning, Fire, Ice, etc.) to "
@@ -2466,7 +2466,7 @@ class ItemBuffsTab(QWidget):
         enable_all_btn = QPushButton(
             "Enable EVERYTHING (QoL + Dye + Sockets + Abyss + Universal Prof)")
         enable_all_btn.setStyleSheet(
-            "background-color: #B71C1C; color: white; font-weight: bold; "
+            button_css("danger") + " font-weight: bold; "
             "padding: 12px; font-size: 13px;")
         enable_all_btn.setToolTip(
             "Runs ALL bulk apply-to-many mods in one shot:\n"
@@ -2484,7 +2484,7 @@ class ItemBuffsTab(QWidget):
         # users who just want the 4 QoL flags without the full bundle.
         all_qol_btn = QPushButton("Enable All QoL only (no UP / Dye / Sockets)")
         all_qol_btn.setStyleSheet(
-            "background-color: #00796B; color: white; font-weight: bold; "
+            button_css("success") + " font-weight: bold; "
             "padding: 10px; font-size: 12px;")
         all_qol_btn.setToolTip(
             "Narrower one-click bundle (QoL only):\n"
@@ -2623,7 +2623,7 @@ class ItemBuffsTab(QWidget):
         lay.addWidget(self._buff_json_editor, 1)
         btn_row = QHBoxLayout()
         apply_btn = QPushButton("Apply Changes")
-        apply_btn.setStyleSheet("background-color: #cc3333; color: white; font-weight: bold; padding: 6px 16px;")
+        apply_btn.setStyleSheet(button_css("danger") + " font-weight: bold; padding: 6px 16px;")
         apply_btn.clicked.connect(self._buff_json_apply)
         btn_row.addWidget(apply_btn)
         refresh_btn = QPushButton("Refresh")
@@ -2737,7 +2737,7 @@ class ItemBuffsTab(QWidget):
 
         bulk_buffs_btn = QPushButton("Copy Selected Item's Buffs \u2192 All Weapons")
         bulk_buffs_btn.setStyleSheet(
-            "background-color: #b71c1c; color: white; font-weight: bold; "
+            button_css("danger") + " font-weight: bold; "
             "padding: 10px;")
         bulk_buffs_btn.setToolTip(
             "Broadcast the equip_buffs from the CURRENTLY SELECTED item onto "
@@ -2755,7 +2755,7 @@ class ItemBuffsTab(QWidget):
 
         bulk_dye_btn = QPushButton("Make All Equipment Dyeable")
         bulk_dye_btn.setStyleSheet(
-            "background-color: #1565C0; color: white; font-weight: bold; "
+            button_css("primary") + " font-weight: bold; "
             "padding: 10px;")
         bulk_dye_btn.setToolTip(
             "Flip is_dyeable + is_editable_grime to 1 on every equipment item.\n"
@@ -2766,7 +2766,7 @@ class ItemBuffsTab(QWidget):
 
         bulk_equip_v3_btn = QPushButton("Universal Proficiency (all chars)")
         bulk_equip_v3_btn.setStyleSheet(
-            "background-color: #B71C1C; color: white; font-weight: bold; "
+            button_css("danger") + " font-weight: bold; "
             "padding: 10px;")
         bulk_equip_v3_btn.setToolTip(
             "Make ALL items equippable by Kliff, Damiane, and Oongka.\n"
@@ -2819,7 +2819,7 @@ class ItemBuffsTab(QWidget):
         # alongside the per-item row above.
         socket_bulk_btn = QPushButton("All \u2192 5 Sockets")
         socket_bulk_btn.setStyleSheet(
-            "background-color: #1565C0; color: white; font-weight: bold; "
+            button_css("warn") + " font-weight: bold; "
             "padding: 10px;")
         socket_bulk_btn.setToolTip(
             "Bulk-extend every item that's already socket-capable to 5 "
@@ -2871,7 +2871,7 @@ class ItemBuffsTab(QWidget):
         self._eb_socket_tier_filter.currentIndexChanged.connect(self._eb_update_socket_match_count)
         self._eb_filter_owned.toggled.connect(self._eb_update_socket_match_count)
 
-        _btn_css = ("background-color: #1565C0; color: white; font-weight: bold; "
+        _btn_css = (button_css("primary") + " font-weight: bold; "
                     "padding: 8px;")
         sock_row = QHBoxLayout()
         sock_row.setSpacing(6)
@@ -2905,14 +2905,14 @@ class ItemBuffsTab(QWidget):
         act_row = QHBoxLayout()
         act_row.setSpacing(6)
         dye_filtered_btn = QPushButton("Matching items \u2192 Dyeable")
-        dye_filtered_btn.setStyleSheet(_btn_css)
+        dye_filtered_btn.setStyleSheet(_btn_css.replace(button_css("primary"), button_css("success")))
         dye_filtered_btn.setToolTip(
             "Mark the matching items as dyeable (is_dyeable + is_editable_grime).\n"
             "Items that already are dyeable are left alone.")
         dye_filtered_btn.clicked.connect(self._eb_filtered_make_dyeable)
         act_row.addWidget(dye_filtered_btn, 1)
         refine_filtered_btn = QPushButton("Matching items \u2192 Max Refine")
-        refine_filtered_btn.setStyleSheet(_btn_css)
+        refine_filtered_btn.setStyleSheet(_btn_css.replace(button_css("primary"), button_css("neutral")))
         refine_filtered_btn.setToolTip(
             "Newly obtained copies of the matching items drop at their highest\n"
             "refine level (each item's own maximum, at most +10).")
@@ -2921,29 +2921,6 @@ class ItemBuffsTab(QWidget):
         fgl.addLayout(act_row)
 
         pl.addWidget(filt_grp)
-
-        # ── Dragon Speed Boost ───────────────────────────────────────────────
-        dragon_grp = QGroupBox("Dragon Speed Boost (Blackstar)")
-        dgl = QVBoxLayout(dragon_grp)
-        dragon_row = QHBoxLayout()
-        dragon_row.addWidget(QLabel("Speed multiplier:"))
-        self._dragon_speed_spin = QDoubleSpinBox()
-        self._dragon_speed_spin.setRange(0.5, 3.0)
-        self._dragon_speed_spin.setSingleStep(0.25)
-        self._dragon_speed_spin.setValue(1.5)
-        self._dragon_speed_spin.setDecimals(2)
-        self._dragon_speed_spin.setFixedWidth(80)
-        self._dragon_speed_spin.setToolTip("1.0 = vanilla  |  1.5 = 50% faster  |  2.0 = double")
-        dragon_row.addWidget(self._dragon_speed_spin)
-        dragon_row.addWidget(QLabel("× vanilla"))
-        dragon_row.addStretch(1)
-        dgl.addLayout(dragon_row)
-        dragon_export_btn = QPushButton("Export Dragon Speed Mod")
-        dragon_export_btn.setStyleSheet(
-            "background-color: #6A1B9A; color: white; font-weight: bold; padding: 10px;")
-        dragon_export_btn.clicked.connect(self._dragon_speed_export)
-        dgl.addWidget(dragon_export_btn)
-        pl.addWidget(dragon_grp)
 
         pl.addStretch(1)
 
@@ -4778,7 +4755,7 @@ class ItemBuffsTab(QWidget):
         btn_row = QHBoxLayout()
         apply_btn = QPushButton("Apply Changes")
         apply_btn.setObjectName("accentBtn")
-        apply_btn.setStyleSheet("background-color: #cc3333; color: white; font-weight: bold;")
+        apply_btn.setStyleSheet(button_css("danger") + " font-weight: bold;")
         btn_row.addWidget(apply_btn)
         cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(dlg.reject)
@@ -4997,7 +4974,7 @@ class ItemBuffsTab(QWidget):
             "Edit item visuals directly in iteminfo.pabgb. "
             "Size & VFX are safe; Animation and Attach can crash if sockets/rigs mismatch.")
         banner.setWordWrap(True)
-        banner.setStyleSheet("background: #263238; color: #B0BEC5; padding: 6px; border-radius: 4px;")
+        banner.setStyleSheet(button_css("neutral") + " padding: 6px;")
         lay.addWidget(banner)
 
         tabs = QTabWidget()
@@ -5027,9 +5004,9 @@ class ItemBuffsTab(QWidget):
 
         footer = QHBoxLayout()
         apply_btn = QPushButton("Apply All to Queue")
-        apply_btn.setStyleSheet("background: #2E7D32; color: white; font-weight: bold; padding: 6px 14px;")
+        apply_btn.setStyleSheet(button_css("success") + " font-weight: bold; padding: 6px 14px;")
         clear_btn = QPushButton("Clear All VFX Changes")
-        clear_btn.setStyleSheet("background: #6A1B1B; color: white; padding: 6px 14px;")
+        clear_btn.setStyleSheet(button_css("danger") + " padding: 6px 14px;")
         import_btn = QPushButton("Import JSON…")
         export_btn = QPushButton("Export JSON…")
         close_btn = QPushButton("Close")
@@ -5180,7 +5157,7 @@ class ItemBuffsTab(QWidget):
 
         btn_row = QHBoxLayout()
         add_btn = QPushButton("Add / Update")
-        add_btn.setStyleSheet("background: #2E7D32; color: white; font-weight: bold;")
+        add_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         rm_btn = QPushButton("Remove Selected")
         btn_row.addWidget(add_btn); btn_row.addWidget(rm_btn)
         rlay.addLayout(btn_row)
@@ -5299,7 +5276,7 @@ class ItemBuffsTab(QWidget):
 
         btn_row = QHBoxLayout()
         add_btn = QPushButton("Queue Swap")
-        add_btn.setStyleSheet("background: #2E7D32; color: white; font-weight: bold;")
+        add_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         rm_btn = QPushButton("Remove Selected")
         btn_row.addWidget(add_btn); btn_row.addWidget(rm_btn)
         btn_row.addStretch()
@@ -5366,7 +5343,7 @@ class ItemBuffsTab(QWidget):
             "if source and target aren't rig-compatible. Only 67 vanilla items have "
             "animation data (mostly recipe books). Test each swap in a throwaway save.")
         warn.setWordWrap(True)
-        warn.setStyleSheet("background: #4E342E; color: #FFB74D; padding: 6px; border-radius: 4px;")
+        warn.setStyleSheet(button_css("warn") + " padding: 6px;")
         root.addWidget(warn)
 
         split = QHBoxLayout(); root.addLayout(split, 1)
@@ -5392,7 +5369,7 @@ class ItemBuffsTab(QWidget):
 
         btn_row = QHBoxLayout()
         add_btn = QPushButton("Queue Animation Swap")
-        add_btn.setStyleSheet("background: #F9A825; color: black; font-weight: bold;")
+        add_btn.setStyleSheet(button_css("warn") + " font-weight: bold;")
         rm_btn = QPushButton("Remove Selected")
         btn_row.addWidget(add_btn); btn_row.addWidget(rm_btn); btn_row.addStretch()
         root.addLayout(btn_row)
@@ -5454,7 +5431,7 @@ class ItemBuffsTab(QWidget):
             "Only items with existing dock data can be edited here (261 of 6024). "
             "Unknown socket names render the item invisible — stick to the whitelist.")
         warn.setWordWrap(True)
-        warn.setStyleSheet("background: #4E342E; color: #FFB74D; padding: 6px; border-radius: 4px;")
+        warn.setStyleSheet(button_css("warn") + " padding: 6px;")
         root.addWidget(warn)
 
         split = QHBoxLayout(); root.addLayout(split, 2)
@@ -5487,7 +5464,7 @@ class ItemBuffsTab(QWidget):
 
         btn_row = QHBoxLayout()
         add_btn = QPushButton("Queue Attach Change")
-        add_btn.setStyleSheet("background: #F9A825; color: black; font-weight: bold;")
+        add_btn.setStyleSheet(button_css("warn") + " font-weight: bold;")
         rm_btn = QPushButton("Remove Selected")
         btn_row.addWidget(add_btn); btn_row.addWidget(rm_btn); btn_row.addStretch()
         rlay.addLayout(btn_row)
@@ -5761,13 +5738,13 @@ class ItemBuffsTab(QWidget):
         export_btn.setToolTip("Save queued swaps to a JSON file for sharing")
         action_row.addWidget(export_btn)
         export_field_btn = QPushButton("Export Field JSON v3")
-        export_field_btn.setStyleSheet("background-color: #0277BD; color: white; font-weight: bold;")
+        export_field_btn.setStyleSheet(button_css("primary") + " font-weight: bold;")
         export_field_btn.setToolTip(
             "Export queued transmog swaps as a Format 3 field JSON mod.\n"
             "Copies prefab visual fields from source to target item.\n"
             "Compatible with Stacker Tool and DMM mod loader.")
         export_field_btn.setStyleSheet(
-            "QPushButton { background-color: #1565C0; color: white; font-weight: bold; }")
+            "QPushButton { " + button_css("primary") + " font-weight: bold; }")
         action_row.addWidget(export_field_btn)
         dl.addLayout(action_row)
 
@@ -14272,128 +14249,6 @@ class ItemBuffsTab(QWidget):
             "1. Click 'Pull ItemBuffs Edit' to pull your edits.\n"
             "2. Click 'PREVIEW' to build the merge.\n"
             "3. Click 'EXPORT LEGACY JSON' to save.")
-
-    def _dragon_speed_export(self) -> None:
-        """Export a Format 0 binary-patch JSON for dragon speed boost.
-
-        Scales all 27 speed threshold f32 values in m0004_ride_dragon_lower.paac
-        by the user-chosen multiplier, then saves a DMM-compatible patch JSON.
-        No game file extraction required — offsets and vanilla values are hardcoded
-        from the known 1.07 PAAC layout.
-        """
-        import struct, json as _json
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
-
-        mult = getattr(self, '_dragon_speed_spin', None)
-        multiplier = mult.value() if mult else 1.5
-
-        if abs(multiplier - 1.0) < 0.001:
-            QMessageBox.information(self, "Dragon Speed Boost",
-                "Multiplier is 1.0 — that's vanilla speed. Choose a different value.")
-            return
-
-        # All 27 speed threshold offsets with their vanilla f32 values.
-        # Sourced from lemonheads mod v1.0.0 against 1.07 PAAC.
-        SPEED_OFFSETS = [
-            (435,   5.0,  "Ch1 Generic press input"),
-            (842,   5.0,  "Ch2 Landing — sustained"),
-            (1245,  25.0, "Ch3 Drift RIGHT — exit (+52)"),
-            (1249,  25.0, "Ch3 Drift RIGHT — exit (+56)"),
-            (1708,  25.0, "Ch4 Landing — start (+52)"),
-            (1712,  25.0, "Ch4 Landing — start (+56)"),
-            (2195,  20.0, "Ch5 Dodge roll RIGHT (+52)"),
-            (2199,  20.0, "Ch5 Dodge roll RIGHT (+56)"),
-            (2658,  20.0, "Ch6 Forward-collision (+52)"),
-            (2662,  20.0, "Ch6 Forward-collision (+56)"),
-            (3145,  20.0, "Ch7 Dive DOWN sustained (+52)"),
-            (3149,  20.0, "Ch7 Dive DOWN sustained (+56)"),
-            (3608,  20.0, "Ch8 Landing guidance (+52)"),
-            (3612,  20.0, "Ch8 Landing guidance (+56)"),
-            (4095,  15.0, "Ch9 Dive DOWN sustained (+52)"),
-            (4099,  10.0, "Ch9 Dive DOWN sustained (+56)"),
-            (4702,  15.0, "Ch10 Brake guidance (+52)"),
-            (4706,  10.0, "Ch10 Brake guidance (+56)"),
-            (5189,  25.0, "Ch11 Blocking condition (+52)"),
-            (5193,  25.0, "Ch11 Blocking condition (+56)"),
-            (5588,  25.0, "Ch12 Drift RIGHT — sustained (+52)"),
-            (5592,  5.0,  "Ch12 Drift RIGHT — sustained (+56)"),
-            (6287,  50.0, "Ch13 Jump button press (+52)"),
-            (18073, 50.0, "Ch27 Keyframed animation (+52)"),
-            (18077, 25.0, "Ch27 Keyframed animation (+56)"),
-            (18472, 50.0, "Ch28 Ground jump — start (+52)"),
-            (18476, 50.0, "Ch28 Ground jump — start (+56)"),
-        ]
-
-        # The offsets above are from game 1.07. Before writing a patch, check
-        # that the installed game still has the expected value at each one.
-        # Checked on 2.03.02: none of them do - the action chart was rebuilt,
-        # and no constant shift brings the values back. A patch built from
-        # these offsets would overwrite unrelated bytes of the dragon's action
-        # chart. So: verify, and refuse unless every value matches.
-        game_path = self._config.get('game_install_path', '') or getattr(self, '_game_path', '')
-        try:
-            import dmm_parser as _dmm
-            paac = bytes(_dmm.extract_file(game_path, "0010",
-                                           "actionchart/bin__/loweraction/2_mon",
-                                           "m0004_ride_dragon_lower.paac"))
-        except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self, "Dragon Speed Boost",
-                f"Could not read the dragon's action chart from the game:\n{e}\n\n"
-                "Nothing was exported.")
-            return
-        bad = [(o, v) for o, v, _ in SPEED_OFFSETS
-               if o + 4 > len(paac) or abs(struct.unpack_from('<f', paac, o)[0] - v) > 1e-4]
-        if bad:
-            log.warning("Dragon speed: %d of %d offsets no longer match the game - export refused",
-                        len(bad), len(SPEED_OFFSETS))
-            QMessageBox.warning(self, "Dragon Speed Boost - not compatible",
-                f"This mod was built for game version 1.07. In your game, {len(bad)} of "
-                f"{len(SPEED_OFFSETS)} speed values are no longer where it expects them - "
-                f"the dragon's action chart has changed since.\n\n"
-                f"A patch built from it would overwrite unrelated data, so nothing was "
-                f"exported. The speed values have to be located again for this game "
-                f"version before this feature can work.")
-            return
-
-        changes = []
-        mult_str = f"{multiplier:.2f}".rstrip('0').rstrip('.')
-        for offset, vanilla, label in SPEED_OFFSETS:
-            patched = vanilla * multiplier
-            original_hex = struct.pack('<f', vanilla).hex()
-            patched_hex  = struct.pack('<f', patched).hex()
-            changes.append({
-                'offset':   offset,
-                'label':    f"[{mult_str}x] {label} ({vanilla} → {patched:.4g})",
-                'original': original_hex,
-                'patched':  patched_hex,
-            })
-
-        doc = {
-            'name':        f"Dragon Speed Boost {mult_str}x",
-            'version':     '1.0',
-            'description': (f"{mult_str}x speed boost for the Blackstar dragon mount. "
-                            f"Generated by CrimsonGameMods."),
-            'author':      'CrimsonGameMods',
-            'patches': [{
-                'game_file':    'actionchart/m0004_ride_dragon_lower.paac',
-                'source_group': '0010',
-                'changes':      changes,
-            }],
-        }
-
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Export Dragon Speed Mod",
-            f"DragonSpeed_{mult_str}x.json",
-            "JSON (*.json);;All Files (*)")
-        if not path:
-            return
-
-        with open(path, 'w', encoding='utf-8') as f:
-            _json.dump(doc, f, indent=2, ensure_ascii=False)
-
-        QMessageBox.information(self, "Dragon Speed Boost",
-            f"Exported {len(changes)} patches for {mult_str}x speed.\n\n"
-            f"Drop the JSON into your DMM mods folder.")
 
     def _no_fall_damage_export(self) -> None:
         """Export a No Fall Damage mod JSON targeting buffinfo.pabgb.

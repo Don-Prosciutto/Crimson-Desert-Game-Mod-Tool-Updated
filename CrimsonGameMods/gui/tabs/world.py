@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QStyledItemDelegate, QTableWidget, QTableWidgetItem, QTextEdit,
     QVBoxLayout, QWidget,
 )
-from gui.theme import COLORS, CATEGORY_COLORS
+from gui.theme import COLORS, CATEGORY_COLORS, button_css
 from gui.dialogs import ItemSearchDialog
 from icon_cache import ICON_SIZE
 from gui.utils import make_scope_label, make_help_btn
@@ -578,7 +578,7 @@ class StoreEditorTab(QWidget):
         top_row.addWidget(store_apply_btn)
 
         store_restore_btn = QPushButton(tr("Restore"))
-        store_restore_btn.setStyleSheet("background-color: #424242; color: white; padding: 4px 8px;")
+        store_restore_btn.setStyleSheet(button_css("neutral") + " padding: 4px 8px;")
         store_restore_btn.setToolTip("Remove the store overlay and restore vanilla storeinfo.")
         store_restore_btn.clicked.connect(self._store_restore)
         top_row.addWidget(store_restore_btn)
@@ -1600,15 +1600,15 @@ class SpawnTab(QWidget):
         header.addWidget(self._spawn_overlay_spin)
 
         apply_btn = QPushButton(tr("Apply to Game"))
-        apply_btn.setStyleSheet("background-color: #1B5E20; color: white; font-weight: bold;")
+        apply_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         apply_btn.setToolTip(tr("Deploy modified spawn data directly to the game (requires restart)"))
         apply_btn.clicked.connect(self._spawn_apply)
         header.addWidget(apply_btn)
 
         spawn_field_json_btn = QPushButton(tr("Export Field JSON v3"))
-        spawn_field_json_btn.setStyleSheet("background-color: #0277BD; color: white; font-weight: bold;")
+        spawn_field_json_btn.setStyleSheet(button_css("primary") + " font-weight: bold;")
         spawn_field_json_btn.setStyleSheet(
-            "background-color: #0277BD; color: white; font-weight: bold;")
+            button_css("primary") + " font-weight: bold;")
         spawn_field_json_btn.setToolTip(
             "Export all SpawnEdit changes as Format 3.1 field JSON.\n"
             "Compatible with DMM 1.3.3+ multi-target format.")
@@ -1657,7 +1657,7 @@ class SpawnTab(QWidget):
         row1.addWidget(self._spawn_multiplier)
 
         increase_all_btn = QPushButton(tr("Increase ALL Spawns"))
-        increase_all_btn.setStyleSheet("background-color: #1B5E20; color: white; font-weight: bold; padding: 6px 12px;")
+        increase_all_btn.setStyleSheet(button_css("success") + " font-weight: bold; padding: 6px 12px;")
         increase_all_btn.setToolTip(
             "Increase enemy/animal spawn density.\n"
             "Camp enemies: MaxOp/MinOp/Sub-slots x multiplier\n"
@@ -1666,7 +1666,7 @@ class SpawnTab(QWidget):
         row1.addWidget(increase_all_btn)
 
         increase_life_btn = QPushButton(tr("Increase ALL Life"))
-        increase_life_btn.setStyleSheet("background-color: #0D47A1; color: white; font-weight: bold; padding: 6px 12px;")
+        increase_life_btn.setStyleSheet(button_css("primary") + " font-weight: bold; padding: 6px 12px;")
         increase_life_btn.setToolTip(
             "Increase ambient wildlife: fireflies, birds, bats, insects,\n"
             "animals near crops, butterflies, crows, swamp creatures.\n"
@@ -3202,8 +3202,8 @@ class DropsetTab(QWidget):
         top_row.addWidget(restore_btn)
 
         export_field_btn = QPushButton("Export Field JSON v3")
-        export_field_btn.setStyleSheet("background-color: #0277BD; color: white; font-weight: bold;")
-        export_field_btn.setStyleSheet("background-color: #00695C; color: white; font-weight: bold;")
+        export_field_btn.setStyleSheet(button_css("primary") + " font-weight: bold;")
+        export_field_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
         export_field_btn.setToolTip(
             "Export edits as Format 3 field-name JSON.\n"
             "Uses field names — survives game updates.")
@@ -3219,7 +3219,7 @@ class DropsetTab(QWidget):
 
         reset_vanilla_btn = QPushButton("Reset to Vanilla")
         reset_vanilla_btn.setStyleSheet(
-            "QPushButton { background-color: #B71C1C; color: white; font-weight: bold; }")
+            "QPushButton { " + button_css("danger") + " font-weight: bold; }")
         reset_vanilla_btn.setToolTip(
             "Discard all in-memory drop table edits and revert to vanilla state.\n"
             "Does not affect any deployed game files — use Restore for that.")

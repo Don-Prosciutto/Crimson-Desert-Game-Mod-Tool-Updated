@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QSplitter, QTabWidget, QTableWidget, QTableWidgetItem,
     QTextBrowser, QVBoxLayout, QWidget,
 )
+from gui.theme import button_css
 
 log = logging.getLogger(__name__)
 
@@ -325,7 +326,7 @@ class ItemCreatorDialog(QDialog):
 
         self._dropset_btn = QPushButton("Deliver via Money Bag")
         self._dropset_btn.setStyleSheet(
-            "background-color:#1565C0;color:white;font-weight:bold;"
+            button_css("primary") + " font-weight:bold;"
             "font-size:14px;padding:10px 24px;")
         self._dropset_btn.setToolTip(
             "Add this item to the Copper Money Bag drop table.\n"
@@ -338,7 +339,7 @@ class ItemCreatorDialog(QDialog):
 
         self._stage_btn = QPushButton("Stage Item")
         self._stage_btn.setStyleSheet(
-            "background-color:#FF4466;color:white;font-weight:bold;"
+            button_css("primary") + " font-weight:bold;"
             "font-size:14px;padding:10px 24px;")
         self._stage_btn.setToolTip(
             "Stage this item into the ItemBuffs edit session.\n"
@@ -352,7 +353,7 @@ class ItemCreatorDialog(QDialog):
 
         self._export_single_btn = QPushButton("Export as Single-Item Mod")
         self._export_single_btn.setStyleSheet(
-            "background-color:#2E7D32;color:white;font-weight:bold;"
+            button_css("success") + " font-weight:bold;"
             "font-size:14px;padding:10px 24px;")
         self._export_single_btn.setToolTip(
             "Export a clean standalone folder mod containing ONLY this item.\n"

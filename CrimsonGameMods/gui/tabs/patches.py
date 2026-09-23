@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QVBoxLayout, QWidget,
 )
 
-from gui.theme import COLORS
+from gui.theme import COLORS, button_css
 from gui.utils import make_scope_label, make_help_btn
 from i18n import tr
 from paz_patcher import PazPatch, PazPatchManager, VehiclePatcher
@@ -1085,7 +1085,7 @@ class SkillsTab(QWidget):
         bottom_bar.setSpacing(6)
 
         export_btn = QPushButton(tr("Export as Mod"))
-        export_btn.setStyleSheet("background-color: #7B1FA2; color: white; font-weight: bold;")
+        export_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         export_btn.setToolTip(tr("ADVANCED — UNSUPPORTED. Export modified skill.pabgb as mod."))
         export_btn.clicked.connect(self._skill_export_mod)
         export_btn.setVisible(False)

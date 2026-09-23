@@ -55,6 +55,7 @@ from localization import tr, set_language, get_language, get_available_languages
 from gui.theme import (
     COLORS, CATEGORY_COLORS, _TAB_SELECTED_BG, _TAB_SELECTED_COLOR,
     _TAB_SELECTED_BORDER, DARK_STYLESHEET, LIGHT_STYLESHEET, apply_theme,
+    THEMES, stylesheet_for, button_css, checkbox_css, _combo_arrow_uri,
 )
 from gui.utils import _num_item
 
@@ -264,7 +265,7 @@ class MainWindow(QMainWindow):
         if app is not None:
             apply_theme(app, saved_theme)
         else:
-            self.setStyleSheet(LIGHT_STYLESHEET if saved_theme == "light" else DARK_STYLESHEET)
+            self.setStyleSheet(stylesheet_for(saved_theme))
 
         saved_scale = self._config.get("font_scale")
         if saved_scale and saved_scale != 1.0:
@@ -424,10 +425,10 @@ class MainWindow(QMainWindow):
 
         self._quick_save_btn = QPushButton("SAVE EDIT TO SELECTED FILE")
         self._quick_save_btn.setStyleSheet(
-            f"QPushButton {{ background-color: {COLORS['accent']}; color: white; font-weight: bold; "
+            f"QPushButton {{ background-color: {COLORS['accent']}; color: {COLORS['on_accent']}; font-weight: bold; "
             f"padding: 8px; border-radius: 4px; font-size: 11px; }}"
-            f"QPushButton:hover {{ background-color: #ff5577; }}"
-            f"QPushButton:disabled {{ background-color: #555; color: #888; }}"
+            f"QPushButton:hover {{ background-color: {COLORS['accent_hover']}; }}"
+            f"QPushButton:disabled {{ background-color: {COLORS['header']}; color: {COLORS['text_dim']}; }}"
         )
         self._quick_save_btn.setEnabled(False)
         self._quick_save_btn.clicked.connect(self._save_file)
@@ -1332,8 +1333,8 @@ class MainWindow(QMainWindow):
             "Use this anytime to switch languages or pick one for the first time.")
         pick_lang_btn.setStyleSheet(
             "QPushButton { font-weight: bold; padding: 8px 16px; "
-            "background: #FF4466; color: white; border-radius: 4px; }"
-            "QPushButton:hover { background: #ff5577; }")
+            + button_css("primary") + " }"
+            "QPushButton:hover { background-color: " + COLORS['accent_hover'] + "; }")
         pick_lang_btn.clicked.connect(self._open_language_picker)
         layout.addWidget(pick_lang_btn)
 
@@ -1806,7 +1807,7 @@ class MainWindow(QMainWindow):
         theme_menu = view_menu.addMenu("Theme")
         theme_group = QActionGroup(self)
         cur_theme = self._config.get("theme", "dark")
-        for label, key in [("Dark (default)", "dark"), ("Light (high contrast)", "light")]:
+        for key, (label, _pal) in THEMES.items():
             act = QAction(label, self)
             act.setCheckable(True)
             act.setChecked(cur_theme == key)
@@ -1955,6 +1956,7 @@ class MainWindow(QMainWindow):
         self._apply_ui_settings()
 
     def _set_theme(self, mode: str) -> None:
+        changed = self._config.get("theme", "dark") != mode
         self._config["theme"] = mode
         self._save_config()
         app = QApplication.instance()
@@ -1982,6 +1984,13 @@ class MainWindow(QMainWindow):
                     pass
         except Exception:
             pass
+        if changed:
+            # Coloured action buttons take their colour when they are
+            # created, so they only follow the new theme after a restart.
+            QMessageBox.information(
+                self, "Theme changed",
+                "The new theme is active. The coloured action buttons "
+                "switch to it the next time you start the tool.")
 
     def _toggle_compact_mode(self, checked: bool) -> None:
         self._config["compact_mode"] = checked
@@ -2101,9 +2110,9 @@ QTabBar::tab {{
     border-bottom: none;
 }}
 QTabBar::tab:selected {{
-    background-color: {_TAB_SELECTED_BG};
-    color: {_TAB_SELECTED_COLOR};
-    border-bottom: {s(3)}px solid {_TAB_SELECTED_BORDER};
+    background-color: {COLORS['tab_bg']};
+    color: {COLORS['tab_text']};
+    border-bottom: {s(3)}px solid {COLORS['tab_border']};
     font-weight: bold;
 }}
 QTabBar::tab:hover {{
@@ -2146,10 +2155,10 @@ QPushButton:pressed {{
 }}
 QPushButton#accentBtn {{
     background-color: {COLORS['accent']};
-    color: white;
+    color: {COLORS['on_accent']};
 }}
 QPushButton#accentBtn:hover {{
-    background-color: #e8b85e;
+    background-color: {COLORS['accent_hover']};
 }}
 QLineEdit, QSpinBox, QComboBox {{
     background-color: {COLORS['input_bg']};
@@ -2165,6 +2174,11 @@ QComboBox::drop-down {{
     border: none;
     background-color: {COLORS['header']};
     width: {s(24)}px;
+}}
+QComboBox::down-arrow {{
+    image: url("{_combo_arrow_uri(COLORS['text'])}");
+    width: 10px;
+    height: 6px;
 }}
 QComboBox QAbstractItemView {{
     background-color: {COLORS['panel']};
@@ -2231,10 +2245,7 @@ QCheckBox {{
     color: {COLORS['text']};
     spacing: {s(6)}px;
 }}
-QCheckBox::indicator {{
-    width: {s(checkbox_sz)}px;
-    height: {s(checkbox_sz)}px;
-}}
+{checkbox_css(COLORS, s(checkbox_sz))}
 """
         self.setStyleSheet(sheet)
 
@@ -3699,7 +3710,8 @@ QCheckBox::indicator {{
         def _scale_px(m):
             orig = int(m.group(1))
             return f"font-size: {max(8, int(orig * scale))}px"
-        scaled_ss = re.sub(r'font-size:\s*(\d+)px', _scale_px, DARK_STYLESHEET)
+        scaled_ss = re.sub(r'font-size:\s*(\d+)px', _scale_px,
+                           stylesheet_for(self._config.get("theme", "dark")))
         self.setStyleSheet(scaled_ss)
         self._config["font_scale"] = scale
         self._save_config()
@@ -3708,7 +3720,7 @@ QCheckBox::indicator {{
     def _set_widget_scale(self, scale: float) -> None:
         import re
 
-        base_ss = self.styleSheet() or DARK_STYLESHEET
+        base_ss = self.styleSheet() or stylesheet_for(self._config.get("theme", "dark"))
 
         def _scale_padding(m):
             vals = m.group(1).split()
@@ -4253,10 +4265,10 @@ QCheckBox::indicator {{
         btn.setFixedSize(28, 28)
         btn.setToolTip("Show help for this tab")
         btn.setStyleSheet(
-            f"QPushButton {{ background-color: {COLORS['error']}; color: white; "
-            f"font-weight: bold; font-size: 14px; border: 2px solid {COLORS['error']}; "
+            f"QPushButton {{ background-color: {COLORS['accent']}; color: {COLORS['on_accent']}; "
+            f"font-weight: bold; font-size: 14px; border: 2px solid {COLORS['accent']}; "
             f"border-radius: 14px; padding: 0; }}"
-            f"QPushButton:hover {{ background-color: #ff6655; border-color: #ff6655; }}"
+            f"QPushButton:hover {{ background-color: {COLORS['accent_hover']}; border-color: {COLORS['accent_hover']}; }}"
         )
         btn.clicked.connect(lambda: self._show_guide(guide_key))
         return btn
@@ -4264,16 +4276,16 @@ QCheckBox::indicator {{
     def _make_scope_label(self, scope: str) -> QLabel:
         if scope == "save":
             text = "This tab modifies your SAVE FILE"
-            color = "#4FC3F7"
+            color = COLORS['scope_save']
             bg = "rgba(79,195,247,0.08)"
         elif scope == "game":
             text = "This tab modifies GAME FILES (requires admin + restart)"
-            color = "#FFB74D"
+            color = COLORS['scope_game']
             bg = "rgba(255,183,77,0.08)"
         elif scope == "readonly":
             text = "This tab is READ-ONLY (browse only)"
-            color = "#B0A088"
-            bg = "rgba(176,160,136,0.05)"
+            color = COLORS['text_dim']
+            bg = "rgba(139,148,158,0.06)"
         else:
             text = scope
             color = "#4FC3F7"
