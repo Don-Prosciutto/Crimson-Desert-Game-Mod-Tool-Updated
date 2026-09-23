@@ -1,5 +1,5 @@
 {
-  "version": "2.2.0",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/game-2.03.01/CrimsonSaveEditorStandalone.exe",
-  "notes": "Game 2.03.01 \u2014 parser update, no more phantom items, correct and editable equipment values, pre-save check. Filling/removing gems is disabled (crashes the game)."
+  "version": "2.2.1",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/game-2.03.02/CrimsonSaveEditorStandalone.exe",
+  "notes": "Game 2.03.02 \u2014 socket tab lists only gems that fit, same-name items told apart, resizable side panels, GitHub Dark theme"
 }
