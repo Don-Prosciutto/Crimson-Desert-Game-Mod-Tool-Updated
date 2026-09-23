@@ -122,21 +122,51 @@ def _get_item_bearing_ranges(data: bytes | bytearray) -> List[Tuple[int, int, st
     return ranges
 
 
-def scan_items(data: bytes | bytearray) -> List[SaveItem]:
-    parc_items, parc_status = scan_items_parc(data)
-    if parc_items:
-        log.debug("PARC primary scan: %s", parc_status)
-        return parc_items
+# Item numbers in current saves go well past a million (1,003,249 in a
+# 2.03 save). The old cap of 999,999 silently dropped every item above it.
+# Same value as the Save Editor.
+_MAX_ITEM_NO = 9_999_999_999
 
-    log.debug("PARC scan unavailable (%s) — falling back to sentinel scan", parc_status)
+
+def scan_items(data: bytes | bytearray) -> List[SaveItem]:
+    """Items in a save.
+
+    This used to return the PARC result whenever it was non-empty. On a 2.03
+    save that result held ONE item out of 595 - and was used as if complete,
+    so "My Inventory" and the owned-items filter showed nothing. Now both
+    scans run and the larger result wins; a PARC result that is far smaller
+    than the sentinel scan is treated as the failure it is, and logged.
+    """
+    parc_items, parc_status = scan_items_parc(data)
 
     items: List[SaveItem] = []
     length = len(data)
     valid_ranges = _get_item_bearing_ranges(data)
-    log.debug("Sentinel scan: %d item-bearing ranges", len(valid_ranges))
     for range_start, range_end, range_name in valid_ranges:
         _scan_range(data, items, max(20, range_start), min(range_end, length - 40), range_name)
     _classify_items(data, items)
+
+    # The pattern scan also picks up random byte runs that match its
+    # pattern. The save's own schema says which records are real; anything
+    # else with implausible values is dropped (see schema_item_index.py).
+    try:
+        import schema_item_index
+        index = schema_item_index.build_index(data)
+        items, false_hits = schema_item_index.drop_false_hits(items, index)
+        if false_hits:
+            log.info("Dropped %d false hits, %d real items", len(false_hits), len(items))
+    except Exception as e:  # noqa: BLE001
+        log.warning("False-hit filter skipped: %s", e)
+
+    if parc_items and len(parc_items) >= len(items):
+        log.info("Item scan: PARC %d items (%s), sentinel %d - using PARC",
+                 len(parc_items), parc_status, len(items))
+        return parc_items
+    if parc_items:
+        log.warning("Item scan: PARC found only %d items, sentinel %d - using sentinel",
+                    len(parc_items), len(items))
+    else:
+        log.info("Item scan: PARC unavailable (%s), sentinel %d items", parc_status, len(items))
     return items
 
 
@@ -147,7 +177,7 @@ def _scan_range(data: bytes | bytearray, items: List[SaveItem],
             continue
 
         item_no = struct.unpack_from("<q", data, off + 4)[0]
-        if item_no < 1 or item_no > 999999:
+        if item_no < 1 or item_no > _MAX_ITEM_NO:
             continue
 
         item_key = struct.unpack_from("<I", data, off + 12)[0]
@@ -726,7 +756,7 @@ def _parse_item_payload(
         endurance = values.get("_endurance", 0)
         sharpness = values.get("_sharpness", 0)
 
-        if item_no < 1 or item_no > 999999:
+        if item_no < 1 or item_no > _MAX_ITEM_NO:
             return None
         if item_key < 1 or item_key > 0x7FFFFFFF:
             return None
