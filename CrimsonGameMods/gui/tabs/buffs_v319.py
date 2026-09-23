@@ -456,6 +456,10 @@ class ItemBuffsTab(QWidget):
     def load(self, save_data: SaveData, items: List[SaveItem]) -> None:
         self._save_data = save_data
         self._items = items if items is not None else []
+        try:
+            self._eb_update_socket_match_count()
+        except Exception:  # noqa: BLE001 - UI may not be built yet
+            pass
 
         buf_data   = getattr(self, "_buff_data", None)
         buf_items  = getattr(self, "_buff_items", None)
@@ -2823,8 +2827,17 @@ class ItemBuffsTab(QWidget):
         socket_bulk_btn.clicked.connect(self._eb_extend_all_sockets_to_5)
         sgl.addWidget(socket_bulk_btn)
 
-        # Filtered bulk: one equipment type and/or tier at a time - between
-        # "every item in the game" above and one item after another.
+        pl.addWidget(sockets_grp)
+
+        # -- Filtered bulk actions ------------------------------------------
+        # One filter (type, tier, optionally only what the loaded save owns)
+        # shared by several actions - between "every item in the game" and
+        # one item after another.
+        filt_grp = QGroupBox("Filtered bulk actions")
+        fgl = QVBoxLayout(filt_grp)
+        fgl.setSpacing(6)
+        fgl.setContentsMargins(10, 14, 10, 10)
+
         filt_row = QHBoxLayout()
         filt_row.setSpacing(6)
         filt_row.addWidget(QLabel("Type:"))
@@ -2840,7 +2853,27 @@ class ItemBuffsTab(QWidget):
         for _label, _rng in self._EB_TIER_CHOICES:
             self._eb_socket_tier_filter.addItem(_label, _rng)
         filt_row.addWidget(self._eb_socket_tier_filter)
-        filt_row.addWidget(QLabel("Sockets:"))
+        self._eb_filter_owned = QCheckBox("Only items in my loaded save")
+        self._eb_filter_owned.setToolTip(
+            "Limit the filter to items that are in the save loaded via the Save Browser -\n"
+            "e.g. only the two Legendary boots you actually wear, not all 18.")
+        filt_row.addWidget(self._eb_filter_owned)
+        fgl.addLayout(filt_row)
+
+        # The actual number of matching items, updated whenever the filter
+        # changes - so the count is visible before anything is clicked.
+        self._eb_socket_match_label = QLabel("Extract first to see how many items match.")
+        self._eb_socket_match_label.setStyleSheet(f"color: {COLORS['text_dim']};")
+        fgl.addWidget(self._eb_socket_match_label)
+        self._eb_socket_type_filter.currentIndexChanged.connect(self._eb_update_socket_match_count)
+        self._eb_socket_tier_filter.currentIndexChanged.connect(self._eb_update_socket_match_count)
+        self._eb_filter_owned.toggled.connect(self._eb_update_socket_match_count)
+
+        _btn_css = ("background-color: #1565C0; color: white; font-weight: bold; "
+                    "padding: 8px;")
+        sock_row = QHBoxLayout()
+        sock_row.setSpacing(6)
+        sock_row.addWidget(QLabel("Sockets:"))
         # Not everyone wants five. Items that already have more than the
         # chosen number are left alone - shrinking a socket list could strand
         # gems that sit in items people already own.
@@ -2852,33 +2885,40 @@ class ItemBuffsTab(QWidget):
         self._eb_socket_target.setToolTip(
             "How many sockets the matching items should have.\n"
             "Items that already have this many or more are not changed.")
-        filt_row.addWidget(self._eb_socket_target)
-        sgl.addLayout(filt_row)
-
-        # The actual number of matching items, updated whenever Type or Tier
-        # changes - so the count is visible before anything is clicked.
-        self._eb_socket_match_label = QLabel("Extract first to see how many items match.")
-        self._eb_socket_match_label.setStyleSheet(f"color: {COLORS['text_dim']};")
-        sgl.addWidget(self._eb_socket_match_label)
-        self._eb_socket_type_filter.currentIndexChanged.connect(self._eb_update_socket_match_count)
-        self._eb_socket_tier_filter.currentIndexChanged.connect(self._eb_update_socket_match_count)
-
+        sock_row.addWidget(self._eb_socket_target)
         socket_filtered_btn = QPushButton("Matching items \u2192 5 Sockets")
         self._eb_socket_filtered_btn = socket_filtered_btn
         self._eb_socket_target.valueChanged.connect(
             lambda v: socket_filtered_btn.setText(
                 f"Matching items \u2192 {v} Socket{'s' if v != 1 else ''}"))
-        socket_filtered_btn.setStyleSheet(
-            "background-color: #1565C0; color: white; font-weight: bold; "
-            "padding: 8px;")
+        socket_filtered_btn.setStyleSheet(_btn_css)
         socket_filtered_btn.setToolTip(
-            "Extend only the items that match Type and Tier to the chosen number\n"
-            "of sockets, e.g. all Legendary gloves to 3. Shows the count and asks\n"
-            "before changing anything. Never removes sockets.")
+            "Extend only the matching items to the chosen number of sockets,\n"
+            "e.g. all Legendary gloves to 3. Shows the count and asks before\n"
+            "changing anything. Never removes sockets.")
         socket_filtered_btn.clicked.connect(self._eb_extend_filtered_sockets_to_5)
-        sgl.addWidget(socket_filtered_btn)
+        sock_row.addWidget(socket_filtered_btn, 1)
+        fgl.addLayout(sock_row)
 
-        pl.addWidget(sockets_grp)
+        act_row = QHBoxLayout()
+        act_row.setSpacing(6)
+        dye_filtered_btn = QPushButton("Matching items \u2192 Dyeable")
+        dye_filtered_btn.setStyleSheet(_btn_css)
+        dye_filtered_btn.setToolTip(
+            "Mark the matching items as dyeable (is_dyeable + is_editable_grime).\n"
+            "Items that already are dyeable are left alone.")
+        dye_filtered_btn.clicked.connect(self._eb_filtered_make_dyeable)
+        act_row.addWidget(dye_filtered_btn, 1)
+        refine_filtered_btn = QPushButton("Matching items \u2192 Max Refine")
+        refine_filtered_btn.setStyleSheet(_btn_css)
+        refine_filtered_btn.setToolTip(
+            "Newly obtained copies of the matching items drop at their highest\n"
+            "refine level (each item's own maximum, at most +10).")
+        refine_filtered_btn.clicked.connect(self._eb_filtered_max_refine)
+        act_row.addWidget(refine_filtered_btn, 1)
+        fgl.addLayout(act_row)
+
+        pl.addWidget(filt_grp)
 
         # ── Dragon Speed Boost ───────────────────────────────────────────────
         dragon_grp = QGroupBox("Dragon Speed Boost (Blackstar)")
@@ -8305,6 +8345,7 @@ class ItemBuffsTab(QWidget):
         """Equipment items matching the Type box and the Tier box (or tier_range)."""
         hashes = self._eb_socket_type_filter.currentData()
         lo, hi = tier_range or self._eb_socket_tier_filter.currentData() or (0, 99)
+        owned = self._eb_owned_keys()
         out = []
         for it in (getattr(self, '_buff_rust_items', None) or []):
             if not it.get('drop_default_data') or not it.get('equip_type_info'):
@@ -8313,8 +8354,22 @@ class ItemBuffsTab(QWidget):
                 continue
             if not (lo <= (it.get('item_tier') or 0) <= hi):
                 continue
+            if owned is not None and int(it.get('key') or 0) not in owned:
+                continue
             out.append(it)
         return out
+
+    def _eb_owned_keys(self):
+        """Item keys in the loaded save, or None when the filter is off.
+
+        An empty set (box ticked, no save loaded) matches nothing, which is
+        what the count line then says - rather than silently ignoring the box.
+        """
+        box = getattr(self, '_eb_filter_owned', None)
+        if box is None or not box.isChecked():
+            return None
+        return {it.item_key for it in (getattr(self, '_items', None) or [])
+                if getattr(it, 'item_key', 0) > 0}
 
     def _eb_update_socket_match_count(self, *_args) -> None:
         label = getattr(self, '_eb_socket_match_label', None)
@@ -8324,7 +8379,10 @@ class ItemBuffsTab(QWidget):
             label.setText("Extract first to see how many items match.")
             return
         n = len(self._eb_socket_filter_matches())
-        label.setText(f"{n} item{'s' if n != 1 else ''} match this filter.")
+        if self._eb_owned_keys() == set():
+            label.setText("No save loaded - load one in the Save Browser to filter by what you own.")
+        else:
+            label.setText(f"{n} item{'s' if n != 1 else ''} match this filter.")
         # Show the count for every tier of the selected type right in the
         # dropdown, so the choice can be made on the numbers.
         combo = self._eb_socket_tier_filter
@@ -8332,6 +8390,116 @@ class ItemBuffsTab(QWidget):
             if i < combo.count():
                 k = len(self._eb_socket_filter_matches(rng))
                 combo.setItemText(i, f"{base} \u2014 {k} item{'s' if k != 1 else ''}")
+
+    def _eb_filter_what(self) -> str:
+        """The current filter in words, for dialogs and the log."""
+        _ti = self._eb_socket_tier_filter.currentIndex()
+        _tier = (self._EB_TIER_CHOICES[_ti][0] if 0 <= _ti < len(self._EB_TIER_CHOICES)
+                 else self._eb_socket_tier_filter.currentText())
+        what = f"{self._eb_socket_type_filter.currentText()}, {_tier}"
+        if self._eb_owned_keys() is not None:
+            what += ", only items in my save"
+        return what
+
+    def _eb_filtered_start(self, title: str):
+        """Common checks for the filtered actions. Returns the matches or None."""
+        if not getattr(self, '_buff_rust_items', None):
+            QMessageBox.warning(self, title,
+                "Extract with Rust parser first (click 'Extract (Rust)').")
+            return None
+        if self._eb_owned_keys() == set():
+            QMessageBox.information(self, title,
+                "'Only items in my loaded save' is ticked, but no save is loaded.\n"
+                "Load one in the Save Browser first, or untick the box.")
+            return None
+        matching = self._eb_socket_filter_matches()
+        if not matching:
+            QMessageBox.information(self, title,
+                f"No equipment matches: {self._eb_filter_what()}.")
+            return None
+        return matching
+
+    def _eb_filtered_make_dyeable(self) -> None:
+        """Make Dyeable, limited to the filtered items."""
+        title = "Make Dyeable"
+        matching = self._eb_filtered_start(title)
+        if matching is None:
+            return
+        what = self._eb_filter_what()
+        todo = [it for it in matching if not it.get("is_dyeable")]
+        if not todo:
+            QMessageBox.information(self, title,
+                f"{len(matching)} items match ({what}) - all of them are already dyeable.")
+            return
+        reply = QMessageBox.question(
+            self, title,
+            f"{len(matching)} items match: {what}\n\n"
+            f"  {len(todo):>5}  will be marked dyeable\n"
+            f"  {len(matching) - len(todo):>5}  already are\n\n"
+            "Items without a dye palette in their model simply show no colour\n"
+            "change in game - the flag itself does not crash the game.\n\nApply?",
+            QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Ok)
+        if reply != QMessageBox.Ok:
+            return
+        for it in todo:
+            it["is_dyeable"] = 1
+            it["is_editable_grime"] = 1
+        self._buff_modified = True
+        log.info("Filtered dyeable (%s): %d items", what, len(todo))
+        self._buff_status_label.setText(
+            f"Dyeable ({what}): {len(todo)} items. Export / Apply to write.")
+        QMessageBox.information(self, title,
+            f"{len(todo)} items marked dyeable.\n\nExport Field JSON v3 or Apply to write the change.")
+
+    def _eb_filtered_max_refine(self) -> None:
+        """Max Refine, limited to the filtered items.
+
+        Unlike the single-item preset, which always writes 10, this uses each
+        item's own maximum: len(enchant_data_list) - 1, at most 10. Measured
+        on 2.03.02, 2,102 of 3,157 equipment items have a single refine level
+        and cannot be refined at all; those are skipped instead of being
+        told to drop at a level they do not have.
+        """
+        title = "Max Refine"
+        matching = self._eb_filtered_start(title)
+        if matching is None:
+            return
+        what = self._eb_filter_what()
+        todo, already, not_refinable = [], 0, 0
+        for it in matching:
+            top = min(len(it.get("enchant_data_list") or []) - 1, 10)
+            if top <= 0:
+                not_refinable += 1
+                continue
+            if ((it.get("drop_default_data") or {}).get("drop_enchant_level") or 0) >= top:
+                already += 1
+                continue
+            todo.append((it, top))
+        if not todo:
+            QMessageBox.information(self, title,
+                f"{len(matching)} items match ({what}) - nothing to change:\n"
+                f"  {already} already drop at their maximum\n"
+                f"  {not_refinable} cannot be refined at all")
+            return
+        reply = QMessageBox.question(
+            self, title,
+            f"{len(matching)} items match: {what}\n\n"
+            f"  {len(todo):>5}  will drop at their maximum refine level\n"
+            f"  {already:>5}  already do\n"
+            f"  {not_refinable:>5}  cannot be refined (skipped)\n\n"
+            "This affects newly obtained copies - bought, crafted or dropped.\n\nApply?",
+            QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Ok)
+        if reply != QMessageBox.Ok:
+            return
+        for it, top in todo:
+            it["drop_default_data"]["drop_enchant_level"] = top
+        self._buff_modified = True
+        log.info("Filtered max refine (%s): %d items", what, len(todo))
+        self._buff_status_label.setText(
+            f"Max Refine ({what}): {len(todo)} items. Export / Apply to write.")
+        QMessageBox.information(self, title,
+            f"{len(todo)} items now drop at their maximum refine level.\n\n"
+            "Export Field JSON v3 or Apply to write the change.")
 
     def _eb_extend_filtered_sockets_to_5(self) -> None:
         """Like "All -> 5 Sockets", limited to one equipment type and/or tier,
@@ -8350,11 +8518,18 @@ class ItemBuffsTab(QWidget):
                       if 0 <= _ti < len(self._EB_TIER_CHOICES)
                       else self._eb_socket_tier_filter.currentText())
         what = f"{self._eb_socket_type_filter.currentText()}, {_tier_name}"
+        if self._eb_owned_keys() is not None:
+            what += ", only items in my save"
 
         def _sockets(it) -> list:
             ddd = it.get('drop_default_data') or {}
             return (ddd.get('add_socket_material_item_list') or []) if ddd.get('use_socket') else []
 
+        if self._eb_owned_keys() == set():
+            QMessageBox.information(self, "Sockets",
+                "'Only items in my loaded save' is ticked, but no save is loaded.\n"
+                "Load one in the Save Browser first, or untick the box.")
+            return
         matching = self._eb_socket_filter_matches()
         self._eb_update_socket_match_count()
 
