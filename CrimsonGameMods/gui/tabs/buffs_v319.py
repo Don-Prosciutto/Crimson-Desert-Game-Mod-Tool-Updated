@@ -14324,6 +14324,37 @@ class ItemBuffsTab(QWidget):
             (18476, 50.0, "Ch28 Ground jump — start (+56)"),
         ]
 
+        # The offsets above are from game 1.07. Before writing a patch, check
+        # that the installed game still has the expected value at each one.
+        # Checked on 2.03.02: none of them do - the action chart was rebuilt,
+        # and no constant shift brings the values back. A patch built from
+        # these offsets would overwrite unrelated bytes of the dragon's action
+        # chart. So: verify, and refuse unless every value matches.
+        game_path = self._config.get('game_install_path', '') or getattr(self, '_game_path', '')
+        try:
+            import dmm_parser as _dmm
+            paac = bytes(_dmm.extract_file(game_path, "0010",
+                                           "actionchart/bin__/loweraction/2_mon",
+                                           "m0004_ride_dragon_lower.paac"))
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Dragon Speed Boost",
+                f"Could not read the dragon's action chart from the game:\n{e}\n\n"
+                "Nothing was exported.")
+            return
+        bad = [(o, v) for o, v, _ in SPEED_OFFSETS
+               if o + 4 > len(paac) or abs(struct.unpack_from('<f', paac, o)[0] - v) > 1e-4]
+        if bad:
+            log.warning("Dragon speed: %d of %d offsets no longer match the game - export refused",
+                        len(bad), len(SPEED_OFFSETS))
+            QMessageBox.warning(self, "Dragon Speed Boost - not compatible",
+                f"This mod was built for game version 1.07. In your game, {len(bad)} of "
+                f"{len(SPEED_OFFSETS)} speed values are no longer where it expects them - "
+                f"the dragon's action chart has changed since.\n\n"
+                f"A patch built from it would overwrite unrelated data, so nothing was "
+                f"exported. The speed values have to be located again for this game "
+                f"version before this feature can work.")
+            return
+
         changes = []
         mult_str = f"{multiplier:.2f}".rstrip('0').rstrip('.')
         for offset, vanilla, label in SPEED_OFFSETS:
