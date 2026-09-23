@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 
 # The game version the bundled parser was built for.
 # Raise this together with a parser update.
-PARSER_TARGET = "2.03.01"
+PARSER_TARGET = "2.03.02"
 
 
 def read_game_version(game_path: str) -> str | None:
