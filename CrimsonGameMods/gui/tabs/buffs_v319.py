@@ -3773,6 +3773,7 @@ class ItemBuffsTab(QWidget):
         table = self._buff_items_table
         table.setSortingEnabled(False)
         table.setRowCount(len(results))
+        _labels, _variant = self._buff_display_labels(results)
 
         for row, item in enumerate(results):
             icon_cell = QTableWidgetItem()
@@ -3782,9 +3783,7 @@ class ItemBuffsTab(QWidget):
                     icon_cell.setIcon(QIcon(px))
             table.setItem(row, 0, icon_cell)
 
-            display_name = self._name_db.get_name(item.item_key)
-            if display_name.startswith("Unknown"):
-                display_name = item.name
+            display_name = _labels[item.item_key]
             name_cell = QTableWidgetItem(display_name)
             name_cell.setToolTip(f"Internal: {item.name}\nKey: {item.item_key}")
             name_cell.setData(Qt.UserRole, item)
@@ -3805,12 +3804,58 @@ class ItemBuffsTab(QWidget):
             table.setItem(row, 2, QTableWidgetItem(type_str))
             table.setItem(row, 3, QTableWidgetItem(str(limits.get('stackLimit', '?'))))
 
+        if _variant:
+            wanted = min(table.sizeHintForColumn(1) + 16, 460)
+            if table.columnWidth(1) < wanted:
+                table.setColumnWidth(1, wanted)
         table.setSortingEnabled(True)
         self._buff_status_label.setText(
             f"Showing {len(results)} items from your inventory that exist in iteminfo "
             f"(out of {len(save_keys)} save items, {len(iteminfo_keys)} iteminfo records)"
         )
 
+
+    def _buff_display_labels(self, results) -> tuple:
+        """Display label per item key, with a variant hint for repeated names.
+
+        Several items share one display name - among equipment 110 names
+        cover 326 items. Two different "Helms Leather Boots" exist, one with
+        two sockets and one with none, and the list showed them identically:
+        you picked one at random and the change landed on the wrong item.
+        Where a name repeats, the socket count and the part of the internal
+        name that differs follow it: "Helms Leather Boots (2 sockets · I)".
+        Returns (labels, variant) - variant is non-empty when any hint was added.
+        """
+        from collections import Counter as _Counter
+
+        def _shown_name(it) -> str:
+            n = self._name_db.get_name(it.item_key)
+            return it.name if n.startswith("Unknown") else n
+
+        counts = _Counter(_shown_name(it) for it in results)
+        groups: dict = {}
+        for it in results:
+            if counts[_shown_name(it)] > 1:
+                groups.setdefault(_shown_name(it), []).append(it)
+        variant: dict = {}
+        for members in groups.values():
+            toks = [m.name.split("_") for m in members]
+            k = 0
+            while all(len(t) > k for t in toks) and len({t[k] for t in toks}) == 1:
+                k += 1
+            for m, t in zip(members, toks):
+                variant[m.item_key] = "_".join(t[k:]) or m.name
+        labels = {}
+        for it in results:
+            name = _shown_name(it)
+            if it.item_key in variant:
+                ri = self._buff_rust_lookup.get(it.item_key) or {}
+                ddd = ri.get('drop_default_data') or {}
+                n = len(ddd.get('add_socket_material_item_list') or []) if ddd.get('use_socket') else 0
+                sock = f"{n} socket{'s' if n != 1 else ''}" if n else "no sockets"
+                name = f"{name} ({sock} \u00b7 {variant[it.item_key]})"
+            labels[it.item_key] = name
+        return labels, variant
 
     def _buff_search_items(self) -> None:
         if self._buff_data is None:
@@ -3857,33 +3902,7 @@ class ItemBuffsTab(QWidget):
         table.setSortingEnabled(False)
         table.setRowCount(len(results))
 
-        # Several items share one display name - among equipment 110 names
-        # cover 326 items. Two different "Helms Leather Boots" exist, one with
-        # two sockets and one with none, and the list showed them identically:
-        # you picked one at random and the change landed on the wrong item.
-        # Where a name repeats, the internal name and socket count follow it.
-        def _shown_name(it) -> str:
-            n = self._name_db.get_name(it.item_key)
-            return it.name if n.startswith("Unknown") else n
-        from collections import Counter as _Counter
-        _name_counts = _Counter(_shown_name(it) for it in results)
-
-        # The Name column is narrow, so the hint has to be short: socket count
-        # first, then only the part of the internal name that differs within
-        # the group ("I" / "II" rather than Desert_Harrier_Leather_Boots_II).
-        # The full internal name stays in the tooltip.
-        _groups: dict = {}
-        for it in results:
-            if _name_counts[_shown_name(it)] > 1:
-                _groups.setdefault(_shown_name(it), []).append(it)
-        _variant: dict = {}
-        for _members in _groups.values():
-            _toks = [m.name.split("_") for m in _members]
-            _k = 0
-            while all(len(t) > _k for t in _toks) and len({t[_k] for t in _toks}) == 1:
-                _k += 1
-            for m, t in zip(_members, _toks):
-                _variant[m.item_key] = "_".join(t[_k:]) or m.name
+        _labels, _variant = self._buff_display_labels(results)
 
         for row, item in enumerate(results):
             icon_cell = QTableWidgetItem()
@@ -3893,15 +3912,7 @@ class ItemBuffsTab(QWidget):
                     icon_cell.setIcon(QIcon(px))
             table.setItem(row, 0, icon_cell)
 
-            display_name = _shown_name(item)
-            if _name_counts[display_name] > 1:
-                _ri = self._buff_rust_lookup.get(item.item_key) or {}
-                _ddd = _ri.get('drop_default_data') or {}
-                _n = (len(_ddd.get('add_socket_material_item_list') or [])
-                      if _ddd.get('use_socket') else 0)
-                _sock = f"{_n} socket{'s' if _n != 1 else ''}" if _n else "no sockets"
-                display_name = (f"{display_name} ({_sock} \u00b7 "
-                                f"{_variant.get(item.item_key, item.name)})")
+            display_name = _labels[item.item_key]
             name_cell = QTableWidgetItem(display_name)
             tip = f"Internal: {item.name}\nKey: {item.item_key}"
             rust_info = self._buff_rust_lookup.get(item.item_key)
