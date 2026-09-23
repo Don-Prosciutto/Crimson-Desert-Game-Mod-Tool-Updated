@@ -8255,8 +8255,8 @@ class ItemBuffsTab(QWidget):
     # _eb_update_socket_match_count.
     _EB_TIER_CHOICES = (("All tiers", (0, 99)),
                         ("Legendary", (5, 5)),
-                        ("Epic and above", (4, 99)),
-                        ("Rare and above", (3, 99)),
+                        ("Epic + Legendary", (4, 99)),
+                        ("Rare + Epic + Legendary", (3, 99)),
                         ("Epic", (4, 4)),
                         ("Rare", (3, 3)),
                         ("Uncommon", (2, 2)),
