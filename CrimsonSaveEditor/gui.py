@@ -5211,9 +5211,22 @@ QCheckBox::indicator {{
         self._sock_show_merc.setChecked(False)
         self._sock_show_merc.stateChanged.connect(lambda: self._populate_socket_items())
         top.addWidget(self._sock_show_merc)
+        self._sock_fit_only = QCheckBox("Only gems that fit")
+        self._sock_fit_only.setToolTip(
+            "List only the Abyss Gear the game allows on this kind of equipment\n"
+            "(read from the game's own tables, equiptypeinfo + iteminfo).\n"
+            "Untick to list every gem - e.g. when a mod changes those rules.")
+        self._sock_fit_only.setChecked(True)
+        self._sock_fit_only.toggled.connect(lambda _c: self._refilter_all_gem_combos())
+        top.addWidget(self._sock_fit_only)
         top.addWidget(self._make_help_btn("sockets"))
 
         layout.addLayout(top)
+
+        self._sock_fit_note = QLabel("")
+        self._sock_fit_note.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 0 4px;")
+        self._sock_fit_note.setVisible(False)
+        layout.addWidget(self._sock_fit_note)
 
         self._sock_group = QGroupBox("Socket Slots")
         self._sock_layout = QVBoxLayout(self._sock_group)
@@ -5308,20 +5321,112 @@ QCheckBox::indicator {{
         self._tabs.addTab(tab, tr("tab.sockets"))
         self._sock_current_item: Optional[SaveItem] = None
 
-    def _populate_gem_combo(self, combo: QComboBox, category: str = "All", search: str = "") -> None:
+    def _gem_rules(self):
+        """(item -> equip type, gem -> equipable hash, equip type -> allowed hashes).
+
+        A gem fits an item when the gem's `equipable_hash` is in the
+        `equip_able_hash_list` of the item's equip type. Checked against all
+        119 gem/item pairings the game itself wrote into Allan's saves: 119
+        fit, none did not - and a swap chosen that way loaded in game.
+        Read once from the installed game (vanilla group 0008) and cached.
+        Returns None when the game data cannot be read; the caller then lists
+        every gem, as before, and says so.
+        """
+        game_path = self._config.get("game_install_path", "")
+        cached = getattr(self, "_gem_rules_cache", None)
+        # Cached per game path, so setting the path later is picked up.
+        if cached is not None and cached[0] == game_path:
+            return cached[1] or None
+        rules = {}
+        try:
+            import crimson_rs
+            d = "gamedata/binary__/client/bin"
+            items = crimson_rs.parse_iteminfo_from_bytes(
+                bytes(crimson_rs.extract_file(game_path, "0008", d, "iteminfo.pabgb")))
+            types = crimson_rs.parse_table(
+                "equiptypeinfo",
+                bytes(crimson_rs.extract_file(game_path, "0008", d, "equiptypeinfo.pabgb")),
+                bytes(crimson_rs.extract_file(game_path, "0008", d, "equiptypeinfo.pabgh")))
+            rules = {
+                "item_type": {int(i["key"]): int(i.get("equip_type_info") or 0) for i in items},
+                "gem_hash": {int(i["key"]): int(i.get("equipable_hash") or 0) for i in items},
+                "allowed": {int(t["key"]): set(t.get("equip_able_hash_list") or []) for t in types},
+                "type_name": {int(t["key"]): t.get("string_key", "") for t in types},
+            }
+            log.info("Gem rules read: %d items, %d equip types", len(items), len(types))
+        except Exception as e:  # noqa: BLE001
+            log.warning("Gem compatibility not available, listing every gem: %s", e)
+            rules = {}
+        self._gem_rules_cache = (game_path, rules)
+        return rules or None
+
+    def _gems_that_fit(self, item_key: int):
+        """Set of gem keys allowed on this item, or None when unknown / filter off."""
+        box = getattr(self, "_sock_fit_only", None)
+        note = getattr(self, "_sock_fit_note", None)
+        if box is None or not box.isChecked() or not item_key:
+            if note is not None:
+                note.setVisible(False)
+            return None
+        rules = self._gem_rules()
+        if not rules:
+            if note is not None:
+                note.setText("Game data not readable - listing every gem (set the game path to filter).")
+                note.setVisible(True)
+            return None
+        etype = rules["item_type"].get(item_key, 0)
+        allowed = rules["allowed"].get(etype)
+        all_gems = [k for gems in self.GEM_CATEGORIES.values() for k, _ in gems if k]
+        if not allowed:
+            if note is not None:
+                note.setText("No equip-type rule found for this item - listing every gem.")
+                note.setVisible(True)
+            return None
+        fit = {k for k in all_gems if rules["gem_hash"].get(k) in allowed}
+        tname = rules["type_name"].get(etype, "this equipment")
+        if not fit:
+            if note is not None:
+                note.setText(f"The game allows no Abyss Gear on {tname} - listing every gem. "
+                             f"A mod may have changed that; a wrong gem can stop the game from loading.")
+                note.setVisible(True)
+            return None
+        if note is not None:
+            note.setText(f"{len(fit)} of {len(all_gems)} gems fit {tname} (from the game's tables).")
+            note.setVisible(True)
+        return fit
+
+    def _refilter_all_gem_combos(self) -> None:
+        for i in range(len(getattr(self, "_sock_rows", []))):
+            self._filter_gem_combo(i)
+
+    def _populate_gem_combo(self, combo: QComboBox, category: str = "All", search: str = "",
+                            keep_key: int = 0) -> None:
+        item = getattr(self, "_sock_current_item", None)
+        fit = self._gems_that_fit(item.item_key if item is not None else 0)
         combo.blockSignals(True)
         combo.clear()
         combo.addItem("(Empty — remove gem)", 0)
         q = search.lower().strip()
+
+        def _ok(key: int) -> bool:
+            # The gem already in the socket always stays in the list, even if
+            # it does not fit by the rules - otherwise the combo could not
+            # show what is actually there.
+            return fit is None or key in fit or (keep_key and key == keep_key)
+
         if category == "All":
             for cat, gems in self.GEM_CATEGORIES.items():
                 for key, name in gems:
+                    if not _ok(key):
+                        continue
                     if q and q not in name.lower() and q not in cat.lower():
                         continue
                     combo.addItem(f"{name}  [{cat}]", key)
         else:
             gems = self.GEM_CATEGORIES.get(category, [])
             for key, name in gems:
+                if not _ok(key):
+                    continue
                 if q and q not in name.lower():
                     continue
                 combo.addItem(name, key)
@@ -5334,7 +5439,7 @@ QCheckBox::indicator {{
             current_key = combo.currentData()
             cat = category if category is not None else row["filter"].currentText()
             search = row["search"].text()
-            self._populate_gem_combo(combo, cat, search)
+            self._populate_gem_combo(combo, cat, search, keep_key=current_key or 0)
             if current_key is not None:
                 for i in range(combo.count()):
                     if combo.itemData(i) == current_key:
@@ -5481,13 +5586,14 @@ QCheckBox::indicator {{
         for i in range(display_capacity):
             row = self._sock_rows[i]
             row["container"].setVisible(True)
-            self._populate_gem_combo(row["combo"], row["filter"].currentText())
-
             current_gem = 0
             has_gem = False
             if i < len(socket_data):
                 current_gem = socket_data[i]['gem_key']
                 has_gem = socket_data[i]['has_gem']
+
+            self._populate_gem_combo(row["combo"], row["filter"].currentText(),
+                                     keep_key=current_gem if has_gem else 0)
 
             gem_name = self.GEM_LOOKUP.get(current_gem, (self._name_db.get_name(current_gem), "?"))[0] if current_gem else "(Empty)"
 
