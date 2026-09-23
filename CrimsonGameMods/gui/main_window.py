@@ -542,6 +542,13 @@ class MainWindow(QMainWindow):
 
         self._tabs = QTabWidget()
         right_layout.addWidget(self._tabs, 1)
+        # The tab pages ask for up to ~1900 px of width (ItemBuffs, MercPets,
+        # DropSets ...). Qt hands the central area at least that much first,
+        # so a docked Save Browser could never be widened in a smaller
+        # window - the splitter just did not move. An explicit minimum
+        # replaces that hint; the pages behave as before, only the dock can
+        # now take room from them.
+        right_panel.setMinimumWidth(420)
         self.setCentralWidget(right_panel)
 
         from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem
@@ -659,6 +666,9 @@ class MainWindow(QMainWindow):
         # stays docked on the left instead and comes back on the next start.
         self._apply_save_browser_mode(self._config.get("save_browser_pinned", False),
                                       show=self._config.get("save_browser_pinned", False))
+        _app = QApplication.instance()
+        if _app is not None:
+            _app.aboutToQuit.connect(self._remember_save_browser_width)
 
         _corner = QWidget()
         _corner_layout = QHBoxLayout(_corner)
@@ -969,8 +979,8 @@ class MainWindow(QMainWindow):
             # claimed all the room. A real minimum plus a resize once the
             # event loop runs fixes both; the splitter can still widen it.
             dock.setMinimumWidth(220)
-            width = max(self._config.get("save_browser_width", 0) or 0,
-                        self._sb_saved_width or 260, 220)
+            width = max(self._config.get("save_browser_width", 0)
+                        or self._sb_saved_width or 260, 220)
             QTimer.singleShot(0, lambda: self.resizeDocks([dock], [width], Qt.Horizontal))
         else:
             dock.setMinimumWidth(0)
@@ -978,6 +988,17 @@ class MainWindow(QMainWindow):
             dock.setAllowedAreas(Qt.NoDockWidgetArea)
             dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable)
         dock.setVisible(show)
+
+    def _remember_save_browser_width(self) -> None:
+        """Keep the width of the docked Save Browser for the next start."""
+        dock = self._save_dock
+        if (self._config.get("save_browser_pinned", False)
+                and dock.isVisible() and not dock.isFloating()):
+            self._config["save_browser_width"] = int(dock.width())
+            try:
+                self._save_config()
+            except Exception as e:  # noqa: BLE001
+                log.warning("Could not save the Save Browser width: %s", e)
 
     def _menu_pin_save_browser(self, pinned: bool) -> None:
         self._config["save_browser_pinned"] = bool(pinned)
