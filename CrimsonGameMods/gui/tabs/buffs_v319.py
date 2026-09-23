@@ -2837,14 +2837,7 @@ class ItemBuffsTab(QWidget):
         self._eb_socket_tier_filter = QComboBox()
         # No tier numbers in brackets: "Legendary (5)" next to a button that
         # says "-> 5 Sockets" read as "5 items match".
-        for _label, _rng in (("All tiers", (0, 99)),
-                             ("Legendary", (5, 5)),
-                             ("Epic and above", (4, 99)),
-                             ("Rare and above", (3, 99)),
-                             ("Epic", (4, 4)),
-                             ("Rare", (3, 3)),
-                             ("Uncommon", (2, 2)),
-                             ("Common", (1, 1))):
+        for _label, _rng in self._EB_TIER_CHOICES:
             self._eb_socket_tier_filter.addItem(_label, _rng)
         filt_row.addWidget(self._eb_socket_tier_filter)
         sgl.addLayout(filt_row)
@@ -8257,10 +8250,22 @@ class ItemBuffsTab(QWidget):
         rest = sorted(l for l in by_label if l not in first)
         return [(self._EQUIP_TYPE_LABELS.get(l, l), by_label[l]) for l in first + rest]
 
-    def _eb_socket_filter_matches(self) -> list:
-        """Equipment items matching the Type and Tier boxes."""
+    # Tier choices for the socket filter. The number of matching items is
+    # appended at runtime ("Legendary - 18 items"), see
+    # _eb_update_socket_match_count.
+    _EB_TIER_CHOICES = (("All tiers", (0, 99)),
+                        ("Legendary", (5, 5)),
+                        ("Epic and above", (4, 99)),
+                        ("Rare and above", (3, 99)),
+                        ("Epic", (4, 4)),
+                        ("Rare", (3, 3)),
+                        ("Uncommon", (2, 2)),
+                        ("Common", (1, 1)))
+
+    def _eb_socket_filter_matches(self, tier_range=None) -> list:
+        """Equipment items matching the Type box and the Tier box (or tier_range)."""
         hashes = self._eb_socket_type_filter.currentData()
-        lo, hi = self._eb_socket_tier_filter.currentData() or (0, 99)
+        lo, hi = tier_range or self._eb_socket_tier_filter.currentData() or (0, 99)
         out = []
         for it in (getattr(self, '_buff_rust_items', None) or []):
             if not it.get('drop_default_data') or not it.get('equip_type_info'):
@@ -8281,6 +8286,13 @@ class ItemBuffsTab(QWidget):
             return
         n = len(self._eb_socket_filter_matches())
         label.setText(f"{n} item{'s' if n != 1 else ''} match this filter.")
+        # Show the count for every tier of the selected type right in the
+        # dropdown, so the choice can be made on the numbers.
+        combo = self._eb_socket_tier_filter
+        for i, (base, rng) in enumerate(self._EB_TIER_CHOICES):
+            if i < combo.count():
+                k = len(self._eb_socket_filter_matches(rng))
+                combo.setItemText(i, f"{base} \u2014 {k} item{'s' if k != 1 else ''}")
 
     def _eb_extend_filtered_sockets_to_5(self) -> None:
         """Like "All -> 5 Sockets", limited to one equipment type and/or tier."""
