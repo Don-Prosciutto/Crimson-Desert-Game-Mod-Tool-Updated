@@ -2840,6 +2840,18 @@ class ItemBuffsTab(QWidget):
         for _label, _rng in self._EB_TIER_CHOICES:
             self._eb_socket_tier_filter.addItem(_label, _rng)
         filt_row.addWidget(self._eb_socket_tier_filter)
+        filt_row.addWidget(QLabel("Sockets:"))
+        # Not everyone wants five. Items that already have more than the
+        # chosen number are left alone - shrinking a socket list could strand
+        # gems that sit in items people already own.
+        self._eb_socket_target = QSpinBox()
+        self._eb_socket_target.setRange(1, 5)
+        self._eb_socket_target.setValue(5)
+        self._eb_socket_target.setFixedWidth(60)
+        self._eb_socket_target.setToolTip(
+            "How many sockets the matching items should have.\n"
+            "Items that already have this many or more are not changed.")
+        filt_row.addWidget(self._eb_socket_target)
         sgl.addLayout(filt_row)
 
         # The actual number of matching items, updated whenever Type or Tier
@@ -2851,12 +2863,17 @@ class ItemBuffsTab(QWidget):
         self._eb_socket_tier_filter.currentIndexChanged.connect(self._eb_update_socket_match_count)
 
         socket_filtered_btn = QPushButton("Matching items \u2192 5 Sockets")
+        self._eb_socket_filtered_btn = socket_filtered_btn
+        self._eb_socket_target.valueChanged.connect(
+            lambda v: socket_filtered_btn.setText(
+                f"Matching items \u2192 {v} Socket{'s' if v != 1 else ''}"))
         socket_filtered_btn.setStyleSheet(
             "background-color: #1565C0; color: white; font-weight: bold; "
             "padding: 8px;")
         socket_filtered_btn.setToolTip(
-            "Extend only the items that match Type and Tier to 5 sockets,\n"
-            "e.g. all Legendary gloves. Shows the count and asks before changing anything.")
+            "Extend only the items that match Type and Tier to the chosen number\n"
+            "of sockets, e.g. all Legendary gloves to 3. Shows the count and asks\n"
+            "before changing anything. Never removes sockets.")
         socket_filtered_btn.clicked.connect(self._eb_extend_filtered_sockets_to_5)
         sgl.addWidget(socket_filtered_btn)
 
@@ -8295,16 +8312,22 @@ class ItemBuffsTab(QWidget):
                 combo.setItemText(i, f"{base} \u2014 {k} item{'s' if k != 1 else ''}")
 
     def _eb_extend_filtered_sockets_to_5(self) -> None:
-        """Like "All -> 5 Sockets", limited to one equipment type and/or tier."""
+        """Like "All -> 5 Sockets", limited to one equipment type and/or tier,
+        with a chosen socket count (1-5) instead of always five."""
         if not getattr(self, '_buff_rust_items', None):
             QMessageBox.warning(self, "Sockets",
                 "Extract with Rust parser first (click 'Extract (Rust)').")
             return
 
-        TARGET = 5
+        TARGET = int(self._eb_socket_target.value()) if hasattr(self, '_eb_socket_target') else 5
         DEFAULT_COSTS = [500, 1000, 2000, 3000, 4000, 5000, 6000, 7000]
-        what = (f"{self._eb_socket_type_filter.currentText()}, "
-                f"{self._eb_socket_tier_filter.currentText()}")
+        # The Tier entries carry a live count ("Legendary - 19 items"); use the
+        # plain name here so the dialog does not repeat a number.
+        _ti = self._eb_socket_tier_filter.currentIndex()
+        _tier_name = (self._EB_TIER_CHOICES[_ti][0]
+                      if 0 <= _ti < len(self._EB_TIER_CHOICES)
+                      else self._eb_socket_tier_filter.currentText())
+        what = f"{self._eb_socket_type_filter.currentText()}, {_tier_name}"
 
         def _sockets(it) -> list:
             ddd = it.get('drop_default_data') or {}
@@ -8378,6 +8401,9 @@ class ItemBuffsTab(QWidget):
             self._buff_status_label.setText(
                 f"Sockets ({what}): {extended} extended, {enabled} newly enabled. "
                 f"Export / Apply to write.")
+        if not (extended or enabled):
+            QMessageBox.information(self, "Sockets", "Nothing changed.")
+            return
         QMessageBox.information(
             self, "Sockets",
             f"{extended} items extended to {TARGET} sockets"
