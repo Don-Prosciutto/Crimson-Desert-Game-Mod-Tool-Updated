@@ -3763,9 +3763,7 @@ class ItemBuffsTab(QWidget):
         for row, item in enumerate(results):
             icon_cell = QTableWidgetItem()
             if self._buff_icons_enabled:
-                px = self._icon_cache.get_pixmap(item.item_key)
-                if px:
-                    icon_cell.setIcon(QIcon(px))
+                self._buff_icon_into(icon_cell, item.item_key)
             table.setItem(row, 0, icon_cell)
 
             display_name = _labels[item.item_key]
@@ -3894,9 +3892,7 @@ class ItemBuffsTab(QWidget):
         for row, item in enumerate(results):
             icon_cell = QTableWidgetItem()
             if self._buff_icons_enabled:
-                px = self._icon_cache.get_pixmap(item.item_key)
-                if px:
-                    icon_cell.setIcon(QIcon(px))
+                self._buff_icon_into(icon_cell, item.item_key)
             table.setItem(row, 0, icon_cell)
 
             display_name = _labels[item.item_key]
@@ -4014,12 +4010,27 @@ class ItemBuffsTab(QWidget):
         self._buff_json_refresh()
 
 
+    def _buff_icon_into(self, cell, item_key: int) -> None:
+        """Put the item's picture into a table cell - now if it is on disk,
+        otherwise as soon as the download arrives (the list stays usable
+        meanwhile). Earlier only pictures already on disk were used, so the
+        EXE, which ships none, never showed any."""
+        px = self._icon_cache.get_pixmap(item_key)
+        if px is not None:
+            cell.setIcon(QIcon(px))
+            return
+
+        def _arrived(_key, pixmap, cell=cell):
+            try:
+                cell.setIcon(QIcon(pixmap))
+            except RuntimeError:        # the list was rebuilt meanwhile
+                pass
+        self._icon_cache.request_icon(item_key, _arrived)
+
     def _buff_toggle_icons(self) -> None:
         self._buff_icons_enabled = not self._buff_icons_enabled
         if self._buff_icons_enabled:
             self._buff_show_icons_btn.setText("Hide Icons")
-            for item in self._buff_items:
-                self._icon_cache.get_pixmap(item.item_key)
             row_h = max(ICON_SIZE + 2, 24)
         else:
             self._buff_show_icons_btn.setText("Show Icons")
@@ -4038,9 +4049,7 @@ class ItemBuffsTab(QWidget):
                     if item and self._buff_icons_enabled:
                         icon_cell = self._buff_items_table.item(row, 0)
                         if icon_cell:
-                            px = self._icon_cache.get_pixmap(item.item_key)
-                            if px:
-                                icon_cell.setIcon(QIcon(px))
+                            self._buff_icon_into(icon_cell, item.item_key)
 
 
     def _restore_original_items(self) -> list | None:
@@ -6360,7 +6369,7 @@ class ItemBuffsTab(QWidget):
         content_row = QHBoxLayout()
 
         icon_label = QLabel()
-        px = self._icon_cache.get_pixmap(item.item_key)
+        px = self._icon_cache.download_icon_sync(item.item_key)
         if px and not px.isNull():
             icon_label.setPixmap(px.scaled(96, 96, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
@@ -16003,9 +16012,7 @@ class ItemBuffsTab(QWidget):
         for row, item in enumerate(results):
             icon_cell = QTableWidgetItem()
             if self._buff_icons_enabled:
-                px = self._icon_cache.get_pixmap(item.item_key)
-                if px:
-                    icon_cell.setIcon(QIcon(px))
+                self._buff_icon_into(icon_cell, item.item_key)
             table.setItem(row, 0, icon_cell)
             display_name = self._name_db.get_name(item.item_key)
             if display_name.startswith("Unknown"):

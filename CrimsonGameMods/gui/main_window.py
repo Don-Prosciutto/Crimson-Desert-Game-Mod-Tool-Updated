@@ -207,6 +207,12 @@ class MainWindow(QMainWindow):
         self._pack_mgr = PackManager()
         self._set_mgr = SetManager()
         self._icon_cache = IconCache()
+        # Hover over any item icon for a large preview, click it for 256 px.
+        from gui.icon_preview import IconPreview
+        self._icon_preview = IconPreview(self)
+        _qapp = QApplication.instance()
+        if _qapp is not None:
+            _qapp.installEventFilter(self._icon_preview)
 
         self._max_enchant_map: dict = {}
         try:
@@ -1085,6 +1091,9 @@ class MainWindow(QMainWindow):
                 if tabs.tabText(j).startswith(old):
                     tabs.setTabText(j, new)
                     break
+
+        # One icon cache for both halves (one download folder).
+        win._icon_cache = self._icon_cache
 
         # The Save Editor navigates with self._tabs / self._real_tabs.
         win._tabs = rt

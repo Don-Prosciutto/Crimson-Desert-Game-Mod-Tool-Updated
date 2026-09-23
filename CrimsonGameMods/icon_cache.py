@@ -1,28 +1,72 @@
+"""Item icons: 256x256 webp pictures, one per item key.
+
+Where they come from, in this order:
+  1. the icon cache next to the program (icons_local/ beside the EXE, or
+     beside this file when run from source) - downloads land here;
+  2. icons_local/ folders that ship with the source (the Game Mod Tool folder,
+     the repository root, a bundle);
+  3. a download from the repository on GitHub, stored in (1) for next time.
+
+Why this was rewritten: the Save Editor's copy only ever looked in (1) and
+the Game Mod Tool's ItemBuffs list only asked for icons already on disk, so
+in the EXEs (which have no icons_local/ beside them) "Show Icons" showed
+nothing. The old downloader also built QPixmaps on worker threads, which Qt
+does not allow. Now a small pool downloads bytes only; pictures are made on
+the UI thread and callbacks run there.
+"""
+
 from __future__ import annotations
 
 import logging
 import os
 import sys
 import threading
-from typing import Callable, Dict, Optional
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, Dict, List, Optional
 from urllib.request import urlopen, Request
 
-from PySide6.QtGui import QPixmap, QImage
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtGui import QPixmap
 
 log = logging.getLogger(__name__)
 
 ICON_SIZE = 32
 
-_GITHUB_ICON_BASE = "https://raw.githubusercontent.com/NattKh/CRIMSON-DESERT-SAVE-EDITOR/main/icons_local"
+# The fork carries the same icons_local/ as the original repository.
+_GITHUB_ICON_BASE = ("https://raw.githubusercontent.com/"
+                     "Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/main/icons_local")
+_GITHUB_ICON_FALLBACK = "https://raw.githubusercontent.com/NattKh/CRIMSON-DESERT-SAVE-EDITOR/main/icons_local"
+
+_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def _get_local_icons_dir():
+def _get_local_icons_dir() -> str:
     if getattr(sys, 'frozen', False):
         base = os.path.dirname(os.path.abspath(sys.executable))
     else:
-        base = os.path.dirname(os.path.abspath(__file__))
+        base = _MODULE_DIR
     return os.path.join(base, "icons_local")
+
+
+def _search_dirs(cache_dir: str) -> List[str]:
+    dirs = [cache_dir,
+            os.path.join(_MODULE_DIR, "icons_local"),
+            os.path.join(os.path.dirname(_MODULE_DIR), "icons_local"),
+            os.path.join(os.path.dirname(os.path.dirname(_MODULE_DIR)), "icons_local")]
+    meipass = getattr(sys, '_MEIPASS', None)
+    if meipass:
+        dirs.append(os.path.join(meipass, "icons_local"))
+    out, seen = [], set()
+    for d in dirs:
+        n = os.path.normcase(os.path.abspath(d))
+        if n not in seen and os.path.isdir(d):
+            seen.add(n)
+            out.append(d)
+    return out
+
+
+class _Notifier(QObject):
+    fetched = Signal(int, bool)
 
 
 class IconCache:
@@ -30,215 +74,120 @@ class IconCache:
     def __init__(self, icon_urls_path: Optional[str] = None):
         self._pixmaps: Dict[int, QPixmap] = {}
         self._pending: set = set()
-        # Keys whose download already failed this session; without this every
-        # repopulate re-spawns a thread and an HTTP attempt per missing icon.
+        # Keys that could not be fetched this session; asked only once.
         self._missing: set = set()
+        self._callbacks: Dict[int, List[Callable]] = {}
         self._lock = threading.Lock()
         self._local_dir = _get_local_icons_dir()
-        os.makedirs(self._local_dir, exist_ok=True)
+        try:
+            os.makedirs(self._local_dir, exist_ok=True)
+        except OSError:
+            pass
+        self._dirs = _search_dirs(self._local_dir) or [self._local_dir]
+        self._pool = ThreadPoolExecutor(max_workers=6, thread_name_prefix="icons")
+        self._notifier = _Notifier()
+        self._notifier.fetched.connect(self._on_fetched)
+
+    # ── lookup ──────────────────────────────────────────────────────────
+
+    def icon_path(self, item_key: int) -> Optional[str]:
+        """Path of the picture on disk, or None if it is not here yet."""
+        name = f"{int(item_key)}.webp"
+        for d in self._dirs:
+            p = os.path.join(d, name)
+            if os.path.isfile(p):
+                return p
+        return None
 
     def has_icon(self, item_key: int) -> bool:
-        if os.path.isfile(os.path.join(self._local_dir, f"{item_key}.webp")):
-            return True
-        return True
+        return item_key not in self._missing
+
+    def _load(self, item_key: int) -> Optional[QPixmap]:
+        p = self.icon_path(item_key)
+        if not p:
+            return None
+        px = QPixmap(p)
+        if px.isNull():
+            return None
+        self._pixmaps[item_key] = px
+        return px
 
     def get_pixmap(self, item_key: int) -> Optional[QPixmap]:
+        """The picture if it is on disk; never downloads."""
         if item_key in self._pixmaps:
             return self._pixmaps[item_key]
+        return self._load(item_key)
 
-        local_path = os.path.join(self._local_dir, f"{item_key}.webp")
-        if os.path.isfile(local_path):
-            px = QPixmap(local_path)
-            if not px.isNull():
-                self._pixmaps[item_key] = px
-                return px
-
-        return None
+    # ── fetching ────────────────────────────────────────────────────────
 
     def request_icon(self, item_key: int, callback: Callable[[int, QPixmap], None]) -> None:
-        if item_key in self._pixmaps:
-            callback(item_key, self._pixmaps[item_key])
+        """Call callback(key, pixmap) on the UI thread as soon as the picture
+        is available - right away if it is on disk, else after a download."""
+        px = self.get_pixmap(item_key)
+        if px is not None:
+            callback(item_key, px)
             return
-
-        local_path = os.path.join(self._local_dir, f"{item_key}.webp")
-        if os.path.isfile(local_path):
-            px = QPixmap(local_path)
-            if not px.isNull():
-                self._pixmaps[item_key] = px
-                callback(item_key, px)
-                return
-
         with self._lock:
-            if item_key in self._pending or item_key in self._missing:
+            if item_key in self._missing:
+                return
+            self._callbacks.setdefault(item_key, []).append(callback)
+            if item_key in self._pending:
                 return
             self._pending.add(item_key)
-
-        url = f"{_GITHUB_ICON_BASE}/{item_key}.webp"
-        thread = threading.Thread(
-            target=self._download_icon,
-            args=(item_key, url, callback),
-            daemon=True,
-        )
-        thread.start()
-
-    def download_icon_sync(self, item_key: int) -> Optional[QPixmap]:
-        if item_key in self._pixmaps:
-            return self._pixmaps[item_key]
-
-        local_path = os.path.join(self._local_dir, f"{item_key}.webp")
-        if os.path.isfile(local_path):
-            px = QPixmap(local_path)
-            if not px.isNull():
-                self._pixmaps[item_key] = px
-                return px
-
-        url = f"{_GITHUB_ICON_BASE}/{item_key}.webp"
-        try:
-            req = Request(url, headers={"User-Agent": "CrimsonSaveEditor"})
-            with urlopen(req, timeout=15) as resp:
-                img_data = resp.read()
-
-            with open(local_path, 'wb') as f:
-                f.write(img_data)
-
-            px = QPixmap(local_path)
-            if not px.isNull():
-                self._pixmaps[item_key] = px
-                return px
-        except Exception as e:
-            log.debug("Icon download failed for key %d: %s", item_key, e)
-            with self._lock:
-                self._missing.add(item_key)
-
-        return None
-
-    def _download_icon(self, item_key: int, url: str, callback) -> None:
-        local_path = os.path.join(self._local_dir, f"{item_key}.webp")
-
-        if os.path.isfile(local_path):
-            try:
-                px = QPixmap(local_path)
-                if not px.isNull():
-                    self._pixmaps[item_key] = px
-                    callback(item_key, px)
-            except Exception:
-                pass
-            finally:
-                with self._lock:
-                    self._pending.discard(item_key)
-            return
-
-        try:
-            req = Request(url, headers={"User-Agent": "CrimsonSaveEditor"})
-            with urlopen(req, timeout=15) as resp:
-                img_data = resp.read()
-
-            if not img_data or len(img_data) < 100:
-                with self._lock:
-                    self._missing.add(item_key)
-                    self._pending.discard(item_key)
-                return
-
-            with open(local_path, 'wb') as f:
-                f.write(img_data)
-
-            qimg = QImage()
-            qimg.loadFromData(img_data)
-            if qimg.isNull():
-                with self._lock:
-                    self._missing.add(item_key)
-                    self._pending.discard(item_key)
-                return
-
-            px = QPixmap.fromImage(qimg)
-            self._pixmaps[item_key] = px
-            callback(item_key, px)
-
-        except Exception as e:
-            log.debug("Icon download failed for key %d: %s", item_key, e)
-            with self._lock:
-                self._missing.add(item_key)
-        finally:
-            with self._lock:
-                self._pending.discard(item_key)
+        self._pool.submit(self._fetch, item_key)
 
     def preload_keys(self, keys: list, callback: Callable[[int, QPixmap], None]) -> None:
         for key in keys:
             if key not in self._pixmaps:
                 self.request_icon(key, callback)
 
-    def bulk_download_all(self, progress_callback=None) -> dict:
-        from urllib.request import urlopen, Request
-        import json as _json
-
-        stats = {'downloaded': 0, 'skipped': 0, 'errors': 0}
-
-        folders = [
-            ("icons_local", self._local_dir),
-            ("icons_mercenary", os.path.join(os.path.dirname(self._local_dir), "icons_mercenary")),
-        ]
-
-        for folder_name, local_dir in folders:
-            os.makedirs(local_dir, exist_ok=True)
-            base_url = f"https://raw.githubusercontent.com/NattKh/CRIMSON-DESERT-SAVE-EDITOR/main/{folder_name}"
-
-            api_url = f"https://api.github.com/repos/NattKh/CRIMSON-DESERT-SAVE-EDITOR/contents/{folder_name}"
+    def _download(self, item_key: int) -> bool:
+        target = os.path.join(self._local_dir, f"{item_key}.webp")
+        for base in (_GITHUB_ICON_BASE, _GITHUB_ICON_FALLBACK):
             try:
-                req = Request(api_url, headers={"User-Agent": "CrimsonSaveEditor"})
-                with urlopen(req, timeout=30) as resp:
-                    files = _json.loads(resp.read())
-            except Exception as e:
-                log.warning("Failed to list %s from GitHub: %s", folder_name, e)
-                stats['errors'] += 1
-                continue
-
-            for i, entry in enumerate(files):
-                fname = entry.get('name', '')
-                if not fname.endswith('.webp'):
+                req = Request(f"{base}/{item_key}.webp", headers={"User-Agent": "CrimsonGameMods"})
+                with urlopen(req, timeout=15) as resp:
+                    data = resp.read()
+                if not data or len(data) < 100 or data[:4] != b"RIFF":
                     continue
+                tmp = target + ".part"
+                with open(tmp, "wb") as f:
+                    f.write(data)
+                os.replace(tmp, target)
+                return True
+            except Exception as e:  # noqa: BLE001 - offline, 404, ...
+                log.debug("Icon %s from %s: %s", item_key, base, e)
+        return False
 
-                local_path = os.path.join(local_dir, fname)
-                if os.path.isfile(local_path):
-                    stats['skipped'] += 1
-                    continue
-
-                try:
-                    dl_url = f"{base_url}/{fname}"
-                    req = Request(dl_url, headers={"User-Agent": "CrimsonSaveEditor"})
-                    with urlopen(req, timeout=15) as resp:
-                        data = resp.read()
-                    if data and len(data) > 100:
-                        with open(local_path, 'wb') as f:
-                            f.write(data)
-                        stats['downloaded'] += 1
-                    else:
-                        stats['errors'] += 1
-                except Exception:
-                    stats['errors'] += 1
-
-                if progress_callback and (stats['downloaded'] + stats['errors']) % 50 == 0:
-                    progress_callback(folder_name, stats['downloaded'], stats['skipped'],
-                                      stats['errors'], len(files))
-
-        return stats
-
-    def get_merc_pixmap(self, char_key: int) -> Optional[QPixmap]:
-        cache_key = f"merc_{char_key}"
-        if cache_key in self._pixmaps:
-            return self._pixmaps[cache_key]
-
-        merc_dir = os.path.join(os.path.dirname(self._local_dir), "icons_mercenary")
-        local_path = os.path.join(merc_dir, f"{char_key}.webp")
-        if os.path.isfile(local_path):
-            px = QPixmap(local_path)
-            if not px.isNull():
-                self._pixmaps[cache_key] = px
-                return px
-        return None
-
-    @property
-    def coverage(self) -> int:
+    def _fetch(self, item_key: int) -> None:          # worker thread: bytes only
+        ok = False
         try:
-            return len([f for f in os.listdir(self._local_dir) if f.endswith('.webp')])
-        except Exception:
-            return 0
+            ok = self._download(item_key)
+        finally:
+            self._notifier.fetched.emit(item_key, ok)
+
+    def _on_fetched(self, item_key: int, ok: bool) -> None:   # UI thread
+        with self._lock:
+            self._pending.discard(item_key)
+            callbacks = self._callbacks.pop(item_key, [])
+        px = self._load(item_key) if ok else None
+        if px is None:
+            with self._lock:
+                self._missing.add(item_key)
+            return
+        for cb in callbacks:
+            try:
+                cb(item_key, px)
+            except Exception as e:  # noqa: BLE001
+                log.debug("Icon callback for %s failed: %s", item_key, e)
+
+    def download_icon_sync(self, item_key: int) -> Optional[QPixmap]:
+        px = self.get_pixmap(item_key)
+        if px is not None:
+            return px
+        if item_key in self._missing:
+            return None
+        if self._download(item_key):
+            return self._load(item_key)
+        self._missing.add(item_key)
+        return None
