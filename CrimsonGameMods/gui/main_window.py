@@ -966,54 +966,45 @@ class MainWindow(QMainWindow):
         if self._config.get("ui_scale", 100) != 100 or self._config.get("compact_mode", False):
             self._apply_ui_settings()
 
-    # ── Save Editor, embedded (all-in-one test) ─────────────────────────
-    # The Save Editor runs as a whole inside a top-level tab: its own window,
-    # menus, docks and settings, from the generated package save_editor/
-    # (see tools/vendor_save_editor.py). It is built the first time the tab
-    # is opened, so the Game Mod Tool starts as fast as before.
+    # ── Save Editor, merged (all-in-one test) ───────────────────────────
+    # The Save Editor (generated package save_editor/, see
+    # tools/vendor_save_editor.py) is created as an invisible engine. Its
+    # pages, docks and menu commands are moved into this window, so the
+    # result is one program: one menu bar, one game path, one Save Browser,
+    # one status bar, one loaded save. Top level:
+    #   Game Mods | Save Editor | World | Items | Backup
+    # It is built right after the window appears, so the start is not slower.
+
+    _SE_MENU_COMMANDS = ("Open Save File (.save)...", "Open Raw Stream (.bin)...",
+                         "Auto-Find Save Files...", "Save", "Save As...", "Undo")
 
     def _build_save_editor_area(self) -> None:
         host = QWidget()
         lay = QVBoxLayout(host)
         lay.setContentsMargins(0, 0, 0, 0)
-        self._se_placeholder = QLabel(
-            "The Save Editor opens here.\n\nIt loads the first time you open this tab.")
+        self._se_placeholder = QLabel("Loading the Save Editor...")
         self._se_placeholder.setAlignment(Qt.AlignCenter)
         self._se_placeholder.setWordWrap(True)
         lay.addWidget(self._se_placeholder)
         self._se_host = host
         self._se_window = None
-        self._se_shortcut_state = None
-        self._real_tabs.addTab(host, "Save Editor")
-        self._real_tabs.setTabToolTip(
-            self._real_tabs.indexOf(host),
-            "The full Save Editor - edits your SAVE FILE, not game files.\n"
-            "Has its own menus, Save Browser and settings.")
+        self._se_area_widgets = ()
+        self._real_tabs.insertTab(1, host, "Save Editor")
         self._real_tabs.currentChanged.connect(self._on_top_tab_changed_se)
+        QTimer.singleShot(250, self._load_save_editor)
 
     def _on_top_tab_changed_se(self, index: int) -> None:
-        active = self._real_tabs.widget(index) is self._se_host
-        if active and self._se_window is None:
-            self._load_save_editor()
-        self._se_apply_shortcuts(active)
-        # The Save Editor brings its own Save Browser. Two of them side by
-        # side would be confusing, so this tool's browser and its toggle
-        # button step aside while the Save Editor is shown.
-        corner = self._real_tabs.cornerWidget(Qt.TopRightCorner)
-        if corner is not None:
-            corner.setVisible(not active)
-        dock = getattr(self, "_save_dock", None)
+        if self._se_window is None:
+            return
+        # The Pack Browser (knowledge / quest packs for the save) belongs to
+        # the save areas; it steps aside in Game Mods and Items.
+        in_save_area = self._real_tabs.widget(index) in self._se_area_widgets
+        dock = getattr(self._se_window, "_pack_dock", None)
         if dock is not None:
-            if active:
-                self._se_hid_save_dock = dock.isVisible()
-                if self._se_hid_save_dock:
-                    dock.hide()
-            elif getattr(self, "_se_hid_save_dock", False):
-                dock.show()
-                self._se_hid_save_dock = False
+            dock.setVisible(in_save_area)
 
     def _load_save_editor(self) -> None:
-        self._se_placeholder.setText("Loading the Save Editor...")
+        self._update_status("Loading the Save Editor...")
         QApplication.processEvents()
         try:
             if not getattr(sys, "frozen", False):
@@ -1031,22 +1022,193 @@ class MainWindow(QMainWindow):
             from save_editor import gui as se_gui
             self._se_seed_config(se_gui)
             win = se_gui.MainWindow()
-            win.setWindowFlags(Qt.Widget)
-            self._se_redirect_exit(win)
-            lay = self._se_host.layout()
-            lay.removeWidget(self._se_placeholder)
-            self._se_placeholder.deleteLater()
-            lay.addWidget(win)
-            win.show()
+            # The engine window itself never appears: a hidden 0x0 child.
+            win.setParent(self, Qt.Widget)
+            win.setFixedSize(0, 0)
+            win.hide()
+            for _n in ("show", "raise_", "activateWindow", "showNormal", "showMaximized"):
+                setattr(win, _n, lambda *a, **k: None)
             self._se_window = win
-            log.info("Save Editor embedded")
+            self._se_merge(win)
+            self._update_status("Save Editor ready")
+            log.info("Save Editor merged into the main window")
         except Exception as e:  # noqa: BLE001
             import traceback as _tb
-            log.exception("Embedding the Save Editor failed")
-            self._se_placeholder.setText(
-                "The Save Editor could not be loaded.\n\n"
-                f"{e}\n\n{_tb.format_exc()[-1500:]}")
-            self._se_placeholder.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            log.exception("Merging the Save Editor failed")
+            self._se_window = None
+            if self._real_tabs.indexOf(self._se_host) >= 0:
+                self._se_placeholder.setText(
+                    "The Save Editor could not be loaded.\n\n"
+                    f"{e}\n\n{_tb.format_exc()[-1500:]}")
+                self._se_placeholder.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+    def _se_merge(self, win) -> None:
+        rt = self._real_tabs
+        se_top = win._real_tabs
+        save_page, world_page, items_page = win._save_tabs, win._world_tabs, win._items_tabs
+        others = [se_top.widget(i) for i in range(se_top.count())
+                  if se_top.widget(i) not in (save_page, world_page, items_page)]
+        for w in [save_page, world_page, items_page] + others:
+            i = se_top.indexOf(w)
+            if i >= 0:
+                se_top.removeTab(i)
+
+        # Top level: Game Mods | Save Editor | World | Items | Backup
+        current_was_host = rt.currentWidget() is self._se_host
+        i = rt.indexOf(self._se_host)
+        rt.removeTab(i)
+        self._se_host.deleteLater()
+        rt.insertTab(1, save_page, "Save Editor")
+        rt.insertTab(2, world_page, "World")
+        for w in others:
+            rt.addTab(w, "Backup")
+        rt.setTabToolTip(rt.indexOf(save_page), "Edits your SAVE FILE: inventory, equipment, sockets, dye ...")
+        rt.setTabToolTip(rt.indexOf(world_page), "Edits your SAVE FILE: quests, knowledge, abyss gates, factions ...")
+        for w in others:
+            rt.setTabToolTip(rt.indexOf(w), "Backups of your save files")
+        if current_was_host:
+            rt.setCurrentWidget(save_page)
+        self._se_area_widgets = (save_page, world_page, *others)
+
+        # One item database: this tool's. The Save Editor's Item Packs join it.
+        for j in range(items_page.count()):
+            if "pack" in items_page.tabText(j).lower():
+                w, t = items_page.widget(j), items_page.tabText(j)
+                items_page.removeTab(j)
+                self._items_tabs.addTab(w, t)
+                break
+
+        # Same name, different scope - make it obvious which one is which.
+        for tabs, old, new in ((self._mods_tabs, "MercPets", "MercPets (game files)"),
+                               (save_page, "Mercenary", "Mercenary/Pets (this save)")):
+            for j in range(tabs.count()):
+                if tabs.tabText(j).startswith(old):
+                    tabs.setTabText(j, new)
+                    break
+
+        # The Save Editor navigates with self._tabs / self._real_tabs.
+        win._tabs = rt
+        win._real_tabs = rt
+
+        # One Save Browser and one Pack Browser: the Save Editor's.
+        for old in (getattr(self, "_save_dock", None), getattr(self, "_pack_dock", None)):
+            if old is not None:
+                old.hide()
+        self._gmt_save_dock = getattr(self, "_save_dock", None)
+        self._save_dock = win._save_dock
+        self._pack_dock = win._pack_dock
+        self.addDockWidget(Qt.LeftDockWidgetArea, win._save_dock)
+        self.addDockWidget(Qt.RightDockWidgetArea, win._pack_dock)
+        if not self._config.get("save_browser_width"):
+            self._sb_saved_width = 300     # its top buttons are cut off below that
+        self._apply_save_browser_mode(True, show=True)
+        btn = getattr(self, "_btn_toggle_save_browser", None)
+        if btn is not None:
+            try:
+                btn.clicked.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+            btn.clicked.connect(lambda checked: (self._save_dock.setVisible(checked),
+                                                 self._save_dock.raise_() if checked else None))
+            btn.setToolTip("Show or hide the Save Browser")
+            self._save_dock.visibilityChanged.connect(btn.setChecked)
+            btn.setChecked(True)
+        pin = getattr(self, "_pin_save_browser_action", None)
+        if pin is not None:
+            pin.setVisible(False)          # always docked now
+        self._on_top_tab_changed_se(rt.currentIndex())
+
+        # One menu bar: this tool's File / Edit commands run the Save Editor's.
+        se_actions = {}
+        for act in win.findChildren(QAction):
+            se_actions.setdefault(act.text(), act)
+        for act in self.findChildren(QAction):
+            if act.text() in self._SE_MENU_COMMANDS and act.text() in se_actions \
+                    and act is not se_actions[act.text()]:
+                try:
+                    act.triggered.disconnect()
+                except (RuntimeError, TypeError):
+                    pass
+                act.triggered.connect(se_actions[act.text()].trigger)
+        # The engine window's own menu shortcuts and F1-F12 must not compete
+        # with this window's (Qt ignores a key two shortcuts claim).
+        for act in win.findChildren(QAction):
+            act.setShortcuts([])
+        for sc in win.findChildren(QShortcut):
+            sc.setEnabled(False)
+        for k in range(rt.count()):
+            if k >= 3 and k < 12:          # F1-F3 exist from the build
+                QShortcut(QKeySequence(f"F{k+1}"), self).activated.connect(
+                    (lambda idx: lambda: rt.setCurrentIndex(idx))(k))
+
+        # One status bar.
+        se_update = win._update_status
+
+        def _se_update_status(action: str = "") -> None:
+            se_update(action)
+            for name in ("_status_file_label", "_status_items_label", "_status_action_label"):
+                src, dst = getattr(win, name, None), getattr(self, name, None)
+                if src is not None and dst is not None:
+                    dst.setText(src.text())
+        win._update_status = _se_update_status
+        win.statusBar().messageChanged.connect(
+            lambda m: self.statusBar().showMessage(m, 8000) if m else None)
+
+        # One loaded save: whatever the Save Editor opens or saves, Game Mods
+        # (My Inventory, "only items in my loaded save") gets the same file.
+        se_finished = win._on_save_load_finished
+
+        def _se_loaded(path, save_data, items, enriched, parc_status, timings):
+            se_finished(path, save_data, items, enriched, parc_status, timings)
+            self._se_follow_save(path)
+        win._on_save_load_finished = _se_loaded
+        se_do_save = win._do_save
+
+        def _se_saved(path):
+            result = se_do_save(path)
+            self._se_follow_save(path)
+            return result
+        win._do_save = _se_saved
+
+        # View menu lists the Save Editor's pages too.
+        self._save_tabs = save_page
+        self._world_tabs = world_page
+        if hasattr(self, "_view_menu"):
+            try:
+                self._rebuild_view_tab_list()
+            except Exception as e:  # noqa: BLE001
+                log.warning("View menu rebuild failed: %s", e)
+        gp = self._config.get("game_install_path", "")
+        if gp:
+            self._se_sync_game_path(gp)
+
+    def _se_follow_save(self, path: str) -> None:
+        """Read the save the Save Editor has open, for the Game Mods side."""
+        if not path or not os.path.isfile(path):
+            return
+        try:
+            self._save_data = load_save_file(path)
+            self._loaded_path = path
+            self._dirty = False
+            self._undo_stack.clear()
+            self._scan_and_populate()
+            # This copy is only read here (saving runs through the Save
+            # Editor); don't let the scan's housekeeping mark it as edited.
+            self._dirty = False
+            self._update_status()
+            log.info("Game Mods follows the Save Editor's save: %s", path)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Game Mods could not read the Save Editor's save %s: %s", path, e)
+
+    def _se_sync_game_path(self, path: str) -> None:
+        win = getattr(self, "_se_window", None)
+        if win is None or not path:
+            return
+        try:
+            if win._config.get("game_install_path", "") != path:
+                win._set_game_path(path)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Could not pass the game path to the Save Editor: %s", e)
 
     def _se_seed_config(self, se_gui) -> None:
         """Hand the Save Editor this tool's game path on its first start."""
@@ -1066,48 +1228,6 @@ class MainWindow(QMainWindow):
                     json.dump(cfg, f, indent=2)
         except Exception as e:  # noqa: BLE001
             log.warning("Could not pass the game path to the Save Editor: %s", e)
-
-    def _se_redirect_exit(self, win) -> None:
-        """File -> Exit in the Save Editor would only close the embedded part."""
-        for act in win.findChildren(QAction):
-            if act.text().replace("&", "").strip().lower() == "exit":
-                try:
-                    act.triggered.disconnect()
-                except (RuntimeError, TypeError):
-                    pass
-                act.triggered.connect(self.close)
-
-    def _se_apply_shortcuts(self, se_active: bool) -> None:
-        """Both tools use the same keys (Ctrl+O, Ctrl+S, Ctrl+Z, F1-F12 ...).
-        Qt ignores a key that two active shortcuts claim, so only the side
-        that is on screen keeps its shortcuts."""
-        win = self._se_window
-        if win is None:
-            return
-        if self._se_shortcut_state is None:
-            def inside_se(obj):
-                w = obj.parent()
-                while w is not None:
-                    if w is win:
-                        return True
-                    w = w.parent()
-                return False
-            se_acts, gmt_acts, se_sc, gmt_sc = [], [], [], []
-            for act in self.findChildren(QAction):
-                if act.shortcuts():
-                    (se_acts if inside_se(act) else gmt_acts).append((act, list(act.shortcuts())))
-            for sc in self.findChildren(QShortcut):
-                (se_sc if inside_se(sc) else gmt_sc).append(sc)
-            self._se_shortcut_state = (se_acts, gmt_acts, se_sc, gmt_sc)
-        se_acts, gmt_acts, se_sc, gmt_sc = self._se_shortcut_state
-        for act, keys in se_acts:
-            act.setShortcuts(keys if se_active else [])
-        for act, keys in gmt_acts:
-            act.setShortcuts([] if se_active else keys)
-        for sc in se_sc:
-            sc.setEnabled(se_active)
-        for sc in gmt_sc:
-            sc.setEnabled(not se_active)
 
     def _apply_save_browser_mode(self, pinned: bool, show: bool) -> None:
         """Docked on the left (pinned) or a floating window (the default)."""
@@ -2698,6 +2818,8 @@ QCheckBox {{
             self._asi_refresh()
         if hasattr(self, '_patches_tab'):
             self._patches_tab.set_game_path(path)
+        if hasattr(self, '_se_window'):
+            self._se_sync_game_path(path)
         if hasattr(self, '_skills_tab_obj'):
             self._skills_tab_obj.set_game_path(path)
         if hasattr(self, '_buffs_tab'):
