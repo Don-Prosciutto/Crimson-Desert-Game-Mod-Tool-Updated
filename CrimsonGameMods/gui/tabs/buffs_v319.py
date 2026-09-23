@@ -8036,6 +8036,27 @@ class ItemBuffsTab(QWidget):
         cur_list = ddd.get('add_socket_material_item_list', [])
         DEFAULT_COSTS = [500, 1000, 2000, 3000, 4000, 5000, 6000, 7000]
 
+        # This button cuts the socket list when the chosen count is lower
+        # than the current one. What the game does with a gem sitting in a
+        # socket that no longer exists is untested - it loads fine and shows
+        # fewer sockets (observed when a 5-socket mod stopped applying), but
+        # the gem may be dropped the next time the game saves. So a
+        # reduction needs an explicit yes; extending does not.
+        if target_count < len(cur_list):
+            reply = QMessageBox.warning(
+                self, "Reduce sockets?",
+                f"This item currently has {len(cur_list)} sockets; you chose {target_count}.\n\n"
+                f"That REMOVES {len(cur_list) - target_count} socket(s). If you already own this item "
+                f"and a gem sits in a removed socket, it will no longer be shown - and it may be "
+                f"lost for good when the game saves. This has not been tested.\n\n"
+                f"Remove the socket(s) anyway?",
+                QMessageBox.Yes | QMessageBox.Cancel, QMessageBox.Cancel)
+            if reply != QMessageBox.Yes:
+                self._buff_status_label.setText("Sockets unchanged - reduction cancelled.")
+                return
+            log.warning("Sockets reduced on item %s: %d -> %d (confirmed by user)",
+                        self._buff_current_item.item_key, len(cur_list), target_count)
+
         new_list = list(cur_list)
         while len(new_list) < target_count:
             cost = DEFAULT_COSTS[len(new_list)] if len(new_list) < len(DEFAULT_COSTS) else 5000
