@@ -3805,6 +3805,23 @@ class ItemBuffsTab(QWidget):
         from collections import Counter as _Counter
         _name_counts = _Counter(_shown_name(it) for it in results)
 
+        # The Name column is narrow, so the hint has to be short: socket count
+        # first, then only the part of the internal name that differs within
+        # the group ("I" / "II" rather than Desert_Harrier_Leather_Boots_II).
+        # The full internal name stays in the tooltip.
+        _groups: dict = {}
+        for it in results:
+            if _name_counts[_shown_name(it)] > 1:
+                _groups.setdefault(_shown_name(it), []).append(it)
+        _variant: dict = {}
+        for _members in _groups.values():
+            _toks = [m.name.split("_") for m in _members]
+            _k = 0
+            while all(len(t) > _k for t in _toks) and len({t[_k] for t in _toks}) == 1:
+                _k += 1
+            for m, t in zip(_members, _toks):
+                _variant[m.item_key] = "_".join(t[_k:]) or m.name
+
         for row, item in enumerate(results):
             icon_cell = QTableWidgetItem()
             if self._buff_icons_enabled:
@@ -3820,7 +3837,8 @@ class ItemBuffsTab(QWidget):
                 _n = (len(_ddd.get('add_socket_material_item_list') or [])
                       if _ddd.get('use_socket') else 0)
                 _sock = f"{_n} socket{'s' if _n != 1 else ''}" if _n else "no sockets"
-                display_name = f"{display_name}  ({item.name} \u00b7 {_sock})"
+                display_name = (f"{display_name} ({_sock} \u00b7 "
+                                f"{_variant.get(item.item_key, item.name)})")
             name_cell = QTableWidgetItem(display_name)
             tip = f"Internal: {item.name}\nKey: {item.item_key}"
             rust_info = self._buff_rust_lookup.get(item.item_key)
@@ -3879,6 +3897,15 @@ class ItemBuffsTab(QWidget):
                 table.setItem(row, 4, QTableWidgetItem("-"))
 
             table.setItem(row, 5, QTableWidgetItem(str(stack_limit) if stack_limit > 0 else "\u2014"))
+
+        # A name with the variant hint is longer than the column's default
+        # width and would be cut to "Helms Leather Boots ..." - exactly the
+        # part that tells the variants apart. Widen the column just enough,
+        # up to a cap; never narrow it below what the user set.
+        if _variant:
+            wanted = min(table.sizeHintForColumn(1) + 16, 460)
+            if table.columnWidth(1) < wanted:
+                table.setColumnWidth(1, wanted)
 
         table.setSortingEnabled(True)
 
