@@ -31968,7 +31968,7 @@ QCheckBox::indicator {{
                     self._icon_cache.request_icon(item.item_key, self._on_icon_loaded)
             table.setItem(row, 0, icon_item)
 
-            name_item = QTableWidgetItem(item.name)
+            name_item = QTableWidgetItem(self._name_db.display_label(item.item_key, item.name))
             name_item.setForeground(QBrush(color))
             name_item.setData(Qt.UserRole, id(item))
             table.setItem(row, 1, name_item)
@@ -32032,7 +32032,7 @@ QCheckBox::indicator {{
                     icon_item.setIcon(QIcon(px))
             table.setItem(row, 0, icon_item)
 
-            name_item = QTableWidgetItem(item.name)
+            name_item = QTableWidgetItem(self._name_db.display_label(item.item_key, item.name))
             name_item.setForeground(QBrush(color))
             name_item.setData(Qt.UserRole, id(item))
             table.setItem(row, 1, name_item)
@@ -33052,7 +33052,7 @@ QCheckBox::indicator {{
                     icon_item.setIcon(QIcon(px))
             table.setItem(row, 0, icon_item)
             table.setItem(row, 1, QTableWidgetItem(str(info.item_key)))
-            name_item = QTableWidgetItem(info.name)
+            name_item = QTableWidgetItem(self._name_db.display_label(info.item_key, info.name))
             color = QColor(CATEGORY_COLORS.get(info.category, COLORS["text"]))
             name_item.setForeground(QBrush(color))
             table.setItem(row, 2, name_item)
@@ -33571,7 +33571,7 @@ QCheckBox::indicator {{
             key_item.setData(Qt.UserRole, info.item_key)
             table.setItem(row, 1, key_item)
 
-            name_item = QTableWidgetItem(info.name)
+            name_item = QTableWidgetItem(self._name_db.display_label(info.item_key, info.name))
             name_item.setForeground(QBrush(color))
             table.setItem(row, 2, name_item)
 

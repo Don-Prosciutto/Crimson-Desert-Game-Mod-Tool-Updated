@@ -115,11 +115,51 @@ class ItemNameDB:
             return info.name
         return f"Unknown ({key})"
 
+    def display_label(self, key: int, fallback: str = "") -> str:
+        """Display name, plus the variant when several items share it.
+
+        110 display names are shared by 326 pieces of equipment - there are
+        two "Helms Leather Boots" (Desert_Harrier_Leather_Boots_I and _II),
+        and a list that shows only the name gives no way to pick the right
+        one. For those the differing part of the internal name is appended:
+        "Helms Leather Boots (I)". Unique names are returned unchanged.
+        """
+        name = self.get_name(key)
+        if name.startswith("Unknown") and fallback:
+            name = fallback
+        variant = self._variants().get(key)
+        return f"{name} ({variant})" if variant else name
+
+    def _variants(self) -> dict:
+        sig = (len(self.items), self.version)
+        cache = getattr(self, "_variant_cache", None)
+        if cache is not None and cache[0] == sig:
+            return cache[1]
+        groups: dict = {}
+        for k, info in self.items.items():
+            if info.name and info.internal_name:
+                groups.setdefault(info.name, []).append(info)
+        out: dict = {}
+        for members in groups.values():
+            if len(members) < 2:
+                continue
+            toks = [m.internal_name.split("_") for m in members]
+            i = 0
+            while all(len(t) > i for t in toks) and len({t[i] for t in toks}) == 1:
+                i += 1
+            for m, t in zip(members, toks):
+                v = "_".join(t[i:]) or m.internal_name
+                # Keep the list readable; the end of the name is what differs.
+                out[m.item_key] = v if len(v) <= 28 else "\u2026" + v[-27:]
+        self._variant_cache = (sig, out)
+        return out
+
     def get_category(self, key: int) -> str:
         info = self.items.get(key)
         return info.category if info else "Misc"
 
     def rename_item(self, key: int, new_name: str) -> None:
+        self._variant_cache = None
         if key in self.items:
             self.items[key].name = new_name
         else:

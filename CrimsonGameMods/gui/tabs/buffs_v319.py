@@ -3844,7 +3844,9 @@ class ItemBuffsTab(QWidget):
             while all(len(t) > k for t in toks) and len({t[k] for t in toks}) == 1:
                 k += 1
             for m, t in zip(members, toks):
-                variant[m.item_key] = "_".join(t[k:]) or m.name
+                v = "_".join(t[k:]) or m.name
+                # Keep the column readable; the end of the name is what differs.
+                variant[m.item_key] = v if len(v) <= 28 else "\u2026" + v[-27:]
         labels = {}
         for it in results:
             name = _shown_name(it)
