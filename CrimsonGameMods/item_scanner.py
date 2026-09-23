@@ -961,9 +961,20 @@ def enrich_items_with_parc(
             _report(TOTAL_STEPS)
             return 0, status
 
-        parc_by_no: Dict[int, SaveItem] = {pi.item_no: pi for pi in parc_items}
+        # Key by byte offset first, itemNo only as a fallback - the same fix
+        # as in the Save Editor. Some items appear twice in a save; matching
+        # by itemNo alone took the last record found, so an edit could land
+        # in someone else's record. Matters now that the sentinel scan (not
+        # PARC) supplies the item list.
+        parc_by_offset: Dict[int, SaveItem] = {}
+        parc_by_no: Dict[int, SaveItem] = {}
+        for pi in parc_items:
+            parc_by_offset[pi.offset] = pi
+            parc_by_no[pi.item_no] = pi
         for item in items:
-            pi = parc_by_no.get(item.item_no)
+            pi = parc_by_offset.get(item.offset)
+            if pi is None:
+                pi = parc_by_no.get(item.item_no)
             if pi is not None and pi.field_offsets:
                 item.field_offsets = pi.field_offsets
                 item.parc_parsed = True
