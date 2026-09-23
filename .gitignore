@@ -12,3 +12,7 @@ CrimsonGameMods/__pycache__/
 .venv_linux/
 .pi/
 CrimsonGameMods/_dmm_parser/
+
+# Generated from CrimsonSaveEditor/ by CrimsonGameMods/tools/vendor_save_editor.py
+CrimsonGameMods/save_editor/
+CrimsonGameMods/save_editor.tmp/

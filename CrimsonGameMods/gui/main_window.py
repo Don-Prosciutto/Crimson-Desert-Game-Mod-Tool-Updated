@@ -933,6 +933,7 @@ class MainWindow(QMainWindow):
 
         self._tabs = _real_tabs
         self._real_tabs = _real_tabs
+        self._build_save_editor_area()
         self._update_experimental_tabs()
 
         # Register all tabs with the stacker for Pull All Edits
@@ -964,6 +965,149 @@ class MainWindow(QMainWindow):
 
         if self._config.get("ui_scale", 100) != 100 or self._config.get("compact_mode", False):
             self._apply_ui_settings()
+
+    # ── Save Editor, embedded (all-in-one test) ─────────────────────────
+    # The Save Editor runs as a whole inside a top-level tab: its own window,
+    # menus, docks and settings, from the generated package save_editor/
+    # (see tools/vendor_save_editor.py). It is built the first time the tab
+    # is opened, so the Game Mod Tool starts as fast as before.
+
+    def _build_save_editor_area(self) -> None:
+        host = QWidget()
+        lay = QVBoxLayout(host)
+        lay.setContentsMargins(0, 0, 0, 0)
+        self._se_placeholder = QLabel(
+            "The Save Editor opens here.\n\nIt loads the first time you open this tab.")
+        self._se_placeholder.setAlignment(Qt.AlignCenter)
+        self._se_placeholder.setWordWrap(True)
+        lay.addWidget(self._se_placeholder)
+        self._se_host = host
+        self._se_window = None
+        self._se_shortcut_state = None
+        self._real_tabs.addTab(host, "Save Editor")
+        self._real_tabs.setTabToolTip(
+            self._real_tabs.indexOf(host),
+            "The full Save Editor - edits your SAVE FILE, not game files.\n"
+            "Has its own menus, Save Browser and settings.")
+        self._real_tabs.currentChanged.connect(self._on_top_tab_changed_se)
+
+    def _on_top_tab_changed_se(self, index: int) -> None:
+        active = self._real_tabs.widget(index) is self._se_host
+        if active and self._se_window is None:
+            self._load_save_editor()
+        self._se_apply_shortcuts(active)
+        # The Save Editor brings its own Save Browser. Two of them side by
+        # side would be confusing, so this tool's browser and its toggle
+        # button step aside while the Save Editor is shown.
+        corner = self._real_tabs.cornerWidget(Qt.TopRightCorner)
+        if corner is not None:
+            corner.setVisible(not active)
+        dock = getattr(self, "_save_dock", None)
+        if dock is not None:
+            if active:
+                self._se_hid_save_dock = dock.isVisible()
+                if self._se_hid_save_dock:
+                    dock.hide()
+            elif getattr(self, "_se_hid_save_dock", False):
+                dock.show()
+                self._se_hid_save_dock = False
+
+    def _load_save_editor(self) -> None:
+        self._se_placeholder.setText("Loading the Save Editor...")
+        QApplication.processEvents()
+        try:
+            if not getattr(sys, "frozen", False):
+                # From source: (re)generate save_editor/ if the Save Editor
+                # changed. A frozen build carries the copy made at build time.
+                import importlib.util as _ilu
+                tool = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                    "tools", "vendor_save_editor.py")
+                spec = _ilu.spec_from_file_location("vendor_save_editor", tool)
+                vend = _ilu.module_from_spec(spec)
+                spec.loader.exec_module(vend)
+                if not vend.ensure_current():
+                    raise RuntimeError("save_editor/ could not be generated "
+                                       "(is the CrimsonSaveEditor folder next to CrimsonGameMods?)")
+            from save_editor import gui as se_gui
+            self._se_seed_config(se_gui)
+            win = se_gui.MainWindow()
+            win.setWindowFlags(Qt.Widget)
+            self._se_redirect_exit(win)
+            lay = self._se_host.layout()
+            lay.removeWidget(self._se_placeholder)
+            self._se_placeholder.deleteLater()
+            lay.addWidget(win)
+            win.show()
+            self._se_window = win
+            log.info("Save Editor embedded")
+        except Exception as e:  # noqa: BLE001
+            import traceback as _tb
+            log.exception("Embedding the Save Editor failed")
+            self._se_placeholder.setText(
+                "The Save Editor could not be loaded.\n\n"
+                f"{e}\n\n{_tb.format_exc()[-1500:]}")
+            self._se_placeholder.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+    def _se_seed_config(self, se_gui) -> None:
+        """Hand the Save Editor this tool's game path on its first start."""
+        game_path = self._config.get("game_install_path", "")
+        if not game_path:
+            return
+        try:
+            path = se_gui.MainWindow._get_config_path(se_gui.MainWindow)
+            cfg = {}
+            if os.path.isfile(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f) or {}
+            if not cfg.get("game_install_path"):
+                cfg["game_install_path"] = game_path
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(cfg, f, indent=2)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Could not pass the game path to the Save Editor: %s", e)
+
+    def _se_redirect_exit(self, win) -> None:
+        """File -> Exit in the Save Editor would only close the embedded part."""
+        for act in win.findChildren(QAction):
+            if act.text().replace("&", "").strip().lower() == "exit":
+                try:
+                    act.triggered.disconnect()
+                except (RuntimeError, TypeError):
+                    pass
+                act.triggered.connect(self.close)
+
+    def _se_apply_shortcuts(self, se_active: bool) -> None:
+        """Both tools use the same keys (Ctrl+O, Ctrl+S, Ctrl+Z, F1-F12 ...).
+        Qt ignores a key that two active shortcuts claim, so only the side
+        that is on screen keeps its shortcuts."""
+        win = self._se_window
+        if win is None:
+            return
+        if self._se_shortcut_state is None:
+            def inside_se(obj):
+                w = obj.parent()
+                while w is not None:
+                    if w is win:
+                        return True
+                    w = w.parent()
+                return False
+            se_acts, gmt_acts, se_sc, gmt_sc = [], [], [], []
+            for act in self.findChildren(QAction):
+                if act.shortcuts():
+                    (se_acts if inside_se(act) else gmt_acts).append((act, list(act.shortcuts())))
+            for sc in self.findChildren(QShortcut):
+                (se_sc if inside_se(sc) else gmt_sc).append(sc)
+            self._se_shortcut_state = (se_acts, gmt_acts, se_sc, gmt_sc)
+        se_acts, gmt_acts, se_sc, gmt_sc = self._se_shortcut_state
+        for act, keys in se_acts:
+            act.setShortcuts(keys if se_active else [])
+        for act, keys in gmt_acts:
+            act.setShortcuts([] if se_active else keys)
+        for sc in se_sc:
+            sc.setEnabled(se_active)
+        for sc in gmt_sc:
+            sc.setEnabled(not se_active)
 
     def _apply_save_browser_mode(self, pinned: bool, show: bool) -> None:
         """Docked on the left (pinned) or a floating window (the default)."""
