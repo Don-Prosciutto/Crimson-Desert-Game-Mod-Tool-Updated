@@ -1472,6 +1472,8 @@ class ItemBuffsTab(QWidget):
 
         # Live client tables beat the 5-month-old community JSON for new IDs.
         self._apply_client_names()
+        # Readable names from the game's own buff data win over both.
+        self._apply_readable_buff_names()
 
         # Enchant stat list used by the Stats & Buffs sub-tab's stat combo.
         self._ENCHANT_STAT_LIST = [
@@ -1933,11 +1935,7 @@ class ItemBuffsTab(QWidget):
         self._eb_buff_combo.lineEdit().setPlaceholderText("Type to search buffs...")
         self._eb_buff_combo.completer().setCompletionMode(QCompleter.PopupCompletion)
         self._eb_buff_combo.completer().setFilterMode(Qt.MatchContains)
-        for bk in sorted(self._EQUIP_BUFF_NAMES.keys()):
-            bname = self._EQUIP_BUFF_NAMES[bk]
-            desc = self._buff_skill_descs.get(str(bk), {}).get("description", "")
-            label = f"{bname} ({bk})" + (f" \u2014 {desc}" if desc else "")
-            self._eb_buff_combo.addItem(label, bk)
+        self._buff_fill_buff_combo()
         self._eb_buff_combo.currentIndexChanged.connect(self._buff_on_buff_selected)
         eb_row.addWidget(self._eb_buff_combo, 1)
 
@@ -12735,16 +12733,51 @@ class ItemBuffsTab(QWidget):
                 added_passives += 1
         return added_buffs, added_passives
 
+    def _apply_readable_buff_names(self) -> None:
+        """Readable buff names and descriptions from buff_names_readable.py.
+
+        The old list mixed internal names with descriptions looked up in the
+        SKILL table under the buff's number - a different number range, so
+        many descriptions belonged to something else."""
+        try:
+            import buff_names_readable as bnr
+        except Exception as e:  # noqa: BLE001
+            log.warning("buff_names_readable not available: %s", e)
+            self._buff_readable = {}
+            return
+        self._buff_readable = bnr.BUFFS
+        self._buff_group_order = bnr.GROUP_ORDER
+        self._buff_group_hint = bnr.GROUP_HINT
+        for key, (name, _grp, _desc) in bnr.BUFFS.items():
+            self._EQUIP_BUFF_NAMES[key] = name
+
+    def _buff_fill_buff_combo(self) -> None:
+        """Equip-buff list grouped by what the buff does; useless ones last."""
+        readable = getattr(self, "_buff_readable", {}) or {}
+        order = {g: i for i, g in enumerate(getattr(self, "_buff_group_order", []))}
+        hints = getattr(self, "_buff_group_hint", {}) or {}
+        entries = []
+        for bk, bname in self._EQUIP_BUFF_NAMES.items():
+            name, grp, desc = readable.get(bk, (bname, "Other", ""))
+            entries.append((order.get(grp, len(order) - 2), grp, name.lower(), bk, name, desc))
+        entries.sort()
+        combo = self._eb_buff_combo
+        model = combo.model()
+        for _o, grp, _n, bk, name, desc in entries:
+            label = f"[{grp}]  {name}" + (f"  \u2014  {desc}" if desc else "") + f"  ({bk})"
+            combo.addItem(label, bk)
+            tip = f"{name}\n{desc}\nGroup: {grp}" + (f"\n{hints[grp]}" if grp in hints else "") \
+                + f"\nBuff key: {bk}"
+            combo.setItemData(combo.count() - 1, tip, Qt.ToolTipRole)
+            if grp in ("Debuff", "Internal"):
+                combo.setItemData(combo.count() - 1, QColor(COLORS["text_dim"]), Qt.ForegroundRole)
+
     def _buff_rebuild_name_combos(self) -> None:
         if hasattr(self, "_eb_buff_combo"):
             current = self._eb_buff_combo.currentData()
             self._eb_buff_combo.blockSignals(True)
             self._eb_buff_combo.clear()
-            for bk in sorted(self._EQUIP_BUFF_NAMES.keys()):
-                bname = self._EQUIP_BUFF_NAMES[bk]
-                desc = self._buff_skill_descs.get(str(bk), {}).get("description", "")
-                label = f"{bname} ({bk})" + (f" \u2014 {desc}" if desc else "")
-                self._eb_buff_combo.addItem(label, bk)
+            self._buff_fill_buff_combo()
             if current is not None:
                 idx = self._eb_buff_combo.findData(current)
                 if idx >= 0:
