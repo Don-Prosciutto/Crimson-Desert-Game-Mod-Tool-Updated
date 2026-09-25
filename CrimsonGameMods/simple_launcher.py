@@ -23,7 +23,7 @@ from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFileDialog, QMessageBox, QFrame, QScrollArea,
+    QFileDialog, QMessageBox, QFrame, QScrollArea, QSizePolicy,
 )
 
 import simple_engine as engine
@@ -34,30 +34,44 @@ APP_VERSION = "2.0.0"
 GAME_BUILD = "2.03.02"          # the game version this build was tested with
 
 # ─── Palette ──────────────────────────────────────────────────────────
-BG        = "#1a1510"
-PANEL     = "#272018"
-HEADER    = "#3d2e1a"
-ACCENT    = "#daa850"
-TEXT      = "#f0e6d4"
-TEXT_DIM  = "#b0a088"
-BORDER    = "#554430"
-INPUT_BG  = "#1e1610"
-SUCCESS   = "#9cc470"
-ERROR     = "#d44f40"
-WARN      = "#e0a040"
-CARD_BG   = "#221c14"
-CARD_HOVER = "#2e2518"
-ON_COLOR  = "#9cc470"
-OFF_COLOR = "#665840"
-RESET_CLR = "#d44f40"
-COMBO_BG  = "#2a2218"
-SECTION_CLR = "#886830"
+# "Graphite", the default look of CrimsonGameMods since v2.3.0 (same values
+# as gui/theme.py - copied, because importing the gui package would pull in
+# the whole main tool).
+BG        = "#2b2d30"
+PANEL     = "#323438"
+HEADER    = "#3c3f43"
+ACCENT    = "#548af7"
+TEXT      = "#dfe1e5"
+TEXT_DIM  = "#a0a3aa"
+SELECTED  = "#2e436e"
+BORDER    = "#4a4d52"
+INPUT_BG  = "#26282b"
+SUCCESS   = "#6aab73"
+ERROR     = "#f07178"
+WARN      = "#d8ab4e"
+CARD_BG   = "#323438"
+CARD_HOVER = "#3c3f43"
+COMBO_BG  = "#2f3a50"
+ON_COLOR  = "#548af7"
+OFF_COLOR = "#4a4d52"
+SECTION_CLR = "#a0a3aa"
+# button roles: background, text, border/hover
+BTN_PRIMARY = ("#3574f0", "#ffffff", "#4a86f7")
+BTN_SUCCESS = ("#3d7a45", "#ffffff", "#4e8a55")
+BTN_DANGER  = ("#4a2c2e", "#f28b82", "#b3413c")
+BTN_NEUTRAL = ("#3c3f43", "#dfe1e5", "#4a4d52")
 
 STYLESHEET = f"""
 QWidget {{ background-color: {BG}; color: {TEXT};
     font-family: 'Segoe UI', Consolas, sans-serif; font-size: 13px; }}
 QScrollArea {{ border: none; }}
-QPushButton:disabled {{ background: #3a3228; color: #7a6c58; }}
+QScrollBar:vertical {{ background-color: {BG}; width: 12px; border: none; }}
+QScrollBar::handle:vertical {{ background-color: {BORDER}; border-radius: 4px; min-height: 30px; }}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
+QToolTip {{ background-color: {PANEL}; color: {TEXT}; border: 1px solid {BORDER}; }}
+QMessageBox QPushButton {{ background: {HEADER}; color: {TEXT}; border: 1px solid {BORDER};
+    border-radius: 4px; padding: 5px 14px; min-width: 70px; }}
+QMessageBox QPushButton:hover {{ border-color: {ACCENT}; }}
 """
 
 CONFIG_PATH = os.path.join(
@@ -331,7 +345,7 @@ class ModCard(QFrame):
     def _update_badge(self):
         if self._enabled:
             self._badge.setStyleSheet(
-                f"background-color: {ON_COLOR}; color: #1a1510; "
+                f"background-color: {ON_COLOR}; color: #ffffff; "
                 f"border-radius: 4px; padding: 2px 6px; border: none;")
             self._badge.setText("ON")
         else:
@@ -359,11 +373,12 @@ class ModCard(QFrame):
 
 
 # ─── Main Window ──────────────────────────────────────────────────────
-def _btn_style(bg: str, fg: str, hover: str) -> str:
+def _btn_style(role) -> str:
+    bg, fg, hover = role
     return (f"QPushButton {{ background: {bg}; color: {fg}; font-weight: bold; font-size: 12px; "
-            f"border: none; border-radius: 6px; padding: 7px; }}"
+            f"border: 1px solid {hover}; border-radius: 4px; padding: 7px; }}"
             f"QPushButton:hover {{ background: {hover}; }}"
-            f"QPushButton:disabled {{ background: #3a3228; color: #7a6c58; }}")
+            f"QPushButton:disabled {{ background: {PANEL}; color: #6b6e75; border-color: {BORDER}; }}")
 
 
 class SimpleWindow(QWidget):
@@ -391,7 +406,7 @@ class SimpleWindow(QWidget):
 
         hdr = QLabel("CrimsonGameMods Simple")
         hdr.setFont(QFont("Segoe UI", 17, QFont.Bold))
-        hdr.setStyleSheet(f"color: {ACCENT};")
+        hdr.setStyleSheet(f"color: {TEXT};")
         hdr.setAlignment(Qt.AlignCenter)
         root.addWidget(hdr)
 
@@ -418,7 +433,7 @@ class SimpleWindow(QWidget):
         bb.setStyleSheet(
             f"QPushButton {{ background: {HEADER}; color: {TEXT}; border: 1px solid {BORDER}; "
             f"border-radius: 4px; padding: 5px; }}"
-            f"QPushButton:hover {{ background: {ACCENT}; color: #1a1510; }}")
+            f"QPushButton:hover {{ border-color: {ACCENT}; }}")
         bb.clicked.connect(self._browse)
         pr.addWidget(bb)
         root.addLayout(pr)
@@ -427,6 +442,8 @@ class SimpleWindow(QWidget):
         self._banner = QLabel("")
         self._banner.setWordWrap(True)
         self._banner.setAlignment(Qt.AlignCenter)
+        self._banner.setMinimumHeight(50)          # room for two lines
+        self._banner.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         root.addWidget(self._banner)
 
         # Main content: nav sidebar + card scroll area side by side
@@ -434,9 +451,12 @@ class SimpleWindow(QWidget):
         content.setSpacing(6)
 
         nav_widget = QWidget()
-        nav_widget.setFixedWidth(140)
+        nav_widget.setObjectName("navSide")
+        nav_widget.setFixedWidth(150)
+        nav_widget.setStyleSheet(
+            f"QWidget#navSide {{ background: {PANEL}; border-radius: 4px; }}")
         nav_layout = QVBoxLayout(nav_widget)
-        nav_layout.setContentsMargins(0, 4, 0, 4)
+        nav_layout.setContentsMargins(0, 6, 0, 6)
         nav_layout.setSpacing(2)
 
         sections = []
@@ -451,10 +471,10 @@ class SimpleWindow(QWidget):
             lbl.setFont(QFont("Segoe UI", 9))
             lbl.setFixedHeight(26)
             lbl.setStyleSheet(
-                f"QPushButton {{ color: {ACCENT}; background: {HEADER}; "
-                f"border: 1px solid {BORDER}; border-radius: 3px; "
-                f"text-align: left; padding: 2px 8px; }}"
-                f"QPushButton:hover {{ background: {ACCENT}; color: #1a1510; }}")
+                f"QPushButton {{ color: {TEXT}; background: {PANEL}; border: none; "
+                f"border-left: 3px solid transparent; border-radius: 0; "
+                f"text-align: left; padding: 2px 8px; font-size: 12px; }}"
+                f"QPushButton:hover {{ background: {HEADER}; border-left: 3px solid {ACCENT}; }}")
             lbl.clicked.connect(lambda _, s=sec: self._scroll_to_section(s))
             nav_layout.addWidget(lbl)
         nav_layout.addStretch(1)
@@ -500,19 +520,19 @@ class SimpleWindow(QWidget):
         self._remove_btn.setFixedHeight(36)
         self._remove_btn.setToolTip("Takes out everything Simple added to the game. "
                                     "Mods from DMM or other tools are not touched.")
-        self._remove_btn.setStyleSheet(_btn_style(RESET_CLR, "white", "#b03830"))
+        self._remove_btn.setStyleSheet(_btn_style(BTN_DANGER))
         self._remove_btn.clicked.connect(self._on_remove)
         br.addWidget(self._remove_btn)
         self._apply_btn = QPushButton("Apply")
         self._apply_btn.setFixedHeight(36)
         self._apply_btn.setToolTip("Writes the selected mods into the game.")
-        self._apply_btn.setStyleSheet(_btn_style(ACCENT, "#1a1510", "#f0c070"))
+        self._apply_btn.setStyleSheet(_btn_style(BTN_PRIMARY))
         self._apply_btn.clicked.connect(lambda: self._apply())
         br.addWidget(self._apply_btn)
         self._start_btn = QPushButton("Start Game")
         self._start_btn.setFixedHeight(36)
         self._start_btn.setToolTip("Applies your selection first if needed, then starts the game.")
-        self._start_btn.setStyleSheet(_btn_style(SUCCESS, "#1a1510", "#b8d890"))
+        self._start_btn.setStyleSheet(_btn_style(BTN_SUCCESS))
         self._start_btn.clicked.connect(self._on_start)
         br.addWidget(self._start_btn)
         root.addLayout(br)
