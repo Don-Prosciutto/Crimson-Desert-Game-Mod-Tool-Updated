@@ -11729,7 +11729,7 @@ class ItemBuffsTab(QWidget):
                     self._safely_replace_buff_item(dlg.created_donor_key, edited[0])
                     self._buff_modified = True
 
-                from dropset_editor import DropsetEditor
+                from dropset_dmm import DmmDropsetEditor as DropsetEditor
                 ds_pabgh = bytes(crimson_rs.extract_file(gp, '0008', dp, 'dropsetinfo.pabgh'))
                 ds_pabgb = bytes(crimson_rs.extract_file(gp, '0008', dp, 'dropsetinfo.pabgb'))
                 with tempfile.TemporaryDirectory() as _ds_tmp:

@@ -43,8 +43,8 @@ PAGES: Dict[str, dict] = {
         "characterinfo", "factionnode", "gameplaytrigger", "inventory"]},
     "StoreEditorTab": {"label": "Stores", "tables": ["storeinfo"]},
     "BagSpaceTab": {"label": "BagSpace", "tables": ["inventory"]},
-    # The DropSets page still reads and writes with the old Python reader
-    # (dropset_editor.py), so that reader is checked too.
+    # The DropSets page edits drop sets as objects and writes each one back
+    # itself (dropset_dmm.py), so that step is checked set by set too.
     "DropsetTab": {"label": "DropSets", "tables": ["dropsetinfo", LEGACY_DROPSET]},
     "SpawnTab": {"label": "SpawnEdit", "tables": [
         "spawningpoolautospawninfo", "terrainregionautospawninfo", "factionnodespawninfo",
@@ -123,10 +123,10 @@ def _check_table(dmm, game_path: str, name: str) -> dict:
 
 
 def _check_legacy_dropset(dmm, game_path: str) -> dict:
-    """Every drop set through dropset_editor.py and back, byte for byte."""
+    """Every drop set through the DropSets page's editor and back, byte for byte."""
     import tempfile
     try:
-        from dropset_editor import DropsetEditor
+        from dropset_dmm import DmmDropsetEditor as DropsetEditor
         body = bytes(dmm.extract_file(game_path, "0008", TABLE_DIR, "dropsetinfo.pabgb"))
         head = bytes(dmm.extract_file(game_path, "0008", TABLE_DIR, "dropsetinfo.pabgh"))
         with tempfile.TemporaryDirectory() as tmp:

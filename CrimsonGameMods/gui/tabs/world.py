@@ -3022,18 +3022,11 @@ class DropsetTab(QWidget):
             self._dropset_dmm_vanilla = _copy_ds.deepcopy(self._dropset_dmm)
             self._dropset_gh = hdr
 
-            from dropset_editor import DropsetEditor
-            editor = DropsetEditor()
-            editor.header_bytes = hdr
-            editor.body_bytes = bytearray(body_data)
-            c16 = int.from_bytes(hdr[0:2], 'little')
-            editor.record_count = c16
-            editor.records = []
-            for i in range(c16):
-                p = 2 + i * 8
-                k = int.from_bytes(hdr[p:p+4], 'little')
-                o = int.from_bytes(hdr[p+4:p+8], 'little')
-                editor.records.append((k, o))
+            # dmm_parser-backed editor (dropset_dmm). The old byte reader
+            # (dropset_editor) wrote 254 of 14747 sets back wrong on 2.03.
+            from dropset_dmm import DmmDropsetEditor
+            editor = DmmDropsetEditor()
+            editor.load_bytes(hdr, bod)
 
             editor.load_item_names()
 
@@ -3767,9 +3760,7 @@ class DropsetTab(QWidget):
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply != QMessageBox.Yes:
             return
-        self._dropset_editor.body_bytes = bytearray(self._dropset_original_body)
-        self._dropset_editor.header_bytes = self._dropset_original_header
-        self._dropset_editor._parsed_sets.clear()
+        self._dropset_editor.load_bytes(self._dropset_original_header, self._dropset_original_body)
         self._dropset_dirty_keys.clear()
         self._dropset_modified = False
         self._dropset_change_count = 0
@@ -3806,9 +3797,7 @@ class DropsetTab(QWidget):
                     "Reset all drop tables back to vanilla?",
                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if reply2 == QMessageBox.Yes:
-                    self._dropset_editor.body_bytes = bytearray(self._dropset_original_body)
-                    self._dropset_editor.header_bytes = self._dropset_original_header
-                    self._dropset_editor._parsed_sets.clear()
+                    self._dropset_editor.load_bytes(self._dropset_original_header, self._dropset_original_body)
                     self._dropset_dirty_keys.clear()
                     self._dropset_modified = False
                     self._dropset_change_count = 0
@@ -3879,17 +3868,10 @@ class DropsetTab(QWidget):
             return
 
         try:
-            from dropset_editor import DropsetEditor
+            from dropset_dmm import DmmDropsetEditor
 
-            orig = DropsetEditor()
-            orig.header_bytes = self._dropset_original_header
-            orig.body_bytes = bytearray(self._dropset_original_body)
-            _hdr2 = orig.header_bytes
-            _c2 = int.from_bytes(_hdr2[0:2], 'little')
-            orig.record_count = _c2
-            orig.records = [(int.from_bytes(_hdr2[2+i*8:6+i*8], 'little'),
-                             int.from_bytes(_hdr2[6+i*8:10+i*8], 'little'))
-                            for i in range(_c2)]
+            orig = DmmDropsetEditor()
+            orig.load_bytes(self._dropset_original_header, self._dropset_original_body)
 
             config = {
                 "format": "crimson_dropset_config",
@@ -3969,9 +3951,7 @@ class DropsetTab(QWidget):
             if reply != QMessageBox.Yes:
                 return
 
-            self._dropset_editor.body_bytes = bytearray(self._dropset_original_body)
-            self._dropset_editor.header_bytes = self._dropset_original_header
-            self._dropset_editor._parsed_sets.clear()
+            self._dropset_editor.load_bytes(self._dropset_original_header, self._dropset_original_body)
 
             applied = skipped = 0
             for key_str, entry in dropsets.items():
@@ -4024,10 +4004,9 @@ class DropsetTab(QWidget):
                     while len(ds.drops) > len(drops_cfg) and _safety < 200:
                         _safety += 1
                         prev_len = len(ds.drops)
-                        try:
-                            self._dropset_editor.remove_item(ds, len(ds.drops) - 1)
-                        except Exception:
-                            break
+                        # (remove_item takes an item key, not a position - the
+                        # old call never removed anything)
+                        ds.drops.pop()
                         if len(ds.drops) >= prev_len:
                             break  # remove_item didn't shrink the list — stop
                 except Exception as _de:
@@ -4185,44 +4164,14 @@ class DropsetTab(QWidget):
             QMessageBox.information(self, "Export", "No modifications to export.")
             return
 
-        # Snapshot _parsed_sets and dirty_keys BEFORE flush.
-        # _dropset_flush_dirty -> apply_modifications may clear the cache.
-        dirty_keys = set(self._dropset_dirty_keys)
-        parsed     = getattr(self._dropset_editor, '_parsed_sets', {})
-        modified_entries = {k: parsed[k] for k in dirty_keys
-                            if k in parsed and parsed[k]}
-
-        if not modified_entries:
-            QMessageBox.warning(self, "Export Field JSON",
-                f"No cached DropSet objects found.\n\n"
-                f"Try: Load DropSets → apply preset → Export Field JSON "
-                f"without clicking anything else in between.")
-            return
-
-        # Flush AFTER snapshot so body_bytes is ready for Apply to Game.
+        # Write pending edits into the table, then compare every set with the
+        # vanilla records (dmm_parser field names). The old export used the
+        # old reader's names (drops / rates / min_amt) and only worked right
+        # after a preset: after Apply its cache was empty ("No cached
+        # DropSet objects").
         self._dropset_flush_dirty()
-
-        def _sd(drops):
-            return [{'item_key':  getattr(d, 'item_key',  0),
-                     'rates':     getattr(d, 'rates',     0),
-                     'rates_100': getattr(d, 'rates_100', 0),
-                     'min_amt':   getattr(d, 'min_amt',   0),
-                     'max_amt':   getattr(d, 'max_amt',   0)}
-                    for d in drops]
-
-        intents = []
-        for key, cur in modified_entries.items():
-            name = getattr(cur, 'name', None) or str(key)
-            drops = getattr(cur, 'drops', [])
-            if drops:
-                intents.append({'entry': name, 'key': key,
-                                'field': 'drops', 'op': 'set', 'new': _sd(drops)})
-            for f in ('drop_roll_count', 'drop_roll_type',
-                      'drop_condition_string', 'is_blocked'):
-                cv = getattr(cur, f, None)
-                if cv is not None:
-                    intents.append({'entry': name, 'key': key,
-                                    'field': f, 'op': 'set', 'new': cv})
+        intents = self._dropset_editor.diff_intents(self._dropset_dmm_vanilla)
+        modified_entries = {i['key'] for i in intents}
 
         if not intents:
             QMessageBox.information(self, "Export",
@@ -4260,8 +4209,6 @@ class DropsetTab(QWidget):
             f"from {len(modified_entries)} modified entries.\n\n"
             f"File: {path}")
 
-    @staticmethod
-
     def _dropset_import_field_json(self) -> None:
         if not hasattr(self, '_dropset_editor') or not self._dropset_editor:
             QMessageBox.warning(self, "Import", "Load DropSets first.")
@@ -4278,56 +4225,24 @@ class DropsetTab(QWidget):
             QMessageBox.warning(self, "Import", "Not a valid Format 3 Field JSON file.")
             return
 
-        sets_by_name = {}
-        sets_by_key = {}
-        for key, _ in self._dropset_editor.records:
-            ds = self._dropset_editor.parse_dropset(key)
-            if ds:
-                sets_by_name[ds.name] = ds
-                sets_by_key[ds.key] = ds
-
-        applied = skipped = 0
-        for intent in doc['intents']:
-            target = sets_by_name.get(intent.get('entry')) or \
-                     sets_by_key.get(intent.get('key'))
-            if not target:
-                skipped += 1
-                continue
-            field = intent.get('field', '')
-            if intent.get('op') != 'set':
-                skipped += 1
-                continue
-            if field in ('is_blocked', 'drop_roll_type', 'drop_roll_count'):
-                setattr(target, field, intent['new'])
-                applied += 1
-            elif field == 'drops':
-                from dropset_editor import ItemDrop
-                new_drops = []
-                for d in intent['new']:
-                    drop = ItemDrop(
-                        flag=1, item_key=d['item_key'],
-                        rates=d.get('rates', 0),
-                        rates_100=d.get('rates_100', 0),
-                        min_amt=d.get('min_amt', 0),
-                        max_amt=d.get('max_amt', 0),
-                        item_key_dup=d['item_key'],
-                    )
-                    new_drops.append(drop)
-                target.drops = new_drops
-                applied += 1
-            else:
-                skipped += 1
-
+        target = doc.get('target', 'dropsetinfo.pabgb')
+        intents = doc.get('intents') or []
+        if 'targets' in doc:
+            intents = [i for t in doc['targets'] if t.get('file') == 'dropsetinfo.pabgb'
+                       for i in t.get('intents') or []]
+        applied, skipped = self._dropset_editor.apply_field_intents(intents)
         if applied:
-            modified = {k: ds for k, ds in self._dropset_editor._parsed_sets.items()
-                        if ds in sets_by_name.values() or ds in sets_by_key.values()}
-            self._dropset_editor.apply_modifications(modified)
-            self._dropset_mark_modified()
+            self._dropset_modified = True
+            self._dropset_change_count += applied
+            self._dropset_changes_label.setText(f"{self._dropset_change_count} change(s)")
+            self._dropset_filter()
+            if self._dropset_current_key is not None:
+                self._dropset_refresh_items()
 
         self._dropset_status.setText(
             f"Imported {applied} intents, {skipped} skipped.")
         QMessageBox.information(self, "Import Field JSON",
             f"Applied {applied} intent(s), skipped {skipped}.\n\n"
-            f"Click")
+            f"Click Apply to Game or Export Field JSON v3.")
 
 

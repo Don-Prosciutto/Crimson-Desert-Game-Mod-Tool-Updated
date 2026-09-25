@@ -23,7 +23,10 @@ def _serialize_one(dmm, stem: str, rec: dict) -> bytes:
     return bytes(out[0] if isinstance(out, tuple) else out)
 
 
-def rebuild_index(stem: str, body: bytes, pabgh: bytes, dmm=None) -> Optional[bytes]:
+def rebuild_index(stem: str, body: bytes, pabgh: bytes, dmm=None,
+                  recs: Optional[list] = None) -> Optional[bytes]:
+    """New .pabgh for `body`. Pass `recs` (the records `body` was written
+    from) for tables that dmm_parser can only read through a fitting index."""
     if dmm is None:
         import dmm_parser as dmm  # noqa: PLC0415
     body, pabgh = bytes(body), bytes(pabgh)
@@ -36,10 +39,11 @@ def rebuild_index(stem: str, body: bytes, pabgh: bytes, dmm=None) -> Optional[by
     if step not in (6, 8):            # u16 or u32 key, then u32 offset
         return None
     key_fmt = "<H" if step == 6 else "<I"
-    try:
-        recs = dmm.parse_table(stem, body, pabgh)
-    except Exception:  # noqa: BLE001
-        return None
+    if recs is None:
+        try:
+            recs = dmm.parse_table(stem, body, pabgh)
+        except Exception:  # noqa: BLE001
+            return None
     if len(recs) != count:
         return None
     offsets = {}
