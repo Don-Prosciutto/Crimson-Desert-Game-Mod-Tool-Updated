@@ -292,6 +292,7 @@ class BagSpaceTab(QWidget):
         pabgb_bytes = bytes(self._inventory_data)
         pabgh_bytes = self._inventory_pabgh
 
+        self._highlight_keys = set()
         dmm_items = self._parse_dmm(pabgb_bytes, pabgh_bytes)
         if dmm_items:
             self._dmm_items = dmm_items
@@ -394,7 +395,10 @@ class BagSpaceTab(QWidget):
                     item.setData(Qt.UserRole + 2, str(field))
                 else:
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                if name == "Character":
+                if key in getattr(self, "_highlight_keys", ()):
+                    item.setForeground(QBrush(QColor(COLORS.get("success", "#6BCB77"))))
+                    item.setToolTip("Changed by Enlarge Storages")
+                elif name == "Character":
                     item.setForeground(QBrush(QColor(COLORS["accent"])))
                 table.setItem(row, col, item)
         table.setSortingEnabled(True)
@@ -527,7 +531,7 @@ class BagSpaceTab(QWidget):
             QMessageBox.warning(self, "Enlarge Storages",
                                 "The inventory table was not read with dmm_parser - nothing changed.")
             return
-        changed = []
+        plan = []                           # (item, old_def, old_max, new_def, new_max)
         for it in self._dmm_items:
             name = it.get("string_key")
             if name not in STORAGE_PRESET:
@@ -538,14 +542,39 @@ class BagSpaceTab(QWidget):
             new_def = max(old_def, want_def)
             new_max = max(old_max, want_max or 0, new_def)
             if (new_def, new_max) != (old_def, old_max):
-                it["default_slot_count"], it["max_slot_count"] = new_def, new_max
-                changed.append(f"{STORAGE_LABELS.get(name, name)} {old_def}/{old_max} -> {new_def}/{new_max}")
-                for r in self._records:
-                    if r.get("key") == it.get("key"):
-                        r["default_slots"], r["max_slots"] = new_def, new_max
-        if not changed:
+                plan.append((it, old_def, old_max, new_def, new_max))
+        if not plan:
             self._status.setText("Storages are already at least this large - nothing changed.")
+            QMessageBox.information(self, "Enlarge Storages",
+                                    "All these storages are already at least this large.")
             return
+        lines = [f"  {STORAGE_LABELS.get(it.get('string_key'), it.get('string_key')):<22}"
+                 f"{od:>5} / {om:<5} ->  {nd:>5} / {nm}"
+                 for it, od, om, nd, nm in plan]
+        box = QMessageBox(self)
+        box.setWindowTitle("Enlarge Storages")
+        box.setIcon(QMessageBox.Question)
+        box.setText("These storages get more slots (start / maximum):")
+        box.setInformativeText(
+            "\n".join(lines) +
+            "\n\nCamp upgrades still add slots on top of the camp storage, up to its maximum."
+            "\nNot changed: character inventory, town warehouse, bank."
+            "\n\nNothing is written yet - afterwards use Export Field JSON or Apply to Game.")
+        box.setStyleSheet("QLabel { font-family: Consolas, monospace; }")
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        box.setDefaultButton(QMessageBox.Yes)
+        if box.exec() != QMessageBox.Yes:
+            return
+        changed = []
+        self._highlight_keys = set()
+        for it, od, om, nd, nm in plan:
+            it["default_slot_count"], it["max_slot_count"] = nd, nm
+            changed.append(f"{STORAGE_LABELS.get(it.get('string_key'), it.get('string_key'))} "
+                           f"{od}/{om} -> {nd}/{nm}")
+            self._highlight_keys.add(it.get("key"))
+            for r in self._records:
+                if r.get("key") == it.get("key"):
+                    r["default_slots"], r["max_slots"] = nd, nm
         new_pabgb = self._serialize_dmm(self._dmm_items)
         if not new_pabgb:
             QMessageBox.critical(self, "Enlarge Storages", "Could not write the inventory table.")
