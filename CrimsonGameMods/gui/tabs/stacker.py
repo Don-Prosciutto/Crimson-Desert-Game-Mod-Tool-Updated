@@ -1712,7 +1712,24 @@ class StackerTab(QWidget):
         clr_btn.setObjectName("flatBtn")
         clr_btn.clicked.connect(self._clear_all)
         _blay2.addWidget(clr_btn)
+
+        # Order = priority: a mod further down wins a conflict.
+        up_btn = _size_button(QPushButton("▲ Up"))
+        up_btn.setObjectName("flatBtn")
+        up_btn.setToolTip("Move the selected mod up (it loses conflicts against the mods below it).")
+        up_btn.clicked.connect(lambda: self._move_selected(-1))
+        _blay2.addWidget(up_btn)
+        down_btn = _size_button(QPushButton("▼ Down"))
+        down_btn.setObjectName("flatBtn")
+        down_btn.setToolTip("Move the selected mod down (the lowest mod wins conflicts).")
+        down_btn.clicked.connect(lambda: self._move_selected(1))
+        _blay2.addWidget(down_btn)
         _blay2.addStretch(1)
+
+        help_btn = _size_button(QPushButton("? How it works"))
+        help_btn.setObjectName("flatBtn")
+        help_btn.clicked.connect(self._show_help)
+        _blay2.addWidget(help_btn)
 
         lay.addWidget(bar)
         return frame
@@ -2279,6 +2296,34 @@ class StackerTab(QWidget):
         self._mods.pop(row)
         self._refresh_mod_list()
 
+    def _move_selected(self, step: int) -> None:
+        """Change the merge order. Merge results of the old order are dropped,
+        because the winner of a conflict depends on it."""
+        row = self._mods_list.currentRow()
+        new = row + step
+        if row < 0 or not 0 <= new < len(self._mods):
+            return
+        self._mods[row], self._mods[new] = self._mods[new], self._mods[row]
+        self._merged_items = []
+        self._conflicts = []
+        self._order_changed = True
+        self._refresh_mod_list()
+        self._mods_list.setCurrentRow(new)
+
+    def _show_help(self) -> None:
+        QMessageBox.information(
+            self, "Stacker - how it works",
+            "The Stacker combines several mods into ONE mod, field by field.\n\n"
+            "1. Add the mods (+ Add, or drag files onto the window).\n"
+            "2. Press PREVIEW. Nothing is written; the Details pane lists\n"
+            "   every conflict: two mods set the same value differently.\n"
+            "3. The mod LOWER in the Sources list wins a conflict (✔ winner,\n"
+            "   ✘ loser). To let another mod win, select it, press ▼ Down,\n"
+            "   then PREVIEW again.\n"
+            "4. EXPORT FIELD JSON makes one mod file you install with DMM.\n"
+            "   (APPLY STACK writes it into the game directly.)\n\n"
+            "Mods that change different values never conflict - both land.")
+
     def _clear_all(self):
         self._mods.clear()
         self._mods_list.clear()
@@ -2779,6 +2824,7 @@ class StackerTab(QWidget):
 
         self._merged_items = merged_items
         self._conflicts = conflicts
+        self._order_changed = False
         self._log_line(f"  merged: {len(merged_items)} entries; "
                        f"{len(conflicts)} field conflict(s)")
         self._refresh_details()
@@ -3591,6 +3637,13 @@ class StackerTab(QWidget):
             lines.append("")
             lines.append(f"CONFLICTS — {len(self._conflicts)} field-level "
                          "(install order wins; loser listed beside winner)")
+            lines.append("The mod lower in the Sources list wins. To let the other")
+            lines.append("mod win: select it, press ▼ Down, then PREVIEW again.")
+            pairs: dict = {}
+            for c in self._conflicts:
+                pairs[(c.winner_mod, c.loser_mod)] = pairs.get((c.winner_mod, c.loser_mod), 0) + 1
+            for (w, l), n in sorted(pairs.items(), key=lambda kv: -kv[1]):
+                lines.append(f"  {w}  beats  {l}  in {n} value(s)")
             lines.append("─" * 58)
             # Cap UI to avoid flooding the pane on mega-merges
             for c in self._conflicts[:300]:
@@ -3608,6 +3661,9 @@ class StackerTab(QWidget):
             lines.append("")
             lines.append("No field-level conflicts — all sources merged "
                          "without stepping on each other.")
+        elif getattr(self, "_order_changed", False) and self._mods:
+            lines.append("")
+            lines.append("Order changed — press PREVIEW to see who wins now.")
 
         self._details.setPlainText("\n".join(lines) if lines else
             "Drop mods above, or use + Add / ⇅ Pull Buffs in the Sources panel.")
