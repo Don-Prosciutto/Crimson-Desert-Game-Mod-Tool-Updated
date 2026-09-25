@@ -73,8 +73,12 @@ def main() -> int:
 
     if args.backend == "pyinstaller":
         spec = root / target["spec"]
+        # Only replace this target's exe: wiping the whole dist folder deleted
+        # the other exes (building Simple removed CrimsonGameMods.exe).
         dist = root / "dist"
-        shutil.rmtree(dist, ignore_errors=True)
+        for old in dist.glob(target["name"] + ".exe"):
+            old.unlink()
+        shutil.rmtree(dist / target["name"], ignore_errors=True)
         run([sys.executable, "-m", "PyInstaller", str(spec), "--noconfirm"], cwd=root)
         return 0
 
