@@ -5632,14 +5632,16 @@ QCheckBox::indicator {{
         if locked_count > 0:
             slot_word = "slot" if locked_count == 1 else "slots"
             self._sock_locked_hint.setText(
-                f"{locked_count} {slot_word} locked. Use the 'Unlock Socket Slots' panel "
-                f"below the slot rows to enable up to {display_capacity} slots without visiting the Witch."
+                f"{locked_count} {slot_word} locked. Unlock them in the game (Witch) or give the "
+                f"item more sockets in the Game Mods ItemBuffs page."
             )
             self._sock_locked_hint.setVisible(True)
         else:
             self._sock_locked_hint.setVisible(False)
 
-        self._sock_unlock_group.setVisible(True)
+        # "Unlock Socket Slots" stays hidden (2.03.02): falls back to old bit
+        # positions for items the schema did not resolve, no undo.
+        self._sock_unlock_group.setVisible(False)
         self._sock_unlock_spin.blockSignals(True)
         self._sock_unlock_spin.setRange(0, display_capacity)
         self._sock_unlock_spin.setValue(min(max(max_s, valid_s), display_capacity))
@@ -6150,20 +6152,9 @@ QCheckBox::indicator {{
         swap_btn.clicked.connect(self._perform_swap)
         btn_row.addWidget(swap_btn)
 
-        swap_all_btn = QPushButton("Swap All (Global)")
-        swap_all_btn.setToolTip("Replace EVERY occurrence of this item key in the entire save. All copies become the new item.")
-        swap_all_btn.clicked.connect(self._perform_swap_all)
-        btn_row.addWidget(swap_all_btn)
+        # "Swap All (Global)" removed (2.03.02): replaced every 4-byte match of the key in the whole save.
 
-        self._template_swap_btn = QPushButton("Template Swap (Real Stats)")
-        self._template_swap_btn.setObjectName("accentBtn")
-        self._template_swap_btn.setToolTip(
-            "Swap using real game data from community templates.\n"
-            "Replaces the entire item record — correct stats, sockets, endurance.\n"
-            "Only works when items have the same binary size (most do).\n"
-            "Falls back to key-only swap if sizes don't match.")
-        self._template_swap_btn.clicked.connect(self._perform_template_swap)
-        btn_row.addWidget(self._template_swap_btn)
+        # "Template Swap" removed (2.03.02): templates and pointer layout from game 1.0.4.
 
         self._clean_swap_btn = QPushButton("Clean Swap")
         self._clean_swap_btn.setToolTip("Swap + zero out gimmick state, charged count, and timestamps. May fix placeholder icons.")
@@ -6219,15 +6210,7 @@ QCheckBox::indicator {{
         apply_btn.clicked.connect(self._apply_local_pack)
         l_btn.addWidget(apply_btn)
 
-        parc_add_pack_btn = QPushButton("Add Pack (PARC Insert)")
-        parc_add_pack_btn.setObjectName("accentBtn")
-        parc_add_pack_btn.setToolTip(
-            "Insert ALL pack items as NEW items into your inventory.\n"
-            "No donor items needed! Uses PARC insertion.\n"
-            "May require 2 reloads but not usually."
-        )
-        parc_add_pack_btn.clicked.connect(self._parc_add_pack)
-        l_btn.addWidget(parc_add_pack_btn)
+        # "Add Pack (PARC Insert)" removed (2.03.02): old item templates; crashed afterwards and still reported success.
 
         create_btn = QPushButton("Create New Pack")
         create_btn.clicked.connect(self._create_pack)
@@ -7056,42 +7039,14 @@ QCheckBox::indicator {{
         set_btn.clicked.connect(self._set_repurch_stack)
         bottom.addWidget(set_btn)
 
-        swap_btn = QPushButton("Swap Selected Item")
-        swap_btn.setObjectName("accentBtn")
-        swap_btn.setToolTip("Swap this vendor item, then buy it back in-game for a clean item with correct icon")
-        swap_btn.clicked.connect(self._swap_repurch_item)
-        bottom.addWidget(swap_btn)
+        # Repurchase "Swap Selected Item" removed (2.03.02): raw +12 / +300 byte key replace, no schema.
 
-        add_vendor_btn = QPushButton("Add to Vendor")
-        add_vendor_btn.setObjectName("accentBtn")
-        add_vendor_btn.setToolTip(
-            "Turn any vendor item into a different item. Requires at least one junk item "
-            "in the vendor repurchase list — sell junk to a vendor first."
-        )
-        add_vendor_btn.clicked.connect(self._add_to_vendor)
-        bottom.addWidget(add_vendor_btn)
+        # "Add to Vendor" removed (2.03.02): same raw byte replace.
 
-        clone_vendor_btn = QPushButton("Clone Selected to Vendor")
-        clone_vendor_btn.setObjectName("accentBtn")
-        clone_vendor_btn.setToolTip(
-            "Clone the selected item into a new vendor buyback entry.\n"
-            "Search by item name to pick the target item.\n"
-            "MUST be same type: Glove->Glove, Helm->Helm, Sword->Sword.\n"
-            "Buy it back in-game — the game creates the correct item."
-        )
-        clone_vendor_btn.clicked.connect(self._clone_vendor_item)
-        bottom.addWidget(clone_vendor_btn)
+        # "Clone Selected to Vendor" removed (2.03.02): old item templates, sentinel pointer fix-ups, no undo.
 
 
-        self._vendor_template_swap_btn = QPushButton("Vendor Template Swap")
-        self._vendor_template_swap_btn.setObjectName("accentBtn")
-        self._vendor_template_swap_btn.setToolTip(
-            "Swap selected vendor item using template matching — validates item type, "
-            "stack limits, and shows warnings for mismatches."
-        )
-        self._vendor_template_swap_btn.clicked.connect(self._vendor_template_swap)
-        self._vendor_template_swap_btn.setVisible(self._experimental_mode)
-        bottom.addWidget(self._vendor_template_swap_btn)
+        # "Vendor Template Swap" removed (2.03.02): 1.0.4 templates, edited the wrong row after sorting.
 
         bottom.addStretch()
         self._repurch_count = QLabel("0 items")
@@ -8154,112 +8109,10 @@ QCheckBox::indicator {{
 
         from PySide6.QtWidgets import QGroupBox, QGridLayout
 
-        char_grp = QGroupBox("Unlock Playable Characters")
-        char_layout = QVBoxLayout(char_grp)
-        char_layout.setSpacing(4)
-        char_note = QLabel(
-            "Insert Damian or Oongka into any save for GTA5-style character switching (F1 wheel)."
-        )
-        char_note.setWordWrap(True)
-        char_note.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px; padding: 2px;")
-        char_layout.addWidget(char_note)
-        char_btn_row = QHBoxLayout()
-        for ck, (name, _) in self.CHARACTER_TEMPLATES.items():
-            btn = QPushButton(f"Unlock {name}")
-            btn.setToolTip(f"Insert {name} (charKey={ck}) into your mercenary list")
-            btn.clicked.connect(lambda checked=False, k=ck: self._unlock_character(k))
-            char_btn_row.addWidget(btn)
-        unlock_both_btn = QPushButton("Unlock Both")
-        unlock_both_btn.setObjectName("accentBtn")
-        unlock_both_btn.setToolTip("Insert both Damian and Oongka at once")
-        unlock_both_btn.setVisible(self._experimental_mode)
-        unlock_both_btn.clicked.connect(self._unlock_all_characters)
-        char_btn_row.addWidget(unlock_both_btn)
-        char_btn_row.addStretch()
-        char_layout.addLayout(char_btn_row)
-        layout.addWidget(char_grp)
+        # "Unlock Playable Characters" removed (2.03.02): inserts hex templates from old game versions into the save.
 
-        btn_row2 = QHBoxLayout()
-        btn_row2.addWidget(QLabel("Unlock Mounts:"))
-
-        dragon_334_btn = QPushButton("Unlock Dragon (Quest Flag)")
-        dragon_334_btn.setToolTip("Insert Dragon mount + 4 quest completions + 334 confirmed knowledge keys")
-        dragon_334_btn.clicked.connect(self._unlock_dragon_mount)
-        btn_row2.addWidget(dragon_334_btn)
-
-        dragon_nq_btn = QPushButton("Unlock Dragon (No Quest)")
-        dragon_nq_btn.setToolTip("Insert Dragon mount + filtered knowledge keys — no quest changes")
-        dragon_nq_btn.clicked.connect(self._unlock_dragon_mount_no_quests)
-        btn_row2.addWidget(dragon_nq_btn)
-
-        btn_row2.addStretch()
-        layout.addLayout(btn_row2)
-
-        mount_grp = QGroupBox("Unlock Mounts (Experimental)")
-        mount_grid = QGridLayout(mount_grp)
-        mount_grid.setSpacing(4)
-
-        unlock_all_btn = QPushButton("Unlock All Confirmed Mounts")
-        unlock_all_btn.setObjectName("accentBtn")
-        unlock_all_btn.setToolTip("Unlock Wolf, Bear, Deer, Warthog, Alpine Ibex, and ATAG Mech 1 in one go (excludes Dragon)")
-        unlock_all_btn.clicked.connect(self._unlock_all_confirmed_mounts)
-        mount_grid.addWidget(unlock_all_btn, 0, 0, 1, 3)
-
-        unlock_exotic_btn = QPushButton("Unlock All Exotic Mounts")
-        unlock_exotic_btn.setToolTip(
-            "Unlock ALL mounts using the proven 170B simple template.\n"
-            "Includes: Elephant, Camel, Iguana, CarmaBirdsaurus, Cucubird,\n"
-            "ATAG Mechs, Machine Bear, WarMachine, Balloons, Boats, and more.\n"
-            "Same PARC layout as Bear/Warthog/Ibex — ATAG confirmed working.")
-        unlock_exotic_btn.clicked.connect(self._unlock_all_simple_template_mounts)
-        unlock_exotic_btn.setVisible(self._experimental_mode)
-        mount_grid.addWidget(unlock_exotic_btn, 0, 3, 1, 3)
-
-        mount_categories = [
-            ("Confirmed", [1003918, 1003917, 1003919, 1003912, 1003915, 1001984], False),
-            ("ATAG Alt", [1001467], True),
-            ("Creatures", [1000523, 1000733, 1000254, 1000363, 1000265, 1000253, 1002059], True),
-            ("Machines", [1000532, 1002269, 1001985, 1001986, 1000017, 1003562, 1003563, 1003564, 1001358, 1000981], True),
-            ("Balloons", [1002041, 1002042, 1002043, 2306], True),
-            ("Boss/Wild", [1001893, 1000520, 1000270, 1000264, 1000453, 1000491, 1003748], True),
-            ("Ships", [1001929, 1001082, 1001115, 1003568, 1003569, 1003570], True),
-            ("Unique Horses", [1003120, 1001173, 1001172, 1000343], True),
-        ]
-
-        self._dev_mount_widgets = []
-        row_idx = 1
-        for cat_name, keys, is_dev in mount_categories:
-            label = QLabel(f"{cat_name}:")
-            mount_grid.addWidget(label, row_idx, 0)
-            if is_dev:
-                label.setVisible(self._experimental_mode)
-                self._dev_mount_widgets.append(label)
-            col = 1
-            for ck in keys:
-                if ck in self.MOUNT_TEMPLATES:
-                    name = self.MOUNT_TEMPLATES[ck][0]
-                    short = name.split('(')[0].strip() if '(' in name else name
-                    btn = QPushButton(short)
-                    btn.setToolTip(f"Unlock {name} (charKey={ck})")
-                    btn.clicked.connect(lambda checked=False, k=ck: self._unlock_mount_generic(k))
-                    mount_grid.addWidget(btn, row_idx, col)
-                    if is_dev:
-                        btn.setVisible(self._experimental_mode)
-                        self._dev_mount_widgets.append(btn)
-                    col += 1
-                    if col > 6:
-                        row_idx += 1
-                        col = 1
-            row_idx += 1
-
-        layout.addWidget(mount_grp)
-
-        atag_note = QLabel(
-            "Note: If ATAG Mech 1 doesn't work for your save, try ATAG Alternative instead."
-        )
-        atag_note.setWordWrap(True)
-        atag_note.setStyleSheet(f"color: {COLORS['warning']}; font-size: 11px; padding: 4px;")
-        layout.addWidget(atag_note)
+        # "Unlock Dragon" and "Unlock Mounts" removed (2.03.02): hex templates
+        # from old game versions (the Dragon one marked WORK IN PROGRESS).
 
         self._merc_status = QLabel("")
         self._merc_status.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
@@ -14125,10 +13978,7 @@ QCheckBox::indicator {{
         learn_btn.clicked.connect(self._know_learn_selected)
         btn_row.addWidget(learn_btn)
 
-        unlearn_btn = QPushButton("Unlearn Selected")
-        unlearn_btn.setToolTip("Set selected knowledge entries to level 0 (unlearned)")
-        unlearn_btn.clicked.connect(self._know_unlearn_selected)
-        btn_row.addWidget(unlearn_btn)
+        # "Unlearn Selected" removed (2.03.02): finds entries by byte pattern, not by the save schema.
 
         menu_fix_btn = QPushButton("MainMenu Missing Fix")
         menu_fix_btn.setToolTip(
@@ -14509,7 +14359,7 @@ QCheckBox::indicator {{
 
         menu.addSeparator()
         learn_act = menu.addAction("Learn Selected")
-        unlearn_act = menu.addAction("Unlearn Selected")
+        unlearn_act = None      # "Unlearn Selected" removed (byte-pattern search)
         copy_act = menu.addAction("Copy Key(s)")
 
         action = menu.exec(self._know_table.mapToGlobal(pos))
@@ -14518,8 +14368,6 @@ QCheckBox::indicator {{
 
         if action == learn_act:
             self._know_learn_selected()
-        elif action == unlearn_act:
-            self._know_unlearn_selected()
         elif action == copy_act:
             keys = self._know_get_selected_keys()
             if keys:
@@ -14807,6 +14655,11 @@ QCheckBox::indicator {{
                     self._fast_inject_result = (False, None, str(e))
                 self._fast_inject_done = True
 
+            # The inject works on a copy of the save and then replaces the
+            # whole save with its result. Lock the window meanwhile, otherwise
+            # edits made during the inject were silently thrown away.
+            _win = self._know_table.window()
+            _win.setEnabled(False)
             thread = threading.Thread(target=_do_fast_inject, daemon=True)
             thread.start()
 
@@ -14817,6 +14670,7 @@ QCheckBox::indicator {{
                     QTimer.singleShot(200, _check_done)
                     return
 
+                _win.setEnabled(True)
                 ok, new_blob, msg = self._fast_inject_result
                 if ok and new_blob is not None:
                     self._save_data.decompressed_blob = bytearray(new_blob)
@@ -15886,6 +15740,9 @@ QCheckBox::indicator {{
                             if cf.name == '_levelData' and cf.child_fields:
                                 for lcf in cf.child_fields:
                                     if lcf.present:
+                                        if lcf.name in ('_exp', '_level'):
+                                            self._faction_field_sizes()[lcf.start_offset] = (
+                                                lcf.end_offset - lcf.start_offset)
                                         if lcf.name == '_exp':
                                             exp_offset = lcf.start_offset
                                         elif lcf.name == '_level':
@@ -15963,6 +15820,8 @@ QCheckBox::indicator {{
                         for cf in elem.child_fields:
                             if cf.present and cf.name in ('_experience', '_currentExp'):
                                 exp_offset = cf.start_offset
+                                self._faction_field_sizes()[cf.start_offset] = (
+                                    cf.end_offset - cf.start_offset)
                         name = sublevel_names.get(key, f"SubLevel_{key}")
                         entries.append((key, name, exp, exp_offset))
 
@@ -16098,7 +15957,8 @@ QCheckBox::indicator {{
                 f"Set XP for {name}:\n(Current: {data['exp']})", data['exp'], 0, 999999999)
             if not ok:
                 return
-            struct.pack_into('<Q', blob, data['exp_offset'], new_val)
+            if not self._write_sized_int(blob, data['exp_offset'], new_val):
+                return
             self._dirty = True
             self._populate_bonds()
         elif action.data() == 'level':
@@ -16106,7 +15966,8 @@ QCheckBox::indicator {{
                 f"Set level for {name}:\n(Current: {data['level']})", data['level'], 0, 100)
             if not ok:
                 return
-            struct.pack_into('<I', blob, data['level_offset'], new_val)
+            if not self._write_sized_int(blob, data['level_offset'], new_val):
+                return
             self._dirty = True
             self._populate_bonds()
 
@@ -16135,9 +15996,29 @@ QCheckBox::indicator {{
         if not ok:
             return
         blob = self._save_data.decompressed_blob
-        struct.pack_into('<Q', blob, data['exp_offset'], new_val)
+        if not self._write_sized_int(blob, data['exp_offset'], new_val):
+            return
         self._dirty = True
         self._populate_sublevels()
+
+    def _faction_field_sizes(self) -> dict:
+        """Byte size of each faction XP/level field, by offset (from the schema)."""
+        if not hasattr(self, '_faction_sizes'):
+            self._faction_sizes = {}
+        return self._faction_sizes
+
+    def _write_sized_int(self, blob, offset: int, value: int) -> bool:
+        """Write value with the field's own size. The old code always wrote
+        8 (XP) or 4 (level) bytes, whatever size the save uses for the field,
+        and so could overwrite the next value."""
+        size = self._faction_field_sizes().get(offset)
+        fmt = {1: '<B', 2: '<H', 4: '<I', 8: '<Q'}.get(size)
+        if not offset or fmt is None:
+            QMessageBox.warning(self, "Faction", "The size of this field is unknown - nothing was changed.")
+            return False
+        value = max(0, min(int(value), (1 << (8 * size)) - 1))
+        struct.pack_into(fmt, blob, offset, value)
+        return True
 
 
     def _build_game_patches_tab(self) -> None:

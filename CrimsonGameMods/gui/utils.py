@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QLabel, QLayout, QPushButton, QSizePolicy, QStyle, QTableWidgetItem,
 )
 from gui.theme import COLORS
+from overlay_coordinator import safe_rmtree  # refuses to delete game data folders
 
 
 class FlowLayout(QLayout):
@@ -145,6 +146,15 @@ def resolve_overlay_group(game_path: str, requested: int, tab_name: str,
     Returns the group number to use, or None if cancelled."""
     import os
     from PySide6.QtWidgets import QMessageBox
+    from overlay_coordinator import is_game_data_group, free_overlay_number
+    if is_game_data_group(game_path, f"{requested:04d}"):
+        free = free_overlay_number(game_path)
+        QMessageBox.warning(
+            parent, f"Overlay {requested:04d} belongs to the game",
+            f"Group {requested:04d} is part of the game itself (since game 2.03 the "
+            f"game uses the numbers up to 0040). Writing there would overwrite game "
+            f"files.\n\n{tab_name} will use {free:04d} instead.")
+        requested = free
     group_dir = os.path.join(game_path, f"{requested:04d}")
     if not os.path.isdir(group_dir):
         return requested
@@ -163,15 +173,7 @@ def resolve_overlay_group(game_path: str, requested: int, tab_name: str,
         return requested
     if reply_btn == QMessageBox.Cancel:
         return None
-    used = set()
-    for name in os.listdir(game_path):
-        full = os.path.join(game_path, name)
-        if os.path.isdir(full) and name.isdigit() and len(name) == 4:
-            used.add(int(name))
-    for candidate in range(100, 9999):
-        if candidate not in used:
-            return candidate
-    return requested
+    return free_overlay_number(game_path)
 
 
 def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
@@ -268,7 +270,7 @@ def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
                             old_files.extend(f['name'] for f in d.get('files', []))
                         has_only_this = all(pabgb_stem in fn for fn in old_files)
                         if has_only_this:
-                            shutil.rmtree(old_dir)
+                            safe_rmtree(old_dir)
                             papgt_path_clean = os.path.join(game_path, "meta", "0.papgt")
                             if os.path.isfile(papgt_path_clean):
                                 pg = crimson_rs.parse_papgt_file(papgt_path_clean)
@@ -299,7 +301,7 @@ def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
 
         dst = os.path.join(game_path, overlay_group)
         if os.path.isdir(dst):
-            shutil.rmtree(dst)
+            safe_rmtree(dst)
         os.makedirs(dst, exist_ok=True)
         for fname in os.listdir(build_dir):
             shutil.copy2(os.path.join(build_dir, fname), os.path.join(dst, fname))

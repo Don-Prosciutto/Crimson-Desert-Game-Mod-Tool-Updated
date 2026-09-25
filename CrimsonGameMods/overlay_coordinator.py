@@ -54,8 +54,96 @@ OUR_GROUPS = {
 # Prefixes that identify DMM-owned groups
 DMM_PREFIXES = ("dmmsa", "dmmgen", "dmmequ", "dmmlang")
 
-# Groups that are vanilla game data — never touch
-VANILLA_RANGE = range(0, 36)
+# Groups that are vanilla game data — never touch. Since game 2.03 the game
+# ships groups up to 0040 (0036-0040 are optional language groups whose
+# folders only exist when that language is installed), so 0036-0040 are NOT
+# free for overlays any more. is_game_data_group() also checks the pack list.
+VANILLA_RANGE = range(0, 41)
+OVERLAY_LANGUAGE = 0x3FFF      # every overlay (ours, DMM) is registered with this
+
+
+def is_game_data_group(game_path: str, group: str) -> bool:
+    """True when this numbered group belongs to the game itself: 0000-0040,
+    or listed in meta/0.papgt with a language value overlays never use."""
+    if not group.isdigit():
+        return False
+    if int(group) in VANILLA_RANGE:
+        return True
+    try:
+        import crimson_rs
+        papgt = crimson_rs.parse_papgt_file(os.path.join(game_path, "meta", "0.papgt"))
+        for e in papgt.get("entries", []):
+            if e.get("group_name") == group:
+                return e.get("language") != OVERLAY_LANGUAGE
+    except Exception:  # noqa: BLE001 - unreadable pack list: numbers alone decide
+        pass
+    return False
+
+
+def _safe_overlay_default(value, fallback: int, taken=()) -> int:
+    """Saved overlay numbers from before game 2.03 may point into the game's
+    own range (0036-0040) or at another tool's group; use the new default then."""
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        return fallback
+    return fallback if v in VANILLA_RANGE or v in taken else v
+
+
+def safe_rmtree(path) -> None:
+    """shutil.rmtree for overlay folders that refuses to delete game data
+    (0000-0040 and other groups the game itself lists) or the meta/bin64
+    folders. Raises RuntimeError instead - callers show the message."""
+    import shutil
+    path = os.path.normpath(str(path))
+    group = os.path.basename(path)
+    parent = os.path.dirname(path)
+    if group.lower() in ("meta", "bin64", "bin", "") or (
+            group.isdigit() and is_game_data_group(parent, group)):
+        raise RuntimeError(f"{group}/ belongs to the game itself and was not deleted. "
+                           f"If a tool wrote into it, use Steam > Verify integrity of game files.")
+    shutil.rmtree(path)
+
+
+def free_overlay_number(game_path: str, start: int = 100) -> int:
+    """First 4-digit group number with no folder and no pack-list entry."""
+    used = set()
+    try:
+        for name in os.listdir(game_path):
+            if name.isdigit() and len(name) == 4:
+                used.add(int(name))
+        import crimson_rs
+        papgt = crimson_rs.parse_papgt_file(os.path.join(game_path, "meta", "0.papgt"))
+        used |= {int(e["group_name"]) for e in papgt.get("entries", [])
+                 if str(e.get("group_name", "")).isdigit()}
+    except Exception:  # noqa: BLE001
+        pass
+    for n in range(max(start, 41), 9999):
+        if n not in used:
+            return n
+    return start
+
+
+def remove_papgt_groups(game_path: str, groups) -> str:
+    """Remove only these entries from meta/0.papgt. Every other entry (game,
+    DMM, other tools) stays. Never falls back to an old backup copy: those
+    are from earlier game versions and would drop other mods' entries."""
+    import crimson_rs
+    groups = set(groups)
+    papgt_path = os.path.join(game_path, "meta", "0.papgt")
+    if not os.path.isfile(papgt_path):
+        return "PAPGT not found"
+    papgt = crimson_rs.parse_papgt_file(papgt_path)
+    before = len(papgt["entries"])
+    papgt["entries"] = [e for e in papgt["entries"] if e.get("group_name") not in groups]
+    removed = before - len(papgt["entries"])
+    if not removed:
+        return f"PAPGT: {', '.join(sorted(groups))} was not registered"
+    crimson_rs.write_papgt_file(papgt, papgt_path)
+    others = [e["group_name"] for e in papgt["entries"]
+              if not (str(e["group_name"]).isdigit() and int(e["group_name"]) in VANILLA_RANGE)]
+    extra = f" (other overlays still active: {', '.join(others)})" if others else ""
+    return f"PAPGT: removed {', '.join(sorted(groups))}{extra}"
 
 
 def _is_ours(group: str) -> bool:
@@ -305,7 +393,7 @@ def audit(game_path: str) -> list[str]:
             import crimson_rs
             papgt = crimson_rs.parse_papgt_file(papgt_path)
             registered = {e["group_name"] for e in papgt.get("entries", [])
-                          if int(e.get("group_name", "0")) >= 36}
+                          if not (str(e.get("group_name", "0")).isdigit() and int(e.get("group_name", "0")) <= 40)}
 
             # Overlay exists on disk but not in PAPGT
             for group in state.overlays:
@@ -407,7 +495,7 @@ def safe_papgt_remove(game_path: str, our_group: str) -> str:
         crimson_rs.write_papgt_file(papgt, papgt_path)
 
         remaining = [e["group_name"] for e in papgt["entries"]
-                     if int(e.get("group_name", "0")) >= 36]
+                     if not (str(e.get("group_name", "0")).isdigit() and int(e.get("group_name", "0")) <= 40)]
         extra = f" (remaining: {', '.join(remaining)})" if remaining else ""
         return f"PAPGT: removed {our_group}{extra}"
 

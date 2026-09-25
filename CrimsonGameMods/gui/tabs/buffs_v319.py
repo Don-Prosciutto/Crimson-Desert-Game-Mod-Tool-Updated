@@ -8,6 +8,7 @@ import re
 import shutil
 import struct
 import subprocess
+from overlay_coordinator import safe_rmtree, _safe_overlay_default  # guard game data folders
 
 def _iteminfo_parse(data):
     try:
@@ -629,12 +630,9 @@ class ItemBuffsTab(QWidget):
                 "PAPGT entry. Requires admin.")
             act_restore.triggered.connect(self._buff_restore_original)
 
-            act_reset_vanilla = more_menu.addAction(
-                "Reset to Vanilla PAPGT (nuclear)")
-            act_reset_vanilla.setToolTip(
-                "NUCLEAR RECOVERY: restore first-apply PAPGT snapshot. "
-                "Disables ALL overlays. Requires admin.")
-            act_reset_vanilla.triggered.connect(self._buff_reset_vanilla_papgt)
+            # "Reset to Vanilla PAPGT (nuclear)" removed (2.03.02): it copied a
+            # pack list from the first Apply back (possibly from an older game
+            # version) and then dropped the game's own optional language groups.
   
             return more_menu
 
@@ -1062,10 +1060,8 @@ class ItemBuffsTab(QWidget):
             )
             more_menu = QMenu(self)
 
-            act_import = more_menu.addAction("Import Community JSON Patch...")
-            act_import.setToolTip(
-                "Import a Pldada/DMM-format JSON byte patch (e.g. Infinity Durability).")
-            act_import.triggered.connect(self._buff_import_community_json)
+            # "Import Community JSON Patch" removed (2.03.02): it applied raw
+            # byte offsets from old game versions.
 
             act_sync = more_menu.addAction("Refresh Names from Game")
             act_sync.setToolTip(
@@ -1092,12 +1088,9 @@ class ItemBuffsTab(QWidget):
                 "PAPGT entry. Requires admin.")
             act_restore.triggered.connect(self._buff_restore_original)
 
-            act_reset_vanilla = more_menu.addAction(
-                "Reset to Vanilla PAPGT (nuclear)")
-            act_reset_vanilla.setToolTip(
-                "NUCLEAR RECOVERY: restore first-apply PAPGT snapshot. "
-                "Disables ALL overlays. Requires admin.")
-            act_reset_vanilla.triggered.connect(self._buff_reset_vanilla_papgt)
+            # "Reset to Vanilla PAPGT (nuclear)" removed (2.03.02): it copied a
+            # pack list from the first Apply back (possibly from an older game
+            # version) and then dropped the game's own optional language groups.
 
             more_menu.addSeparator()
 
@@ -1966,13 +1959,6 @@ class ItemBuffsTab(QWidget):
         eb_row.addWidget(eb_remove_btn)
         form.addRow("Equip Buff:", buff_container)
 
-        return page
-
-    def _build_buff_drop_data_page(self) -> QWidget:
-        page = QWidget()
-        pl = QVBoxLayout(page)
-        pl.setContentsMargins(8, 8, 8, 8)
-        pl.setSpacing(8)
         return page
 
 
@@ -3019,60 +3005,6 @@ class ItemBuffsTab(QWidget):
         form.addRow("Mod Load Order:", modgroup_container)
 
         return page
-
-
-    def _effect_swap_blackberry_test(self) -> None:
-        game_path = self._paz_game_path.text().strip()
-        if not game_path:
-            QMessageBox.warning(self, "No Game Path", "Set the game install path first.")
-            return
-        if not _can_write_game_dir(game_path):
-            QMessageBox.warning(self, "No Write Access",
-                                f"Cannot write to:\n{game_path}\n\n"
-                                "Right-click → Run as administrator")
-            return
-
-        reply = QMessageBox.question(
-            self, "Item Effect Swap",
-            "Swap Blackberry's food effect with Narima's Horn instant Dragon CD reset?\n\n"
-            "This patches iteminfo.pabgb. A backup will be created.\n"
-            "Use Steam Verify Integrity to undo.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        self._effect_status.setText("Patching...")
-        QApplication.processEvents()
-
-        try:
-            patcher = ItemEffectPatcher(game_path)
-            ok, msg = patcher.swap_effect('Blackberry', 0xB0A8256B)
-            self._effect_status.setText("OK" if ok else "FAILED")
-            if ok:
-                QMessageBox.information(self, "Effect Swapped", msg)
-            else:
-                QMessageBox.critical(self, "Failed", msg)
-        except Exception as e:
-            self._effect_status.setText(f"Error: {e}")
-            QMessageBox.critical(self, "Error", str(e))
-
-
-    def _effect_check_blackberry(self) -> None:
-        game_path = self._paz_game_path.text().strip()
-        if not game_path:
-            QMessageBox.warning(self, "No Game Path", "Set the game install path first.")
-            return
-        try:
-            patcher = ItemEffectPatcher(game_path)
-            result = patcher.check_effect('Blackberry')
-            if result:
-                h, desc = result
-                self._effect_status.setText(f"Blackberry effect: {desc}")
-            else:
-                self._effect_status.setText("Could not read Blackberry effect")
-        except Exception as e:
-            self._effect_status.setText(f"Error: {e}")
 
 
     def _rebuild_index(self) -> None:
@@ -4945,618 +4877,6 @@ class ItemBuffsTab(QWidget):
         except Exception as e:
             log.warning("VFX Lab apply failed: %s", e)
             return False
-
-
-    def _buff_open_vfx_dialog(self) -> None:
-        if self._buff_data is None:
-            QMessageBox.information(self, "VFX Lab",
-                "Click 'Extract' first to load iteminfo data.")
-            return
-        try:
-            import vfx_lab
-        except ImportError as e:
-            QMessageBox.warning(self, "VFX Lab", f"Module load failed: {e}")
-            return
-
-        if not self._vfx_summaries:
-            try:
-                summaries, _raw = vfx_lab.parse_vfx_catalog(bytes(self._buff_data))
-                try:
-                    from armor_catalog import get_category, clean_display_name
-                except Exception:
-                    get_category = lambda n: None
-                    clean_display_name = lambda n: n
-                name_db = getattr(self, '_name_db', None)
-                for s in summaries:
-                    cat = get_category(s.internal_name) or "Other"
-                    s.category = cat
-                    disp = ''
-                    if name_db:
-                        try:
-                            disp = name_db.get_name(s.item_key) or ''
-                        except Exception:
-                            disp = ''
-                    s.display_name = disp or clean_display_name(s.internal_name)
-                self._vfx_summaries = summaries
-            except Exception as e:
-                QMessageBox.warning(self, "VFX Lab", f"Parse failed: {e}")
-                return
-
-        self._vfx_show_dialog(vfx_lab)
-
-
-    def _vfx_show_dialog(self, vfx_lab) -> None:
-        dlg = QDialog(self)
-        dlg.setWindowTitle("VFX Lab — Size / VFX / Animations / Attach Points")
-        dlg.resize(1100, 720)
-        lay = QVBoxLayout(dlg)
-        banner = QLabel(
-            "Edit item visuals directly in iteminfo.pabgb. "
-            "Size & VFX are safe; Animation and Attach can crash if sockets/rigs mismatch.")
-        banner.setWordWrap(True)
-        banner.setStyleSheet(button_css("neutral") + " padding: 6px;")
-        lay.addWidget(banner)
-
-        tabs = QTabWidget()
-        lay.addWidget(tabs, 1)
-
-        summaries = self._vfx_summaries
-        by_key = {s.item_key: s for s in summaries}
-
-        owned_keys: set[int] = set()
-        try:
-            for rec in (self._buff_items or []):
-                k = getattr(rec, 'key', None) or getattr(rec, 'item_key', None)
-                if k is not None:
-                    owned_keys.add(int(k))
-        except Exception:
-            pass
-
-        local_size = list(self._vfx_size_changes)
-        local_vfx = list(self._vfx_swaps)
-        local_anim = list(self._vfx_anim_swaps)
-        local_attach = list(self._vfx_attach_changes)
-
-        tabs.addTab(self._vfx_build_size_tab(vfx_lab, summaries, by_key, owned_keys, local_size), "Size")
-        tabs.addTab(self._vfx_build_vfx_tab(vfx_lab, summaries, by_key, owned_keys, local_vfx), "VFX & Trails")
-        tabs.addTab(self._vfx_build_anim_tab(vfx_lab, summaries, by_key, owned_keys, local_anim), "Animations")
-        tabs.addTab(self._vfx_build_attach_tab(vfx_lab, summaries, by_key, owned_keys, local_attach), "Attach Points")
-
-        footer = QHBoxLayout()
-        apply_btn = QPushButton("Apply All to Queue")
-        apply_btn.setStyleSheet(button_css("success") + " font-weight: bold; padding: 6px 14px;")
-        clear_btn = QPushButton("Clear All VFX Changes")
-        clear_btn.setStyleSheet(button_css("danger") + " padding: 6px 14px;")
-        import_btn = QPushButton("Import JSON…")
-        export_btn = QPushButton("Export JSON…")
-        close_btn = QPushButton("Close")
-        for b in (apply_btn, clear_btn, import_btn, export_btn):
-            footer.addWidget(b)
-        footer.addStretch()
-        footer.addWidget(close_btn)
-        lay.addLayout(footer)
-
-        def on_apply():
-            self._vfx_size_changes = list(local_size)
-            self._vfx_swaps = list(local_vfx)
-            self._vfx_anim_swaps = list(local_anim)
-            self._vfx_attach_changes = list(local_attach)
-            total = len(local_size) + len(local_vfx) + len(local_anim) + len(local_attach)
-            self._buff_modified = self._buff_modified or total > 0
-            self._buff_status_label.setText(
-                f"VFX Lab: {len(local_size)} size, {len(local_vfx)} vfx, "
-                f"{len(local_anim)} anim, {len(local_attach)} attach queued. "
-                "Click 'Export Field JSON v3' when ready.")
-            dlg.accept()
-
-        def on_clear():
-            if QMessageBox.question(dlg, "Clear VFX Lab",
-                    "Remove all queued size / VFX / animation / attach changes?",
-                    QMessageBox.Yes | QMessageBox.No) != QMessageBox.Yes:
-                return
-            local_size.clear(); local_vfx.clear(); local_anim.clear(); local_attach.clear()
-            self._vfx_size_changes = []; self._vfx_swaps = []
-            self._vfx_anim_swaps = []; self._vfx_attach_changes = []
-            QMessageBox.information(dlg, "VFX Lab", "All queued changes cleared. Close and reopen to refresh lists.")
-
-        def on_import():
-            path, _ = QFileDialog.getOpenFileName(dlg, "Import VFX Lab JSON", "", "JSON (*.json)")
-            if not path:
-                return
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    text = f.read()
-                s, v, a, at = vfx_lab.import_changes_from_json(text)
-                local_size.extend(s); local_vfx.extend(v)
-                local_anim.extend(a); local_attach.extend(at)
-                QMessageBox.information(dlg, "Import",
-                    f"Imported {len(s)} size, {len(v)} vfx, {len(a)} anim, {len(at)} attach entries.\n"
-                    "Click Apply All to Queue, then Export Field JSON v3.")
-            except Exception as e:
-                QMessageBox.warning(dlg, "Import failed", str(e))
-
-        def on_export():
-            if not (local_size or local_vfx or local_anim or local_attach):
-                QMessageBox.information(dlg, "Export", "Nothing to export.")
-                return
-            path, _ = QFileDialog.getSaveFileName(dlg, "Export VFX Lab JSON", "vfx_lab.json", "JSON (*.json)")
-            if not path:
-                return
-            try:
-                text = vfx_lab.export_changes_to_json(
-                    local_size, local_vfx, local_anim, local_attach, by_key)
-                with open(path, 'w', encoding='utf-8') as f:
-                    f.write(text)
-                QMessageBox.information(dlg, "Export", f"Wrote {path}")
-            except Exception as e:
-                QMessageBox.warning(dlg, "Export failed", str(e))
-
-        apply_btn.clicked.connect(on_apply)
-        clear_btn.clicked.connect(on_clear)
-        import_btn.clicked.connect(on_import)
-        export_btn.clicked.connect(on_export)
-        close_btn.clicked.connect(dlg.reject)
-
-        dlg.exec()
-
-
-    def _vfx_build_item_filter_widgets(self, summaries, owned_keys, show_owned_toggle: bool):
-        w = QWidget()
-        lay = QVBoxLayout(w)
-        lay.setContentsMargins(4, 4, 4, 4)
-        ctl = QHBoxLayout()
-        search = QLineEdit()
-        search.setPlaceholderText("Search…")
-        ctl.addWidget(search, 1)
-        cat_combo = QComboBox()
-        cats = sorted({s.category for s in summaries if s.category}) or ["Other"]
-        cat_combo.addItem("(all)")
-        for c in cats:
-            cat_combo.addItem(c)
-        ctl.addWidget(cat_combo)
-        owned_cb = QCheckBox("Only items I own")
-        owned_cb.setChecked(False)
-        if show_owned_toggle:
-            ctl.addWidget(owned_cb)
-        lay.addLayout(ctl)
-        lst = QListWidget()
-        lay.addWidget(lst, 1)
-        return w, lst, search, cat_combo, owned_cb
-
-
-    def _vfx_filter_match(self, s, q: str, cat: str, owned_only: bool, owned_keys: set) -> bool:
-        if owned_only and s.item_key not in owned_keys:
-            return False
-        if cat and cat != "(all)" and s.category != cat:
-            return False
-        if q:
-            ql = q.lower()
-            if ql not in s.internal_name.lower() and ql not in (s.display_name or '').lower():
-                return False
-        return True
-
-
-    def _vfx_populate_list(self, lst, summaries, filter_fn, label_fn):
-        lst.clear()
-        for s in summaries:
-            if not filter_fn(s):
-                continue
-            it = QListWidgetItem(label_fn(s))
-            it.setData(Qt.UserRole, s.item_key)
-            lst.addItem(it)
-
-
-    def _vfx_build_size_tab(self, vfx_lab, summaries, by_key, owned_keys, queue):
-        tab = QWidget()
-        root = QHBoxLayout(tab)
-
-        left_w, lst, search, cat_combo, owned_cb = self._vfx_build_item_filter_widgets(
-            summaries, owned_keys, show_owned_toggle=True)
-        root.addWidget(left_w, 2)
-
-        right = QWidget()
-        rlay = QVBoxLayout(right)
-        cur_lbl = QLabel("Select an item on the left.")
-        cur_lbl.setWordWrap(True)
-        rlay.addWidget(cur_lbl)
-
-        slider = QSlider(Qt.Horizontal)
-        slider.setRange(10, 500)
-        slider.setValue(100)
-        slider_lbl = QLabel("Scale: 1.00×")
-        rlay.addWidget(slider_lbl)
-        rlay.addWidget(slider)
-
-        uniform_cb = QCheckBox("Uniform (lock X/Y/Z)")
-        uniform_cb.setChecked(True)
-        rlay.addWidget(uniform_cb)
-
-        queue_list = QListWidget()
-        rlay.addWidget(QLabel("Queued size changes:"))
-        rlay.addWidget(queue_list, 1)
-
-        btn_row = QHBoxLayout()
-        add_btn = QPushButton("Add / Update")
-        add_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
-        rm_btn = QPushButton("Remove Selected")
-        btn_row.addWidget(add_btn); btn_row.addWidget(rm_btn)
-        rlay.addLayout(btn_row)
-        root.addWidget(right, 3)
-
-        def refresh_list():
-            q = search.text().strip()
-            cat = cat_combo.currentText()
-            owned = owned_cb.isChecked()
-            self._vfx_populate_list(
-                lst, summaries,
-                lambda s: bool(s.scale) and self._vfx_filter_match(s, q, cat, owned, owned_keys),
-                lambda s: f"{s.display_name or s.internal_name}  [{s.category}]  cur:{s.scale}")
-
-        def refresh_queue():
-            queue_list.clear()
-            for ch in queue:
-                s = by_key.get(ch.item_key)
-                nm = (s.display_name or s.internal_name) if s else f"key={ch.item_key}"
-                queue_list.addItem(f"{nm}  →  scale {ch.scale}")
-
-        def on_select():
-            it = lst.currentItem()
-            if not it:
-                cur_lbl.setText("Select an item on the left.")
-                return
-            s = by_key.get(it.data(Qt.UserRole))
-            if not s:
-                return
-            cur_lbl.setText(f"{s.display_name or s.internal_name}\nCurrent scale: {s.scale}")
-            ex = next((c for c in queue if c.item_key == s.item_key), None)
-            if ex and ex.scale:
-                slider.setValue(int(round(ex.scale[0] * 100)))
-            else:
-                slider.setValue(100)
-
-        def on_slider(v):
-            slider_lbl.setText(f"Scale: {v/100:.2f}×")
-
-        def on_add():
-            it = lst.currentItem()
-            if not it:
-                QMessageBox.information(tab, "Size", "Pick an item first.")
-                return
-            s = by_key.get(it.data(Qt.UserRole))
-            if not s or not s.scale:
-                return
-            v = slider.value() / 100.0
-            new_scale = [v] * len(s.scale)
-            queue[:] = [c for c in queue if c.item_key != s.item_key]
-            queue.append(vfx_lab.SizeChange(item_key=s.item_key, gv_index=0, scale=new_scale))
-            refresh_queue()
-
-        def on_remove():
-            row = queue_list.currentRow()
-            if 0 <= row < len(queue):
-                del queue[row]
-                refresh_queue()
-
-        search.textChanged.connect(lambda _: refresh_list())
-        cat_combo.currentTextChanged.connect(lambda _: refresh_list())
-        owned_cb.stateChanged.connect(lambda _: refresh_list())
-        lst.currentItemChanged.connect(lambda *_: on_select())
-        slider.valueChanged.connect(on_slider)
-        add_btn.clicked.connect(on_add)
-        rm_btn.clicked.connect(on_remove)
-
-        refresh_list()
-        refresh_queue()
-        return tab
-
-
-    def _vfx_build_vfx_tab(self, vfx_lab, summaries, by_key, owned_keys, queue):
-        tab = QWidget()
-        root = QVBoxLayout(tab)
-        hint = QLabel(
-            "Copy a source item's VFX prefabs (trails, glows, particle systems) onto your target. "
-            "Positions [1], [3], [4] are typically trails/auras; position [0] is the mesh "
-            "(handled by Transmog).")
-        hint.setWordWrap(True)
-        hint.setStyleSheet("color: #90A4AE; padding: 4px;")
-        root.addWidget(hint)
-
-        split = QHBoxLayout()
-        root.addLayout(split, 1)
-
-        tgt_w, tgt_lst, tgt_search, tgt_cat, tgt_owned = self._vfx_build_item_filter_widgets(
-            summaries, owned_keys, show_owned_toggle=True)
-        tgt_owned.setChecked(True)
-        ltw = QWidget(); llay = QVBoxLayout(ltw)
-        llay.addWidget(QLabel("<b>YOUR EQUIPMENT (target)</b>"))
-        llay.addWidget(tgt_w)
-        split.addWidget(ltw, 2)
-
-        src_w, src_lst, src_search, src_cat, src_owned = self._vfx_build_item_filter_widgets(
-            summaries, owned_keys, show_owned_toggle=False)
-        rtw = QWidget(); rlay = QVBoxLayout(rtw)
-        rlay.addWidget(QLabel("<b>NEW VFX (source)</b>"))
-        rlay.addWidget(src_w)
-        split.addWidget(rtw, 2)
-
-        pos_row = QHBoxLayout()
-        pos_row.addWidget(QLabel("Prefab positions:"))
-        pos_checks = []
-        for i in (0, 1, 2, 3, 4, 5):
-            cb = QCheckBox(f"[{i}]")
-            cb.setChecked(i == 0)
-            pos_checks.append((i, cb))
-            pos_row.addWidget(cb)
-        pos_row.addStretch()
-        root.addLayout(pos_row)
-
-        queue_list = QListWidget()
-        root.addWidget(QLabel("Queued VFX swaps:"))
-        root.addWidget(queue_list, 1)
-
-        btn_row = QHBoxLayout()
-        add_btn = QPushButton("Queue Swap")
-        add_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
-        rm_btn = QPushButton("Remove Selected")
-        btn_row.addWidget(add_btn); btn_row.addWidget(rm_btn)
-        btn_row.addStretch()
-        root.addLayout(btn_row)
-
-        def refresh_lists():
-            for (q, cat, owned, lst) in (
-                (tgt_search.text().strip(), tgt_cat.currentText(), tgt_owned.isChecked(), tgt_lst),
-                (src_search.text().strip(), src_cat.currentText(), src_owned.isChecked(), src_lst)):
-                self._vfx_populate_list(
-                    lst, summaries,
-                    lambda s, q=q, cat=cat, owned=owned: (
-                        bool(s.prefab_names) and
-                        self._vfx_filter_match(s, q, cat, owned, owned_keys)),
-                    lambda s: f"{s.display_name or s.internal_name}  [{s.category}]  [{len(s.prefab_names)} prefab]")
-
-        def refresh_queue():
-            queue_list.clear()
-            for sw in queue:
-                tn = by_key.get(sw.tgt_key); sn = by_key.get(sw.src_key)
-                tnm = (tn.display_name or tn.internal_name) if tn else sw.tgt_key
-                snm = (sn.display_name or sn.internal_name) if sn else sw.src_key
-                queue_list.addItem(f"{tnm}  ←  {snm}   pos={sw.positions}")
-
-        def on_add():
-            ti = tgt_lst.currentItem(); si = src_lst.currentItem()
-            if not ti or not si:
-                QMessageBox.information(tab, "VFX", "Select one item in each list.")
-                return
-            tgt_key = ti.data(Qt.UserRole); src_key = si.data(Qt.UserRole)
-            if tgt_key == src_key:
-                return
-            positions = [i for (i, cb) in pos_checks if cb.isChecked()]
-            if not positions:
-                QMessageBox.information(tab, "VFX", "Check at least one position.")
-                return
-            queue[:] = [s for s in queue if s.tgt_key != tgt_key]
-            queue.append(vfx_lab.VfxSwap(tgt_key=tgt_key, src_key=src_key, gv_index=0, positions=positions))
-            refresh_queue()
-
-        def on_remove():
-            row = queue_list.currentRow()
-            if 0 <= row < len(queue):
-                del queue[row]
-                refresh_queue()
-
-        for s in (tgt_search, src_search):
-            s.textChanged.connect(lambda _: refresh_lists())
-        for c in (tgt_cat, src_cat):
-            c.currentTextChanged.connect(lambda _: refresh_lists())
-        for o in (tgt_owned, src_owned):
-            o.stateChanged.connect(lambda _: refresh_lists())
-        add_btn.clicked.connect(on_add)
-        rm_btn.clicked.connect(on_remove)
-        refresh_lists(); refresh_queue()
-        return tab
-
-
-    def _vfx_build_anim_tab(self, vfx_lab, summaries, by_key, owned_keys, queue):
-        tab = QWidget()
-        root = QVBoxLayout(tab)
-        warn = QLabel(
-            "⚠ EXPERIMENTAL — Animation swaps can t-pose items or crash the game "
-            "if source and target aren't rig-compatible. Only 67 vanilla items have "
-            "animation data (mostly recipe books). Test each swap in a throwaway save.")
-        warn.setWordWrap(True)
-        warn.setStyleSheet(button_css("warn") + " padding: 6px;")
-        root.addWidget(warn)
-
-        split = QHBoxLayout(); root.addLayout(split, 1)
-
-        tgt_w, tgt_lst, tgt_search, tgt_cat, tgt_owned = self._vfx_build_item_filter_widgets(
-            summaries, owned_keys, show_owned_toggle=True)
-        tgt_owned.setChecked(True)
-        ltw = QWidget(); llay = QVBoxLayout(ltw)
-        llay.addWidget(QLabel("<b>YOUR ITEM (target)</b>"))
-        llay.addWidget(tgt_w)
-        split.addWidget(ltw, 2)
-
-        src_w, src_lst, src_search, src_cat, src_owned = self._vfx_build_item_filter_widgets(
-            summaries, owned_keys, show_owned_toggle=False)
-        rtw = QWidget(); rlay = QVBoxLayout(rtw)
-        rlay.addWidget(QLabel("<b>SOURCE ANIMATIONS (items with anim data)</b>"))
-        rlay.addWidget(src_w)
-        split.addWidget(rtw, 2)
-
-        queue_list = QListWidget()
-        root.addWidget(QLabel("Queued animation swaps:"))
-        root.addWidget(queue_list, 1)
-
-        btn_row = QHBoxLayout()
-        add_btn = QPushButton("Queue Animation Swap")
-        add_btn.setStyleSheet(button_css("warn") + " font-weight: bold;")
-        rm_btn = QPushButton("Remove Selected")
-        btn_row.addWidget(add_btn); btn_row.addWidget(rm_btn); btn_row.addStretch()
-        root.addLayout(btn_row)
-
-        def refresh_lists():
-            self._vfx_populate_list(
-                tgt_lst, summaries,
-                lambda s: bool(s.prefab_names) and self._vfx_filter_match(
-                    s, tgt_search.text().strip(), tgt_cat.currentText(), tgt_owned.isChecked(), owned_keys),
-                lambda s: f"{s.display_name or s.internal_name}  [{s.category}]  anim:{len(s.animation_path_list)}")
-            self._vfx_populate_list(
-                src_lst, summaries,
-                lambda s: bool(s.animation_path_list) and self._vfx_filter_match(
-                    s, src_search.text().strip(), src_cat.currentText(), src_owned.isChecked(), owned_keys),
-                lambda s: f"{s.display_name or s.internal_name}  [{s.category}]  anim:{s.animation_path_list}")
-
-        def refresh_queue():
-            queue_list.clear()
-            for sw in queue:
-                tn = by_key.get(sw.tgt_key); sn = by_key.get(sw.src_key)
-                tnm = (tn.display_name or tn.internal_name) if tn else sw.tgt_key
-                snm = (sn.display_name or sn.internal_name) if sn else sw.src_key
-                queue_list.addItem(f"{tnm}  ←  {snm} (anim override)")
-
-        def on_add():
-            ti = tgt_lst.currentItem(); si = src_lst.currentItem()
-            if not ti or not si:
-                return
-            tgt_key = ti.data(Qt.UserRole); src_key = si.data(Qt.UserRole)
-            if tgt_key == src_key:
-                return
-            queue[:] = [s for s in queue if s.tgt_key != tgt_key]
-            queue.append(vfx_lab.AnimSwap(tgt_key=tgt_key, src_key=src_key, gv_index=0))
-            refresh_queue()
-
-        def on_remove():
-            row = queue_list.currentRow()
-            if 0 <= row < len(queue):
-                del queue[row]
-                refresh_queue()
-
-        for s in (tgt_search, src_search):
-            s.textChanged.connect(lambda _: refresh_lists())
-        for c in (tgt_cat, src_cat):
-            c.currentTextChanged.connect(lambda _: refresh_lists())
-        for o in (tgt_owned, src_owned):
-            o.stateChanged.connect(lambda _: refresh_lists())
-        add_btn.clicked.connect(on_add)
-        rm_btn.clicked.connect(on_remove)
-        refresh_lists(); refresh_queue()
-        return tab
-
-
-    def _vfx_build_attach_tab(self, vfx_lab, summaries, by_key, owned_keys, queue):
-        tab = QWidget()
-        root = QVBoxLayout(tab)
-        warn = QLabel(
-            "⚠ EXPERIMENTAL — Changes where an item attaches on your character. "
-            "Only items with existing dock data can be edited here (261 of 6024). "
-            "Unknown socket names render the item invisible — stick to the whitelist.")
-        warn.setWordWrap(True)
-        warn.setStyleSheet(button_css("warn") + " padding: 6px;")
-        root.addWidget(warn)
-
-        split = QHBoxLayout(); root.addLayout(split, 2)
-
-        left_w, lst, search, cat_combo, owned_cb = self._vfx_build_item_filter_widgets(
-            summaries, owned_keys, show_owned_toggle=True)
-        owned_cb.setChecked(True)
-        split.addWidget(left_w, 2)
-
-        right = QWidget(); rlay = QVBoxLayout(right)
-        cur_lbl = QLabel("Select a dockable item on the left.")
-        cur_lbl.setWordWrap(True)
-        rlay.addWidget(cur_lbl)
-
-        rlay.addWidget(QLabel("New parent socket:"))
-        socket_combo = QComboBox()
-        for label, name in vfx_lab.ATTACH_SOCKET_WHITELIST:
-            socket_combo.addItem(f"{label}   ({name})", userData=name)
-        socket_combo.addItem("— Custom… —", userData="__custom__")
-        rlay.addWidget(socket_combo)
-
-        custom_edit = QLineEdit()
-        custom_edit.setPlaceholderText("Custom socket name (exact bone name, case-sensitive)")
-        custom_edit.setEnabled(False)
-        rlay.addWidget(custom_edit)
-
-        queue_list = QListWidget()
-        rlay.addWidget(QLabel("Queued attach changes:"))
-        rlay.addWidget(queue_list, 1)
-
-        btn_row = QHBoxLayout()
-        add_btn = QPushButton("Queue Attach Change")
-        add_btn.setStyleSheet(button_css("warn") + " font-weight: bold;")
-        rm_btn = QPushButton("Remove Selected")
-        btn_row.addWidget(add_btn); btn_row.addWidget(rm_btn); btn_row.addStretch()
-        rlay.addLayout(btn_row)
-        split.addWidget(right, 3)
-
-        def refresh_list():
-            q = search.text().strip()
-            cat = cat_combo.currentText()
-            owned = owned_cb.isChecked()
-            self._vfx_populate_list(
-                lst, summaries,
-                lambda s: s.has_dock and self._vfx_filter_match(s, q, cat, owned, owned_keys),
-                lambda s: f"{s.display_name or s.internal_name}  [{s.category}]  ← {s.dock_parent_socket}")
-
-        def refresh_queue():
-            queue_list.clear()
-            for ac in queue:
-                s = by_key.get(ac.item_key)
-                nm = (s.display_name or s.internal_name) if s else f"key={ac.item_key}"
-                queue_list.addItem(f"{nm}  →  {ac.new_parent_socket}")
-
-        def on_select():
-            it = lst.currentItem()
-            if not it:
-                cur_lbl.setText("Select a dockable item on the left.")
-                return
-            s = by_key.get(it.data(Qt.UserRole))
-            if not s:
-                return
-            cur_lbl.setText(
-                f"{s.display_name or s.internal_name}\n"
-                f"Current parent socket: {s.dock_parent_socket or '(none)'}\n"
-                f"Child socket: {s.dock_child_socket or '(none)'}")
-
-        def on_combo(_):
-            is_custom = socket_combo.currentData() == "__custom__"
-            custom_edit.setEnabled(is_custom)
-
-        def on_add():
-            it = lst.currentItem()
-            if not it:
-                return
-            s = by_key.get(it.data(Qt.UserRole))
-            if not s:
-                return
-            chosen = socket_combo.currentData()
-            if chosen == "__custom__":
-                name = custom_edit.text().strip()
-                if not name:
-                    QMessageBox.information(tab, "Attach", "Enter a custom socket name.")
-                    return
-            else:
-                name = chosen
-            queue[:] = [a for a in queue if a.item_key != s.item_key]
-            queue.append(vfx_lab.AttachChange(item_key=s.item_key, new_parent_socket=name))
-            refresh_queue()
-
-        def on_remove():
-            row = queue_list.currentRow()
-            if 0 <= row < len(queue):
-                del queue[row]
-                refresh_queue()
-
-        search.textChanged.connect(lambda _: refresh_list())
-        cat_combo.currentTextChanged.connect(lambda _: refresh_list())
-        owned_cb.stateChanged.connect(lambda _: refresh_list())
-        lst.currentItemChanged.connect(lambda *_: on_select())
-        socket_combo.currentIndexChanged.connect(on_combo)
-        add_btn.clicked.connect(on_add)
-        rm_btn.clicked.connect(on_remove)
-        refresh_list(); refresh_queue()
-        return tab
 
 
     def _buff_open_transmog_dialog(self) -> None:
@@ -7702,9 +7022,6 @@ class ItemBuffsTab(QWidget):
         '_raw',                # raw byte blobs from partial parse
     })
 
-    def _is_character_weapon(self, item_string_key: str) -> bool:
-        """Return True if this is a hardcoded character weapon that cannot be charge-converted."""
-        return item_string_key in self._CHARACTER_WEAPON_KEYS
 
     # Kliff runtime-package characterinfo intents.
     # Sets appearance_name and character_prefab_path on Kliff / Kliff_Clone /
@@ -7861,45 +7178,6 @@ class ItemBuffsTab(QWidget):
         'twohandbow':          ('TwoHandBow',),
         'rangeweapon_quiver':  ('OneHandBow', 'TwoHandBow'),
     }
-
-    def _gimmick_compatible_with_item(self, gimmick_key: int,
-                                       item_string_key: str) -> tuple:
-        """Check whether a gimmick is mesh-compatible with the target item.
-
-        Returns (is_compatible, warning_message).
-        Incompatible gimmicks on wrong weapon types crash the game on character load.
-        """
-        if not item_string_key:
-            return True, ""
-
-        entry = next(
-            (e for e in getattr(self, '_vfx_catalog_entries', [])
-             if e.get('gimmick_key') == gimmick_key),
-            None,
-        )
-        if not entry:
-            return True, ""
-
-        gname = (entry.get('gimmick_name') or '').lower()
-
-        for name_fragment, allowed_suffixes in self._GIMMICK_WEAPON_TYPE_RULES.items():
-            if name_fragment in gname:
-                if any(item_string_key.endswith(s) for s in allowed_suffixes):
-                    return True, ""
-                sample_names = [s['internal_name']
-                                for s in entry.get('sample_items', [])[:3]]
-                warn = (
-                    f"Gimmick '{entry.get('gimmick_name')}' ({gimmick_key}) is built "
-                    f"for {' / '.join(allowed_suffixes)} meshes, but "
-                    f"'{item_string_key}' is a different weapon type.\n\n"
-                    f"Attaching an incompatible gimmick WILL CRASH the game "
-                    f"when this item is loaded.\n\n"
-                    f"This gimmick is designed for items like:\n"
-                    + "\n".join(f"  - {n}" for n in sample_names)
-                )
-                return False, warn
-
-        return True, ""
 
 
     def _eb_apply_vfx_gimmick(self) -> None:
@@ -9310,81 +8588,6 @@ class ItemBuffsTab(QWidget):
             f"Deploy via Apply to Game.\n\n"
             f"Note: weapons may lack animations on non-native characters.")
 
-    def _stage_kliff_gun_fix(self, game_path: str) -> str:
-        """Copy Damian's appearance/model fields and Oongka's gameplay data to Kliff.
-
-        Verified field values (document_kliff_hashes.rs):
-          appearance_name       = "Player_PHW"        hash = 1767116530
-          character_prefab_path = "Player_PHW_Lower"  hash = 3755051597
-          lookup_24             = PHW model .pab path hash = 2831867940
-          lookup_25             = PHW skeleton .pabc path hash = 3511542393
-          flag_c                = 2  (gender enum: 2 = Damiane/PHW)
-          skeleton_name         = Oongka's gameplay data name
-
-        All 5 appearance fields must be copied together — without lookup_24/25
-        the game has no model path to load and the gun mesh is invisible.
-        """
-        try:
-            import crimson_rs
-            import dmm_parser
-            dp = 'gamedata/binarystaticinfo__/bin'
-            ci_body = bytes(crimson_rs.extract_file(game_path, '0008', dp, 'characterinfo.pabgb'))
-            ci_gh = bytes(crimson_rs.extract_file(game_path, '0008', dp, 'characterinfo.pabgh'))
-            items = dmm_parser.parse_table('character_info', ci_body, ci_gh)
-
-            by_name = {it.get('string_key'): it for it in items}
-            if not all(n in by_name for n in ('Kliff', 'Damian', 'Oongka')):
-                return "\nKliff Gun Fix: could not find all 3 player chars."
-
-            kliff  = by_name['Kliff']
-            damian = by_name['Damian']
-            oongka = by_name['Oongka']
-
-            d_appearance  = damian.get('appearance_name', 0)
-            d_prefab      = damian.get('character_prefab_path', 0)
-            d_lookup24    = damian.get('lookup_24', 0)
-            d_lookup25    = damian.get('lookup_25', 0)
-            d_flag_c      = damian.get('flag_c', 0)
-            o_gameplay    = oongka.get('skeleton_name', 0)
-
-            # Check if Kliff already has all the Damian appearance fields
-            already = (
-                kliff.get('appearance_name', 0) == d_appearance and
-                kliff.get('skeleton_name', 0)   == o_gameplay
-            )
-            if already:
-                log.info("Kliff gun fix: fields already match, skipping")
-                return "\nKliff Gun Fix: not needed (fields already match)."
-
-            # Copy all 5 Damian appearance fields + Oongka's gameplay data name
-            kliff['appearance_name']       = d_appearance
-            kliff['character_prefab_path'] = d_prefab
-            kliff['lookup_24']             = d_lookup24
-            kliff['lookup_25']             = d_lookup25
-            kliff['flag_c']                = d_flag_c
-            kliff['skeleton_name']         = o_gameplay
-
-            new_pabgb = bytes(dmm_parser.serialize_table('character_info', items))
-
-            if not hasattr(self, '_staged_charinfo_files') or self._staged_charinfo_files is None:
-                self._staged_charinfo_files = {}
-            self._staged_charinfo_files['characterinfo.pabgb'] = new_pabgb
-            self._staged_charinfo_files['characterinfo.pabgh'] = ci_gh
-            self._buff_modified = True
-
-            log.info("Kliff gun fix staged: appearance=0x%08X prefab=0x%08X "
-                     "lk24=0x%08X lk25=0x%08X flag_c=%d gameplay=0x%08X",
-                     d_appearance, d_prefab, d_lookup24, d_lookup25, d_flag_c, o_gameplay)
-            return (f"\nKliff Gun Fix: staged"
-                    f"\n  appearance_name       <- Damian (0x{d_appearance:08X})"
-                    f"\n  character_prefab_path <- Damian (0x{d_prefab:08X})"
-                    f"\n  lookup_24 (model)     <- Damian (0x{d_lookup24:08X})"
-                    f"\n  lookup_25 (skel var)  <- Damian (0x{d_lookup25:08X})"
-                    f"\n  flag_c (gender)       <- Damian ({d_flag_c})"
-                    f"\n  skeleton_name         <- Oongka (0x{o_gameplay:08X})")
-        except Exception as e:
-            log.exception("Kliff gun fix failed")
-            return f"\nKliff Gun Fix failed: {e}"
 
     def _buff_deploy_equipslotinfo_0059(self, game_path: str,
                                          new_pabgb: bytes,
@@ -9411,7 +8614,7 @@ class ItemBuffsTab(QWidget):
             pamt_checksum = crimson_rs.parse_pamt_bytes(pamt_bytes)["checksum"]
             dst = os.path.join(game_path, GROUP)
             if os.path.isdir(dst):
-                shutil.rmtree(dst)
+                safe_rmtree(dst)
             os.makedirs(dst, exist_ok=True)
             for fname in os.listdir(build_dir):
                 shutil.copy2(os.path.join(build_dir, fname),
@@ -10262,77 +9465,6 @@ class ItemBuffsTab(QWidget):
         )
 
 
-    @staticmethod
-    def _diff_to_json_patches(orig: bytes, new: bytes, label: str) -> list:
-        """Produce Oongka/DMM-style JSON patch ops for a file rewrite.
-
-        Emits minimal ops covering the size change: one or more 'replace' ops
-        for same-size regions that differ, plus 'insert' ops for any net
-        growth. Handles the typical case where equipslotinfo grows by having
-        more hashes appended to arrays.
-        """
-        ops: list = []
-        # Walk prefix of identical bytes
-        i = 0
-        while i < min(len(orig), len(new)) and orig[i] == new[i]:
-            i += 1
-        # Find trailing identical region
-        t_orig = len(orig); t_new = len(new)
-        while t_orig > i and t_new > i and orig[t_orig - 1] == new[t_new - 1]:
-            t_orig -= 1; t_new -= 1
-
-        diff_orig = orig[i:t_orig]
-        diff_new  = new[i:t_new]
-
-        if len(diff_orig) == 0 and len(diff_new) == 0:
-            return ops
-        if len(diff_orig) == len(diff_new):
-            # Pure replace — but may still have interior matches; emit one big
-            # replace op covering the whole diff region for simplicity.
-            ops.append({
-                "type": "replace",
-                "offset": f"{i:X}",
-                "original": diff_orig.hex(),
-                "patched": diff_new.hex(),
-                "label": f"[{label}] replace {len(diff_orig)}B at 0x{i:X}",
-            })
-        elif len(diff_new) > len(diff_orig):
-            # File grew. Emit a replace for the overlapping region then an
-            # insert for the extra bytes.
-            same = len(diff_orig)
-            if same > 0:
-                ops.append({
-                    "type": "replace",
-                    "offset": f"{i:X}",
-                    "original": diff_orig.hex(),
-                    "patched": diff_new[:same].hex(),
-                    "label": f"[{label}] replace {same}B at 0x{i:X}",
-                })
-            ops.append({
-                "type": "insert",
-                "offset": f"{i + same:X}",
-                "bytes": diff_new[same:].hex(),
-                "label": f"[{label}] insert {len(diff_new) - same}B at 0x{i + same:X}",
-            })
-        else:
-            # File shrank — uncommon for our edits. Emit replace + delete.
-            same = len(diff_new)
-            if same > 0:
-                ops.append({
-                    "type": "replace",
-                    "offset": f"{i:X}",
-                    "original": diff_orig[:same].hex(),
-                    "patched": diff_new.hex(),
-                    "label": f"[{label}] replace {same}B at 0x{i:X}",
-                })
-            ops.append({
-                "type": "delete",
-                "offset": f"{i + same:X}",
-                "original": diff_orig[same:].hex(),
-                "label": f"[{label}] delete {len(diff_orig) - same}B at 0x{i + same:X}",
-            })
-        return ops
-
     def _buff_export_field_json_v3(self) -> None:
         """Export edits as Format 3 field-name JSON (survives game updates)."""
         try:
@@ -10555,309 +9687,6 @@ class ItemBuffsTab(QWidget):
                     'field': path, 'op': 'set', 'new': vb,
                 })
         return intents
-
-    def _buff_export_all_formats(self) -> None:
-        if not self._require_dev_mode("Export All Formats"):
-            return
-        """Dev-only: prompt once, export in all three formats.
-
-        Bundles the JSON patch, raw Mod folder, and CDUMM packed mod into a
-        single packs/<name>/ directory so downstream users can pick whichever
-        loader they already have without chasing down three separate builds.
-        """
-        if not self._buff_ensure_patcher():
-            return
-        if not hasattr(self, '_buff_rust_items') or self._buff_rust_items is None:
-            QMessageBox.warning(self, "Export All",
-                "Extract with Rust parser first.")
-            return
-
-        from PySide6.QtWidgets import QInputDialog
-        name, ok = QInputDialog.getText(self, "Export All Formats",
-            "Mod name (used as folder name + JSON filename):",
-            text="My ItemBuffs Mod")
-        if not ok or not name.strip():
-            return
-        name = name.strip()
-
-        exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        folder = "".join(c if (c.isalnum() or c in "-_ ") else "_" for c in name)
-        out_root = os.path.join(exe_dir, "packs", folder)
-        os.makedirs(out_root, exist_ok=True)
-
-        # One subdir per format so artifacts don't overwrite each other
-        # (modinfo.json from Raw Mod and CDUMM would otherwise clash).
-        json_dir = os.path.join(out_root, "1_JsonPatch")
-        raw_dir  = os.path.join(out_root, "2_RawMod")
-        cdumm_dir = os.path.join(out_root, "3_CDUMM")
-        for d in (json_dir, raw_dir, cdumm_dir):
-            os.makedirs(d, exist_ok=True)
-
-        self._buff_batch_mod_name = name
-        steps: list[tuple[str, str]] = []
-
-        for label, fn, sub in (
-            ("JSON Patch", self._buff_export_json, json_dir),
-            ("Raw Mod Folder", self._buff_export_mod, raw_dir),
-            ("CDUMM Packed Mod", self._buff_export_cdumm_mod, cdumm_dir),
-        ):
-            self._buff_batch_dir = sub
-            try:
-                fn()
-                steps.append((label, 'ok'))
-            except Exception as e:
-                log.exception("Export All: %s failed", label)
-                steps.append((label, f'FAILED: {e}'))
-
-        self._buff_batch_mod_name = None
-        self._buff_batch_dir = None
-
-        # Write a README at the root so downloaders know what's what.
-        try:
-            with open(os.path.join(out_root, "README.txt"), 'w', encoding='utf-8') as f:
-                f.write(
-                    f"{name}\n"
-                    f"{'=' * len(name)}\n\n"
-                    f"This folder contains the mod in THREE loader formats.\n"
-                    f"Pick ONE based on the mod manager you use:\n\n"
-                    f"  1_JsonPatch/{name}.json\n"
-                    f"      For JSON Mod Manager / Pldada / DMM users.\n"
-                    f"      Drop the .json into your mod manager.\n\n"
-                    f"  2_RawMod/\n"
-                    f"      Raw mod folder. Contains files/gamedata/...\n"
-                    f"      For anyone who manually copies mod files into\n"
-                    f"      the game directory, or uses Crimson Browser.\n\n"
-                    f"  3_CDUMM/\n"
-                    f"      CDUMM-packed mod. Contains 0036/, meta/, modinfo.json.\n"
-                    f"      Drop this whole subfolder into CDUMM's Import.\n\n"
-                    f"You only need ONE of the three. They all do the same thing.\n")
-        except Exception:
-            pass
-
-        summary = '\n'.join(f"  {s[0]}: {s[1]}" for s in steps)
-        QMessageBox.information(self, "Export All — Done",
-            f"Exported '{name}' in three formats:\n"
-            f"  {out_root}\n\n"
-            f"  • 1_JsonPatch/  (JSON loader)\n"
-            f"  • 2_RawMod/     (drop-in + Crimson Browser)\n"
-            f"  • 3_CDUMM/      (CDUMM manager)\n"
-            f"  • README.txt    (explains which is which)\n\n"
-            f"{summary}\n\n"
-            f"Zip the whole {folder}/ folder and upload — users pick\n"
-            f"whichever subfolder matches their loader.")
-
-
-    def _buff_export_mod(self) -> None:
-        if not self._require_dev_mode("Export as Mod"):
-            return
-        if not self._buff_ensure_patcher():
-            return
-
-        if not hasattr(self, '_buff_rust_items') or self._buff_rust_items is None:
-            QMessageBox.warning(self, "Export Mod",
-                "Extract with Rust parser first (click 'Extract (Rust)').")
-            return
-
-        has_cd = bool(getattr(self, '_cd_patches', {}))
-        if not self._buff_modified and not has_cd:
-            apply_stacks = hasattr(self, '_stack_check') and self._stack_check.isChecked()
-            if not apply_stacks:
-                QMessageBox.information(self, "No Changes",
-                    "No modifications have been made.\n"
-                    "Add buffs, apply God Mode, check 'Max Stacks', or use 'No Cooldown (All Items)' first.")
-                return
-
-        apply_stacks = hasattr(self, '_stack_check') and self._stack_check.isChecked()
-        if apply_stacks:
-            target_val = self._stack_spin.value()
-            for it in self._buff_rust_items:
-                if _safe_iv(it.get('max_stack_count', 1)) > 1:
-                    it['max_stack_count'] = target_val
-
-        _mod_grp = f"{self._buff_modgroup_spin.value():04d}"
-        reply = QMessageBox.question(
-            self, "Export as Mod — Full PAZ Pack",
-            f"This exports a full PAZ mod folder (like community mods).\n\n"
-            f"WHAT THIS SUPPORTS:\n"
-            f"  - Everything 'Export JSON Patch' can do, PLUS:\n"
-            f"  - Add NEW equipment buffs (Fire Res, Ice Res, etc)\n"
-            f"  - Add NEW stats that don't exist on the item\n"
-            f"  - Add passive skills (Invincible, Great Thief, etc)\n"
-            f"  - God Mode injection\n"
-            f"  - Any edit that changes the file size\n\n"
-            f"OUTPUT:\n"
-            f"  A mod folder with {_mod_grp}/, meta/, and modinfo.json.\n"
-            f"  Import into CDUMM or copy to your game directory.\n\n"
-            f"NOTE: Only ONE mod can use the {_mod_grp}/ slot at a time.\n"
-            f"If you already have a {_mod_grp}/ mod, it will be replaced.\n"
-            f"Use CDUMM to manage multiple mods, or change the 'Mod:' number.\n\n"
-            f"Continue?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        batch_name = getattr(self, '_buff_batch_mod_name', None)
-        batch_dir = getattr(self, '_buff_batch_dir', None)
-        if batch_name:
-            name = batch_name
-        else:
-            from PySide6.QtWidgets import QInputDialog
-            name, ok = QInputDialog.getText(self, "Export Field JSON v3",
-                                            "Mod name (used as folder name):",
-                                            text="My ItemBuffs Mod")
-            if not ok or not name.strip():
-                return
-        name = name.strip()
-
-        exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        packs_dir = os.path.join(exe_dir, "packs")
-        folder_name = "".join(c if (c.isalnum() or c in "-_") else "_" for c in name)
-        # In batch mode, all three exports write to the same root folder so
-        # the output is one self-contained zip-ready directory.
-        if batch_name and batch_dir:
-            out_path = batch_dir
-        else:
-            out_path = os.path.join(packs_dir, folder_name)
-
-        apply_stacks = hasattr(self, '_stack_check') and self._stack_check.isChecked()
-        if apply_stacks:
-            target_val = self._stack_spin.value()
-            for it in self._buff_rust_items:
-                if _safe_iv(it.get('max_stack_count', 1)) > 1:
-                    it['max_stack_count'] = target_val
-
-        apply_inf_dura = hasattr(self, '_inf_dura_check') and self._inf_dura_check.isChecked()
-        if apply_inf_dura:
-            dura_count = 0
-            for it in self._buff_rust_items:
-                endurance = _safe_iv(it.get('max_endurance', 0))
-                if endurance > 0 and endurance != 65535:
-                    it['max_endurance'] = 65535
-                    it['is_destroy_when_broken'] = 0
-                    dura_count += 1
-            log.info("Infinity Durability: patched %d items", dura_count)
-
-        self._buff_status_label.setText("Serializing with crimson_rs...")
-        QApplication.processEvents()
-
-        try:
-            import crimson_rs
-            import crimson_rs.pack_mod
-
-            _mod_count = 0
-            for _it in self._buff_rust_items:
-                _psl = _it.get('equip_passive_skill_list', [])
-                _edl = _it.get('enchant_data_list', [])
-                if _psl:
-                    _mod_count += 1
-                    log.info("Export: %s has %d passives", _it.get('string_key', '?'), len(_psl))
-                for _ed in _edl:
-                    _buffs = _ed.get('equip_buffs', [])
-                    if len(_buffs) > 1:
-                        _mod_count += 1
-                        log.info("Export: %s level %d has %d equip_buffs",
-                                 _it.get('string_key', '?'), _ed.get('level', 0), len(_buffs))
-                        break
-            if _mod_count == 0:
-                log.warning("Export: NO structural edits found in Rust dicts!")
-
-            final_data = self._rebuild_full_iteminfo()
-            log.info("Rebuilt iteminfo: %d bytes", len(final_data))
-
-            self._apply_vfx_changes(final_data)
-
-            cd_patches = getattr(self, '_cd_patches', {})
-            if cd_patches:
-                cd_hit = 0
-                for item_key, (_, _, new_val) in cd_patches.items():
-                    cd_off, _ = self._cd_detect(item_key, bytes(final_data))
-                    if cd_off is not None:
-                        final_data[cd_off:cd_off + 4] = struct.pack('<I', new_val)
-                        cd_hit += 1
-                log.info("Applied %d/%d cooldown patches to serialized data", cd_hit, len(cd_patches))
-
-            self._apply_transmog_swaps(final_data)
-
-            final_data = bytes(final_data)
-
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            QMessageBox.critical(self, "Serialize Failed",
-                f"_iteminfo_serialize() failed:\n{e}")
-            return
-
-        self._buff_status_label.setText("Packing with pack_mod...")
-        QApplication.processEvents()
-
-        try:
-            import tempfile
-            import shutil
-
-            game_path = self._buff_patcher.game_path
-            mod_group = f"{self._buff_modgroup_spin.value():04d}"
-
-            if os.path.isdir(out_path):
-                shutil.rmtree(out_path)
-            os.makedirs(out_path, exist_ok=True)
-
-            files_dir = os.path.join(out_path, "files",
-                                     "gamedata", "binary__", "client", "bin")
-            os.makedirs(files_dir, exist_ok=True)
-            with open(os.path.join(files_dir, "iteminfo.pabgb"), "wb") as f:
-                f.write(final_data)
-            # Matching pabgh: vanilla index points into vanilla pabgb layout;
-            # shipping only pabgb makes items after the first mutation
-            # unreachable (rings / cloaks lose sockets in-game).
-            try:
-                from item_creator import build_iteminfo_pabgh
-                _extra = getattr(self, '_buff_appended_entries', [])
-                _pabgh = build_iteminfo_pabgh(final_data, extra_entries=_extra)
-                with open(os.path.join(files_dir, "iteminfo.pabgh"), "wb") as f:
-                    f.write(_pabgh)
-                log.info("Export mod: wrote iteminfo.pabgh (%d bytes)", len(_pabgh))
-            except Exception as _e:
-                log.warning("Export mod: pabgh regen failed (%s) -- mod may be partially broken in-game", _e)
-
-            staged_equip = getattr(self, "_staged_equip_files", None) or {}
-            for fname, fdata in staged_equip.items():
-                with open(os.path.join(files_dir, fname), "wb") as f:
-                    f.write(fdata)
-                log.info("Export mod: included staged %s (%d bytes)", fname, len(fdata))
-
-            staged_charinfo = getattr(self, "_staged_charinfo_files", None) or {}
-            for fname, fdata in staged_charinfo.items():
-                with open(os.path.join(files_dir, fname), "wb") as f:
-                    f.write(fdata)
-                log.info("Export mod: included staged %s (%d bytes)", fname, len(fdata))
-
-            modinfo = {
-                "id": name.lower().replace(" ", "_"),
-                "name": name,
-                "version": "1.0.0",
-                "game_version": "1.00.03",
-                "author": "CrimsonSaveEditor",
-                "description": f"ItemBuffs mod: {name}",
-            }
-            with open(os.path.join(out_path, "modinfo.json"), "w", encoding="utf-8") as f:
-                json.dump(modinfo, f, indent=2)
-
-            data_size = len(final_data)
-            self._buff_status_label.setText(
-                f"Exported mod to packs/{folder_name}/ ({data_size:,} bytes)")
-            QMessageBox.information(self, "Mod Exported",
-                f"Mod exported to:\n{out_path}\n\n"
-                f"Contents:\n"
-                f"  files/gamedata/binarystaticinfo__/bin/iteminfo.pabgb ({data_size:,} bytes)\n"
-                f"  modinfo.json\n\n"
-                f"To install:\n"
-                f"  Copy '{folder_name}' into your mod loader's mods/ directory\n"
-                f"  (CD JSON Mod Manager, DMM, or CDUMM)")
-
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            self._buff_status_label.setText(f"Export failed: {e}")
-            QMessageBox.critical(self, "Export Failed", str(e))
 
 
     def _buff_export_cdumm_mod(self) -> None:
@@ -11529,14 +10358,6 @@ class ItemBuffsTab(QWidget):
         return None, None
 
 
-    def _buff_open_desc_search(self):
-        dlg = DescriptionSearchDialog(parent=self)
-        if dlg.exec() == QDialog.Accepted and dlg.selected_key:
-            QApplication.clipboard().setText(str(dlg.selected_key))
-            self._buff_status_label.setText(
-                f"Selected: {dlg.selected_name} (key {dlg.selected_key}, type: {dlg.selected_type}) — copied to clipboard")
-
-
     def _detect_qol_flags_from_items(self) -> None:
         """Inspect current _buff_rust_items and tick the QoL checkboxes
         to match what's already there. Called after Import / Load Config.
@@ -11912,34 +10733,6 @@ class ItemBuffsTab(QWidget):
         QMessageBox.information(self, "Infinity Durability Applied",
             f"Set max_endurance = 65535 on {count:,} item(s) with durability.\n\nClick Export or Pull All Edits to deploy.")
 
-    def _eb_unlock_all_equipment(self) -> None:
-        if not getattr(self, '_buff_rust_items', None):
-            QMessageBox.warning(self, "Unlock Equipment", "Extract iteminfo first.")
-            return
-        reply = QMessageBox.question(
-            self, "Unlock All Equipment",
-            "Makes provision/treasure items into real equippable gear:\n\n"
-            "1. Clears tribe_gender restriction (any character can equip)\n"
-            "2. Copies stats from a matching real armor piece (same equip type)\n"
-            "3. Copies socket data from donor if missing\n\n"
-            "Items like Goyen's Plate Armor will get real defense stats\n"
-            "and gem sockets from a donor item of the same category.\n\n"
-            "Continue?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-        if reply != QMessageBox.Yes:
-            return
-        from provision_equip_unlock import unlock_provision_items, _build_donor_map
-        donor_map = _build_donor_map(self._buff_rust_items)
-        transformed, tg_cleared, stats_added, sockets_added = \
-            unlock_provision_items(self._buff_rust_items, donor_map=donor_map)
-        self._buff_modified = True
-        self._buff_refresh_stats()
-        QMessageBox.information(self, "Equipment Unlocked",
-            f"Transformed {transformed:,} items:\n"
-            f"  Tribe restriction cleared: {tg_cleared:,}\n"
-            f"  Stats copied from donor: {stats_added:,}\n"
-            f"  Sockets copied from donor: {sockets_added:,}\n\n"
-            "Click Apply to Game to deploy.")
 
     def _eb_enable_everything_oneclick(self) -> None:
         """One-click: QoL + Make Dyeable + Sockets (all\u21925) + Universal Proficiency v2.
@@ -12433,73 +11226,6 @@ class ItemBuffsTab(QWidget):
         )
 
 
-    def _buff_sync_to_rust(self, item_key: int = None) -> None:
-        if not hasattr(self, '_buff_rust_items') or self._buff_data is None:
-            return
-        try:
-            import crimson_rs
-
-            saved_structural = {}
-            for it in self._buff_rust_items:
-                key = it['key']
-                structural = {}
-
-                psl = it.get('equip_passive_skill_list', [])
-                if psl:
-                    structural['equip_passive_skill_list'] = psl
-
-                for gf in ('gimmick_info', 'cooltime', 'item_charge_type',
-                            'max_charged_useable_count', 'docking_child_data'):
-                    val = it.get(gf)
-                    if val is not None:
-                        structural[gf] = val
-
-                edl = it.get('enchant_data_list', [])
-                if edl:
-                    structural['enchant_data_list'] = [
-                        {
-                            'equip_buffs': ed.get('equip_buffs'),
-                            'enchant_stat_data': ed.get('enchant_stat_data'),
-                        }
-                        for ed in edl
-                    ]
-
-                if structural:
-                    saved_structural[key] = structural
-
-            fresh = list(self._buff_parse_to_lookup(bytes(self._buff_data)).values())
-
-            fresh_lookup = {int(it['key']): it for it in fresh}
-            for key, structural in saved_structural.items():
-                fi = fresh_lookup.get(key)
-                if not fi:
-                    continue
-
-                if 'equip_passive_skill_list' in structural:
-                    fi['equip_passive_skill_list'] = structural['equip_passive_skill_list']
-
-                for gf in ('gimmick_info', 'cooltime', 'item_charge_type',
-                            'max_charged_useable_count', 'docking_child_data'):
-                    if gf in structural:
-                        fi[gf] = structural[gf]
-
-                if 'enchant_data_list' in structural:
-                    fi_edl = fi.get('enchant_data_list', [])
-                    for i, saved_ed in enumerate(structural['enchant_data_list']):
-                        if i >= len(fi_edl):
-                            break
-                        if saved_ed.get('equip_buffs') is not None:
-                            fi_edl[i]['equip_buffs'] = saved_ed['equip_buffs']
-                        if saved_ed.get('enchant_stat_data') is not None:
-                            fi_edl[i]['enchant_stat_data'] = saved_ed['enchant_stat_data']
-
-            self._buff_rust_items = fresh
-            self._buff_rust_lookup = {int(it['key']): it for it in fresh}
-            self._rebuild_index()
-        except Exception as e:
-            log.warning("Rust re-parse failed: %s", e)
-
-
     def _buff_remove_all(self) -> None:
         if self._buff_patcher is None:
             return
@@ -12563,147 +11289,6 @@ class ItemBuffsTab(QWidget):
                 QMessageBox.critical(self, "Reset Failed", str(e))
             except RuntimeError:
                 pass
-
-
-    def _buff_remove_selected(self) -> None:
-        if not hasattr(self, '_buff_rust_items') or self._buff_rust_items is None:
-            QMessageBox.warning(self, "No Data", "Extract with Rust parser first.")
-            return
-        if not hasattr(self, '_buff_current_item') or self._buff_current_item is None:
-            return
-
-        rows = self._buff_stats_table.selectionModel().selectedRows()
-        if not rows:
-            QMessageBox.information(
-                self, "No Selection",
-                "Select a stat entry from the table to remove.",
-            )
-            return
-
-        row = rows[0].row()
-        name_cell = self._buff_stats_table.item(row, 0)
-        if name_cell is None:
-            return
-
-        kind_data = name_cell.data(Qt.UserRole + 1)
-        if not kind_data or kind_data[0] != 'stat':
-            QMessageBox.information(self, "Not a Stat",
-                "Select a stat entry (not a header, passive, or buff row).\n"
-                "Use the Remove buttons above for passives and buffs.")
-            return
-
-        stat_key = kind_data[1]
-        stat_list_name = kind_data[2]
-        stat_value = kind_data[3] if len(kind_data) > 3 else 0
-
-        _STAT_NAMES = {
-            1000000: "HP", 1000002: "DDD", 1000003: "DPV",
-            1000006: "Crit Damage", 1000007: "Crit Rate",
-            1000010: "Attack Speed", 1000011: "Move Speed",
-        }
-        stat_name = (getattr(self, '_STAT_NAMES_COMMUNITY', {}).get(stat_key)
-                     or _STAT_NAMES.get(stat_key, f"Stat {stat_key}"))
-
-        reply = QMessageBox.question(
-            self, "Remove Stat",
-            f"Remove '{stat_name}' (value={stat_value:,}) from this item?\n\n"
-            f"Removes from ALL enchant levels.\n"
-            f"The change is held in memory until you click 'Export Field JSON v3'.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        rust_info = self._buff_rust_lookup.get(self._buff_current_item.item_key)
-        if rust_info is None:
-            return
-
-        edl = rust_info.get('enchant_data_list', [])
-        removed = 0
-        for ed in edl:
-            sd = ed.get('enchant_stat_data', {})
-            existing = sd.get(stat_list_name, [])
-            new_list = [s for s in existing if s['stat'] != stat_key]
-            if len(new_list) < len(existing):
-                removed += 1
-                sd[stat_list_name] = new_list
-
-        self._buff_modified = True
-        self._buff_refresh_stats()
-        display_name = self._name_db.get_name(self._buff_current_item.item_key)
-        self._buff_status_label.setText(
-            f"Removed {stat_name} from '{display_name}' ({removed} levels). "
-            f"Click 'Export Field JSON v3' to write."
-        )
-
-
-    def _buff_max_stacks(self, target: int = 9999) -> None:
-        game_path = self._pabgb_get_game_path() if hasattr(self, '_pabgb_get_game_path') else self._config.get("game_install_path", "")
-        if not game_path:
-            QMessageBox.warning(self, "No Game Path", "Set the game install path using the Browse button at the top.")
-            return
-
-        if not _can_write_game_dir(game_path):
-            QMessageBox.warning(
-                self, "No Write Access",
-                f"Cannot write to:\n{game_path}\n\n"
-                "Right-click → Run as administrator",
-            )
-            return
-
-        reply = QMessageBox.question(
-            self, f"Max Stacks ({target})",
-            f"Set all stackable item max stacks to {target}?\n\n"
-            "This modifies iteminfo.pabgb in the game files.\n"
-            "Equipment and non-stackable items are NOT affected.\n"
-            "Replaces the FatStacks mod — no external mod needed.\n\n"
-            "A backup will be created automatically.\n"
-            "Survives game updates (structural parsing, no hardcoded offsets).",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        self._buff_status_label.setText("Preparing iteminfo...")
-        QApplication.processEvents()
-
-        try:
-            if not self._buff_ensure_patcher():
-                return
-
-            if self._buff_data is not None:
-                data = self._buff_data
-            else:
-                raw = self._buff_patcher.extract_iteminfo()
-                data = bytearray(raw)
-                self._buff_data = data
-                self._buff_items = self._buff_patcher.find_items(bytes(data))
-
-            self._buff_status_label.setText("Patching stack sizes...")
-            QApplication.processEvents()
-
-            count, descriptions = self._buff_patcher.patch_stack_sizes(data, target_stack=target)
-
-            if count == 0:
-                QMessageBox.information(self, "No Changes", f"All items already at {target} or are non-stackable.")
-                self._buff_status_label.setText("No stack changes needed.")
-                return
-
-            self._buff_modified = True
-            self._buff_status_label.setText(
-                f"Stack sizes set to {target} for {count} items. "
-                f"Click 'Export JSON Patch' to write."
-            )
-            QMessageBox.information(
-                self, "Stacks Patched",
-                f"Patched {count} items to {target} max stack (in memory).\n\n"
-                f"Click 'Export JSON Patch' to write all changes to disk.",
-            )
-
-        except Exception as e:
-            self._buff_status_label.setText(f"Error: {e}")
-            QMessageBox.critical(self, "Error", str(e))
 
 
     def _apply_client_names(self, force: bool = False) -> tuple[int, int]:
@@ -12981,322 +11566,9 @@ class ItemBuffsTab(QWidget):
             + (f':{skip_detail}' if skip_detail else '') +
             f"\n\nSelect any modified item to see the changes in the editor.")
 
-    def _buff_import_community_json(self) -> None:
-        if not hasattr(self, '_buff_data') or self._buff_data is None:
-            QMessageBox.warning(self, "No Data",
-                "Extract iteminfo first (click Extract Rust).")
-            return
-
-        from PySide6.QtWidgets import QFileDialog
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Import Community JSON Patch",
-            os.path.dirname(__file__),
-            "JSON Files (*.json)")
-        if not path:
-            return
-
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                mod_data = json.load(f)
-
-            patches = mod_data.get("patches", [])
-            if not patches:
-                QMessageBox.warning(self, "Invalid Format",
-                    "No 'patches' array found in JSON file.\n"
-                    "Expected Pldada/DMM format with patches[].changes[].")
-                return
-
-            changes = []
-            for patch_block in patches:
-                game_file = patch_block.get("game_file", "")
-                if "iteminfo" in game_file.lower():
-                    changes = patch_block.get("changes", [])
-                    break
-
-            if not changes:
-                QMessageBox.warning(self, "No iteminfo Patches",
-                    "This JSON doesn't contain iteminfo.pabgb patches.\n"
-                    f"Found patches for: {', '.join(p.get('game_file','?') for p in patches)}")
-                return
-
-            data = bytearray(self._buff_data)
-            applied = 0
-            skipped = 0
-            for change in changes:
-                offset = change.get("offset", 0)
-                orig_hex = change.get("original", "")
-                patch_hex = change.get("patched", "")
-                label = change.get("label", "")
-
-                if not orig_hex or not patch_hex:
-                    skipped += 1
-                    continue
-
-                orig_bytes = bytes.fromhex(orig_hex)
-                patch_bytes = bytes.fromhex(patch_hex)
-
-                if len(orig_bytes) != len(patch_bytes):
-                    skipped += 1
-                    continue
-
-                if offset + len(orig_bytes) > len(data):
-                    skipped += 1
-                    continue
-
-                actual = bytes(data[offset:offset + len(orig_bytes)])
-                if actual == orig_bytes:
-                    data[offset:offset + len(patch_bytes)] = patch_bytes
-                    applied += 1
-                else:
-                    skipped += 1
-
-            if applied == 0:
-                QMessageBox.warning(self, "No Patches Applied",
-                    f"0/{len(changes)} patches matched.\n\n"
-                    "This usually means iteminfo.pabgb has been modified by another mod.\n"
-                    "Re-extract from vanilla first (click Extract Rust).")
-                return
-
-            self._buff_data = data
-            self._buff_modified = True
-
-            try:
-                import crimson_rs
-                rust_items = _iteminfo_parse(bytes(data))
-                self._buff_rust_items = rust_items
-                self._eb_update_socket_match_count()
-                self._buff_rust_lookup = {int(it['key']): it for it in rust_items}
-                self._buff_use_rust = True
-
-                self._buff_status_label.setText(
-                    f"Imported: {applied}/{len(changes)} patches applied "
-                    f"({skipped} skipped). {len(rust_items)} items re-parsed.")
-
-                if hasattr(self, '_buff_table') and self._buff_table.rowCount() > 0:
-                    self._buff_search_items()
-
-            except Exception as e:
-                self._buff_status_label.setText(
-                    f"Patches applied ({applied}) but re-parse failed: {e}")
-
-            mod_name = mod_data.get("name", os.path.basename(path))
-            QMessageBox.information(self, "Community Patch Imported",
-                f"Imported: {mod_name}\n\n"
-                f"Applied: {applied}/{len(changes)} patches\n"
-                f"Skipped: {skipped} (offset mismatch or invalid)\n\n"
-                f"The changes are now baked into your iteminfo data.\n"
-                f"Make any additional ItemBuffs edits, then 'Export Field JSON v3'\n"
-                f"to create a combined mod with both changes.")
-
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            QMessageBox.critical(self, "Import Failed", str(e))
 
     SE_ITEMBUFFS_DIR = "0058"
     SE_STORES_DIR = "0060"
-
-
-    def _buff_export_json(self) -> None:
-        if not self._require_dev_mode("Export JSON Patch"):
-            return
-        if not self._buff_ensure_patcher():
-            return
-
-        apply_stacks = hasattr(self, '_stack_check') and self._stack_check.isChecked()
-        apply_inf_dura = hasattr(self, '_inf_dura_check') and self._inf_dura_check.isChecked()
-
-        if self._buff_patcher._original_data is None:
-            QMessageBox.warning(self, "Export", "Extract iteminfo first.")
-            return
-
-        has_cd_patches = bool(getattr(self, '_cd_patches', {}))
-        if not self._buff_modified and not apply_stacks and not has_cd_patches and not apply_inf_dura:
-            QMessageBox.information(
-                self, "No Changes",
-                "No modifications have been made. Apply buffs or check 'Max Stacks' first.",
-            )
-            return
-
-        if self._buff_data is None:
-            try:
-                raw = self._buff_patcher.extract_iteminfo()
-                self._buff_data = bytearray(raw)
-                self._buff_items = self._buff_patcher.find_items(bytes(self._buff_data))
-            except Exception as e:
-                QMessageBox.critical(self, "Extract Failed", str(e))
-                return
-
-        if apply_stacks:
-            target = self._stack_spin.value()
-            if hasattr(self, '_buff_rust_items') and self._buff_rust_items:
-                for it in self._buff_rust_items:
-                    if _safe_iv(it.get('max_stack_count', 1)) > 1:
-                        it['max_stack_count'] = target
-
-        if apply_inf_dura:
-            if hasattr(self, '_buff_rust_items') and self._buff_rust_items:
-                dura_count = 0
-                for it in self._buff_rust_items:
-                    endurance = _safe_iv(it.get('max_endurance', 0))
-                    if endurance > 0 and endurance != 65535:
-                        it['max_endurance'] = 65535
-                        it['is_destroy_when_broken'] = 0
-                        dura_count += 1
-                log.info("JSON Infinity Durability: patched %d items", dura_count)
-
-        original = self._buff_patcher._original_data
-        if not self._buff_modified and not apply_stacks and not apply_inf_dura and has_cd_patches:
-            final_data = original
-        else:
-            try:
-                import crimson_rs
-                if hasattr(self, '_buff_rust_items') and self._buff_rust_items:
-                    final_data = _iteminfo_serialize(self._buff_rust_items)
-                else:
-                    final_data = bytes(self._buff_data) if self._buff_data else original
-            except Exception as e:
-                QMessageBox.warning(self, "Serialize Failed", str(e))
-                return
-
-        if getattr(self, '_vfx_size_changes', None) or getattr(self, '_vfx_swaps', None) \
-                or getattr(self, '_vfx_anim_swaps', None) or getattr(self, '_vfx_attach_changes', None) \
-                or getattr(self, '_transmog_swaps', None):
-            fa = bytearray(final_data)
-            self._apply_vfx_changes(fa)
-            self._apply_transmog_swaps(fa)
-            final_data = bytes(fa)
-
-        # Same-size: emit classic per-difference byte ops (compatible with
-        # legacy JSON loaders). Different size (Universal Proficiency's
-        # tribe_gender union grows iteminfo): fall back to the generic
-        # replace+insert emitter so the change still exports.
-        changes = []
-        if len(final_data) == len(original):
-            i = 0
-            while i < len(final_data):
-                if final_data[i] != original[i]:
-                    start = i
-                    while i < len(final_data) and final_data[i] != original[i]:
-                        i += 1
-                    changes.append({
-                        "offset": start,
-                        "label": f"iteminfo +0x{start:X}",
-                        "original": original[start:i].hex(),
-                        "patched": final_data[start:i].hex(),
-                    })
-                else:
-                    i += 1
-        else:
-            log.info("iteminfo size changed (%d -> %d) — emitting growth diff",
-                     len(original), len(final_data))
-            changes = self._diff_to_json_patches(
-                bytes(original), bytes(final_data), "iteminfo")
-
-        for item_key, (abs_off, orig_bytes, new_val) in getattr(self, '_cd_patches', {}).items():
-            new_bytes = struct.pack('<I', new_val)
-            already = any(c['offset'] == abs_off for c in changes)
-            if not already:
-                changes.append({
-                    "offset": abs_off,
-                    "label": f"cooldown item_key={item_key} ({orig_bytes.hex()}->{new_bytes.hex()})",
-                    "original": orig_bytes.hex(),
-                    "patched": new_bytes.hex(),
-                })
-
-        has_staged = bool(getattr(self, '_staged_equip_files', None)) or \
-                     bool(getattr(self, '_staged_skill_files', None))
-        if not changes and not has_staged:
-            QMessageBox.information(self, "Export", "No byte-level changes detected.")
-            return
-
-        reply = QMessageBox.question(
-            self, "Export JSON Patch — Limitations",
-            f"JSON Patch exports {len(changes)} byte-level change(s).\n\n"
-            f"WHAT THIS SUPPORTS:\n"
-            f"  - Change stat values (e.g. DDD 5000 -> 999999)\n"
-            f"  - Swap stat hashes within same size class\n"
-            f"  - Max stack size changes\n"
-            f"  - Cooldown changes (seconds)\n\n"
-            f"WHAT THIS DOES NOT SUPPORT:\n"
-            f"  - Adding NEW buffs/effects (Fire Res, Ice Res, etc)\n"
-            f"  - Adding NEW stats that don't exist on the item\n"
-            f"  - Adding passive skills (Invincible, etc)\n"
-            f"  - God Mode injection\n"
-            f"  - Any edit that changes the file size\n\n"
-            f"For those, use 'Export Field JSON v3' instead.\n\n"
-            f"Continue with JSON Patch export?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        from PySide6.QtWidgets import QInputDialog
-        batch_name = getattr(self, '_buff_batch_mod_name', None)
-        batch_dir = getattr(self, '_buff_batch_dir', None)
-        if batch_name:
-            name = batch_name
-        else:
-            name, ok = QInputDialog.getText(self, "Export JSON Patch",
-                                            "Patch name:", text="My ItemBuffs Mod")
-            if not ok or not name.strip():
-                return
-            name = name.strip()
-
-        if batch_dir:
-            path = os.path.join(batch_dir, f"{name}.json")
-        else:
-            path, _ = QFileDialog.getSaveFileName(
-                self, "Export JSON Patch", f"{name}.json", "JSON Files (*.json)")
-        if not path:
-            return
-
-        patches_list = [{
-            "game_file": "gamedata/iteminfo.pabgb",
-            "changes": changes,
-        }]
-
-        # If Universal Proficiency (or manual imbue skill edit) staged
-        # equipslotinfo / skill files, emit byte-diff patches for those too
-        # so the JSON format carries the full Universal-Proficiency mod
-        # instead of silently dropping it.
-        staged_equip = getattr(self, '_staged_equip_files', None) or {}
-        staged_skill = getattr(self, '_staged_skill_files', None) or {}
-        import crimson_rs as _crs
-        for fname, new_bytes in list(staged_equip.items()) + list(staged_skill.items()):
-            try:
-                orig_bytes = _crs.extract_file(self._buff_patcher.game_path,
-                    '0008', 'gamedata/binarystaticinfo__/bin', fname)
-            except Exception as e:
-                log.warning("JSON export: couldn't read vanilla %s: %s", fname, e)
-                continue
-            file_changes = self._diff_to_json_patches(orig_bytes, new_bytes, fname)
-            if file_changes:
-                patches_list.append({
-                    "game_file": f"gamedata/binarystaticinfo__/bin/{fname}",
-                    "changes": file_changes,
-                })
-                log.info("JSON export: emitted %d byte-diff(s) for %s",
-                         len(file_changes), fname)
-
-        patch_json = {
-            "name": name,
-            "version": "1.0",
-            "description": f"{len(changes)} iteminfo changes" +
-                (f" + {len(patches_list)-1} additional file(s)"
-                 if len(patches_list) > 1 else ""),
-            "author": "CrimsonSaveEditor",
-            "format": 2,
-            "patches": patches_list,
-        }
-
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(patch_json, f, indent=2)
-
-        self._buff_status_label.setText(f"Exported {len(changes)} patches to {os.path.basename(path)}")
-        QMessageBox.information(self, "Exported",
-            f"Saved {len(changes)} patches to:\n{path}\n\n"
-            f"Use CD JSON Mod Manager to apply this patch.\n"
-            f"Drop the JSON file into the mod manager and click Apply.")
 
 
     def _sync_buff_state_after_creator(
@@ -13585,7 +11857,7 @@ class ItemBuffsTab(QWidget):
                         ck = crimson_rs.parse_pamt_bytes(pamt)['checksum']
                         dest = os.path.join(gp, gid)
                         if os.path.isdir(dest):
-                            shutil.rmtree(dest)
+                            safe_rmtree(dest)
                         os.makedirs(dest)
                         shutil.copy2(os.path.join(gdir, '0.paz'),
                                      os.path.join(dest, '0.paz'))
@@ -13639,7 +11911,7 @@ class ItemBuffsTab(QWidget):
                 #    (deployed with Apply to Game alongside other edits)
                 # 2. Deploy dropsetinfo overlay immediately (separate group)
                 DROPSET_KEY = 400002
-                DROPSET_GROUP = f"{self._config.get('dropset_overlay_dir', 36):04d}"
+                DROPSET_GROUP = f"{_safe_overlay_default(self._config.get('dropset_overlay_dir', 71), 71):04d}"
 
                 edited = _iteminfo_parse(dlg.created_item_bytes)
                 if edited:
@@ -13663,6 +11935,14 @@ class ItemBuffsTab(QWidget):
                             f"Dropset {DROPSET_KEY} not found in game data.")
                         return
 
+                    # The old DropSets reader does not fit every 2.03 record;
+                    # only go on if it writes this one back unchanged.
+                    if ds_editor._serialize_dropset(ds) != ds_pabgb[ds.body_offset:ds.body_offset + ds.total_size]:
+                        QMessageBox.critical(self, "Dropset Error",
+                            f"Dropset {DROPSET_KEY} is not read correctly for this game version - "
+                            f"nothing was written. The item stats are staged; use Apply to Game "
+                            f"or Field JSON for them.")
+                        return
                     ds.drops.clear()
                     ds_editor.add_item(ds, dlg.created_donor_key,
                                        rate=1000000, min_qty=1, max_qty=1)
@@ -13689,7 +11969,7 @@ class ItemBuffsTab(QWidget):
                         ck = crimson_rs.parse_pamt_bytes(pamt)['checksum']
                         dest = os.path.join(gp, DROPSET_GROUP)
                         if os.path.isdir(dest):
-                            shutil.rmtree(dest)
+                            safe_rmtree(dest)
                         os.makedirs(dest)
                         shutil.copy2(os.path.join(gdir, '0.paz'),
                                      os.path.join(dest, '0.paz'))
@@ -13995,7 +12275,7 @@ class ItemBuffsTab(QWidget):
                         crimson_rs.parse_pamt_bytes(pamt)['checksum']
                     dest = os.path.join(gp, '0058')
                     if os.path.isdir(dest):
-                        shutil.rmtree(dest)
+                        safe_rmtree(dest)
                     os.makedirs(dest)
                     shutil.copy2(os.path.join(gdir58, '0.paz'),
                                  os.path.join(dest, '0.paz'))
@@ -14021,7 +12301,7 @@ class ItemBuffsTab(QWidget):
                             crimson_rs.parse_pamt_bytes(pamt2)['checksum']
                         dest64 = os.path.join(gp, '0064')
                         if os.path.isdir(dest64):
-                            shutil.rmtree(dest64)
+                            safe_rmtree(dest64)
                         os.makedirs(dest64)
                         shutil.copy2(os.path.join(gdir64, '0.paz'),
                                      os.path.join(dest64, '0.paz'))
@@ -14310,227 +12590,7 @@ class ItemBuffsTab(QWidget):
             intents.append({'entry': skey, 'key': ikey,
                             'field': path, 'op': 'set', 'new': m})
 
-    def _goto_stacker_legacy_export(self) -> None:
-        """Switch to Stacker Tool tab for legacy JSON export."""
-        self.navigate_requested.emit("stacker")
-        QMessageBox.information(self, "Legacy JSON Export",
-            "Switched to Stacker Tool.\n\n"
-            "1. Click 'Pull ItemBuffs Edit' to pull your edits.\n"
-            "2. Click 'PREVIEW' to build the merge.\n"
-            "3. Click 'EXPORT LEGACY JSON' to save.")
 
-    def _no_fall_damage_export(self) -> None:
-        """Export a No Fall Damage mod JSON targeting buffinfo.pabgb.
-
-        Sets BuffLevel_FallDamageReduce (key 1000190) level 9 variant.body.f01
-        to 100000000000 (effectively 100% fall damage reduction) via Format 3.1
-        buffinfo.pabgb intents — DMM's buff_info dispatcher handles this natively.
-        """
-        import json as _json
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
-
-        game_path = self._config.get('game_install_path', '')
-        items, vanilla = self._buff_load_buffinfo(game_path)
-
-        if items is None:
-            QMessageBox.warning(self, "No Fall Damage",
-                "Could not load buffinfo.pabgb from game.\n"
-                "Make sure the game path is set correctly.")
-            return
-
-        # Find BuffLevel_FallDamageReduce (key 1000190)
-        FALL_REDUCE_KEY = 1000190
-        target = next((e for e in items if e.get('key') == FALL_REDUCE_KEY), None)
-        if target is None:
-            QMessageBox.warning(self, "No Fall Damage",
-                f"BuffLevel_FallDamageReduce (key {FALL_REDUCE_KEY}) not found in buffinfo.")
-            return
-
-        van_target = next((e for e in vanilla if e.get('key') == FALL_REDUCE_KEY), None)
-
-        # buff_data_list[9] is the max level (level 10) entry.
-        # variant.body.f01 = the reduction value. 100000000000 = effectively 100%.
-        buff_data_list = target.get('buff_data_list', [])
-        if len(buff_data_list) < 10:
-            QMessageBox.warning(self, "No Fall Damage",
-                f"Expected 10 buff_data_list entries, found {len(buff_data_list)}.")
-            return
-
-        # Mutate the live item so it diffs correctly
-        entry9 = buff_data_list[9]
-        data = entry9.get('data', {})
-        variant = data.get('variant', {})
-        body = variant.get('body', {})
-        current_f01 = body.get('f01', 0)
-
-        if current_f01 == 100000000000:
-            QMessageBox.information(self, "No Fall Damage",
-                "BuffLevel_FallDamageReduce level 10 is already at max reduction.")
-            return
-
-        # Build the intents directly from the mod we analysed
-        # This is a clean minimal set — only the values that actually differ
-        SKEY = target.get('string_key', 'BuffLevel_FallDamageReduce')
-
-        # The mod sets all 10 levels of BuffLevel_FallDamageReduce to scaled values
-        # (100000→1000000000 progression). Level 10 (index 9) at 100000000000 = ~100%.
-        # We replicate the exact pattern from the reference mod for all 10 levels.
-        LEVEL_VALUES = [100000, 200000, 300000, 400000, 500000,
-                        600000, 700000, 800000, 900000, 100000000000]
-
-        intents = []
-        for i, new_f01 in enumerate(LEVEL_VALUES):
-            intents.append({
-                'entry': SKEY,
-                'key': FALL_REDUCE_KEY,
-                'field': f'buff_data_list[{i}].data.variant.body.f01',
-                'op': 'set',
-                'new': new_f01,
-            })
-
-        doc = {
-            'modinfo': {
-                'title': 'No Fall Damage',
-                'version': '1.0',
-                'description': 'Sets fall damage reduction to 100% at max buff level.',
-                'author': 'CrimsonGameMods',
-                'note': 'Format 3.1 — buffinfo.pabgb field intents',
-            },
-            'format': 3,
-            'format_minor': 1,
-            'targets': [{'file': 'buffinfo.pabgb', 'intents': intents}],
-        }
-
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Export No Fall Damage Mod",
-            "No_Fall_Damage.field.json",
-            "Field JSON (*.field.json *.json);;All Files (*)")
-        if not path:
-            return
-
-        with open(path, 'w', encoding='utf-8') as f:
-            _json.dump(doc, f, indent=2, ensure_ascii=False)
-
-        QMessageBox.information(self, "No Fall Damage",
-            f"Exported {len(intents)} buffinfo intents.\n\n"
-            f"Drop the JSON into your DMM mods folder.")
-
-    def _buff_export_mod_folder(self) -> None:
-        """Export as a standard folder mod (Stacker style).
-
-        Output: <dir>/<name>/0036/0.paz + 0.pamt + modinfo.json
-        Uses group 0036 so any loader (JMM, CDUMM) can remap at install time.
-        """
-        if not self._buff_ensure_patcher():
-            return
-        if not hasattr(self, '_buff_rust_items') or self._buff_rust_items is None:
-            QMessageBox.warning(self, "Export Mod", "Extract iteminfo first.")
-            return
-
-        from PySide6.QtWidgets import QInputDialog
-        parent_dir = QFileDialog.getExistingDirectory(
-            self, "Pick where to save the folder mod",
-            self._config.get("buffs_export_dir",
-                             os.path.dirname(os.path.abspath(sys.argv[0]))))
-        if not parent_dir:
-            return
-        self._config["buffs_export_dir"] = parent_dir
-        self.config_save_requested.emit()
-
-        name, ok = QInputDialog.getText(
-            self, "Mod name",
-            "Folder mod name (a folder with this name will be created):",
-            text="My ItemBuffs Mod")
-        if not ok or not name.strip():
-            return
-        safe_name = "".join(c if (c.isalnum() or c in "-_ .") else "_"
-                            for c in name.strip())
-        out_dir = os.path.join(parent_dir, safe_name)
-        if os.path.isdir(out_dir) and os.listdir(out_dir):
-            QMessageBox.warning(self, "Export Mod",
-                f"Folder already exists and is not empty:\n{out_dir}\n\n"
-                "Pick a new name or delete it first.")
-            return
-
-        self._buff_status_label.setText("Serializing...")
-        QApplication.processEvents()
-
-        try:
-            import crimson_rs
-            import tempfile
-
-            final_data = self._rebuild_full_iteminfo()
-            fa = bytearray(final_data)
-            self._apply_vfx_changes(fa)
-            self._apply_transmog_swaps(fa)
-            final_data = bytes(fa)
-
-            game_path = self._buff_patcher.game_path
-            INTERNAL_DIR = "gamedata/binarystaticinfo__/bin"
-            group = "0036"
-
-            os.makedirs(out_dir, exist_ok=True)
-
-            with tempfile.TemporaryDirectory() as tmp:
-                group_dir = os.path.join(tmp, group)
-                builder = crimson_rs.PackGroupBuilder(
-                    group_dir,
-                    crimson_rs.Compression.NONE,
-                    crimson_rs.Crypto.NONE,
-                )
-                builder.add_file(INTERNAL_DIR, "iteminfo.pabgb", final_data)
-                _pabgh = getattr(self, '_buff_rebuilt_pabgh', None)
-                if not _pabgh:
-                    _pabgh = bytes(crimson_rs.extract_file(
-                        game_path, '0008', INTERNAL_DIR, 'iteminfo.pabgh'))
-                builder.add_file(INTERNAL_DIR, "iteminfo.pabgh", _pabgh)
-
-                staged_skill = getattr(self, "_staged_skill_files", None) or {}
-                for fname in ("skill.pabgb", "skill.pabgh"):
-                    if fname in staged_skill:
-                        builder.add_file(INTERNAL_DIR, fname, staged_skill[fname])
-
-                staged_charinfo = getattr(self, "_staged_charinfo_files", None) or {}
-                for fname in ("characterinfo.pabgb", "characterinfo.pabgh"):
-                    if fname in staged_charinfo:
-                        builder.add_file(INTERNAL_DIR, fname, staged_charinfo[fname])
-
-                pamt_bytes = bytes(builder.finish())
-
-                out_group = os.path.join(out_dir, group)
-                os.makedirs(out_group, exist_ok=True)
-                for f in os.listdir(group_dir):
-                    shutil.copy2(os.path.join(group_dir, f),
-                                 os.path.join(out_group, f))
-                if not os.path.isfile(os.path.join(out_group, "0.pamt")):
-                    with open(os.path.join(out_group, "0.pamt"), "wb") as f:
-                        f.write(pamt_bytes)
-
-            with open(os.path.join(out_dir, "modinfo.json"), "w",
-                      encoding="utf-8") as f:
-                json.dump({
-                    "id": safe_name.lower().replace(" ", "_"),
-                    "name": name.strip(),
-                    "version": "1.0.0",
-                    "author": "CrimsonGameMods",
-                    "description": f"ItemBuffs mod: {name.strip()}",
-                }, f, indent=2)
-
-            paz_size = os.path.getsize(os.path.join(out_group, "0.paz"))
-            self._buff_status_label.setText(f"Exported to {safe_name}/")
-            QMessageBox.information(self, "Mod Exported",
-                f"Folder mod exported to:\n{out_dir}\n\n"
-                f"Contents:\n"
-                f"  {group}/0.paz ({paz_size:,} bytes)\n"
-                f"  {group}/0.pamt\n"
-                f"  modinfo.json\n\n"
-                f"Install with JMM / CDUMM, or drop {group}/ into game dir.")
-
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            self._buff_status_label.setText(f"Export failed: {e}")
-            QMessageBox.critical(self, "Export Failed",
-                f"Failed to export mod:\n{e}")
             
     def _buff_apply_to_game(self) -> None:
         if not self._buff_ensure_patcher():
@@ -14744,6 +12804,13 @@ class ItemBuffsTab(QWidget):
             changes.append(f"max stacks")
 
         buff_dir = f"{self._buff_overlay_spin.value():04d}"
+        from overlay_coordinator import is_game_data_group
+        if is_game_data_group(game_path, buff_dir):
+            QMessageBox.warning(
+                self, "Overlay number",
+                f"Group {buff_dir} is part of the game itself (since game 2.03 the game "
+                f"uses the numbers up to 0040). Pick another overlay number, e.g. 0058.")
+            return
         staged = getattr(self, "_staged_skill_files", None) or {}
         staged_equip_info = getattr(self, "_staged_equip_files", None) or {}
         staged_charinfo = getattr(self, "_staged_charinfo_files", None) or {}
@@ -14857,7 +12924,7 @@ class ItemBuffsTab(QWidget):
 
                 game_mod = os.path.join(game_path, buff_dir)
                 if os.path.isdir(game_mod):
-                    shutil.rmtree(game_mod)
+                    safe_rmtree(game_mod)
                 os.makedirs(game_mod, exist_ok=True)
 
                 shutil.copy2(
@@ -14937,310 +13004,6 @@ class ItemBuffsTab(QWidget):
             QMessageBox.critical(self, "Apply Failed", str(e))
 
 
-    def _buff_apply_to_game_v2(self) -> None:
-        """Apply to Game V2 — LZ4 compressed .pabgb, NONE .pabgh in separate groups.
-
-        Identical to _buff_apply_to_game except the overlay uses LZ4 for
-        large data files (84% smaller) which may fix infinite loading on
-        configs that overload the game's PAZ reader with uncompressed data.
-        """
-        if not self._buff_ensure_patcher():
-            return
-
-        game_path = self._buff_patcher.game_path
-        if not _can_write_game_dir(game_path):
-            QMessageBox.warning(
-                self, "No Write Access",
-                f"Cannot write to:\n{game_path}\n\n"
-                "Try running the editor as Administrator:\n"
-                "Right-click → Run as administrator",
-            )
-            return
-
-        if self._buff_modified:
-            save_first = QMessageBox.question(
-                self, "Save Config?",
-                "Save your current edits as a config file before applying?\n\n"
-                "This lets you re-apply the same edits later without redoing them.",
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-                QMessageBox.No,
-            )
-            if save_first == QMessageBox.Cancel:
-                return
-            if save_first == QMessageBox.Yes:
-                self._buff_save_config()
-
-        apply_stacks = hasattr(self, '_stack_check') and self._stack_check.isChecked()
-        apply_inf_dura = hasattr(self, '_inf_dura_check') and self._inf_dura_check.isChecked()
-
-        if self._buff_data is None:
-            if not apply_stacks and not apply_inf_dura:
-                QMessageBox.warning(self, "No Data", "Extract iteminfo first.")
-                return
-            try:
-                raw = self._buff_patcher.extract_iteminfo()
-                self._buff_data = bytearray(raw)
-                self._buff_items = self._buff_patcher.find_items(bytes(self._buff_data))
-            except Exception as e:
-                QMessageBox.critical(self, "Extract Failed", str(e))
-                return
-
-        has_transmog = bool(getattr(self, '_transmog_swaps', None))
-        has_vfx = bool(getattr(self, '_vfx_size_changes', None)
-                       or getattr(self, '_vfx_swaps', None)
-                       or getattr(self, '_vfx_anim_swaps', None)
-                       or getattr(self, '_vfx_attach_changes', None))
-        has_cd = bool(getattr(self, '_cd_patches', None))
-        if (not self._buff_modified and not apply_stacks and not apply_inf_dura
-                and not has_transmog and not has_vfx and not has_cd):
-            QMessageBox.information(
-                self, "No Changes",
-                "No modifications have been made.\n\n"
-                "Apply buffs, set up transmog swaps, or check\n"
-                "'Also apply Max Stacks' first.",
-            )
-            return
-
-        stack_msg = ""
-        if apply_stacks:
-            target = self._stack_spin.value()
-            count, _ = self._buff_patcher.patch_stack_sizes(self._buff_data, target_stack=target)
-            stack_msg = f"\nMax Stacks: {count} items set to {target}"
-
-        # ── Serialize (same as v1) ──
-        if hasattr(self, '_buff_rust_items') and self._buff_rust_items:
-            try:
-                import crimson_rs
-                if apply_stacks:
-                    target_val = self._stack_spin.value()
-                    for it in self._buff_rust_items:
-                        if _safe_iv(it.get('max_stack_count', 1)) > 1:
-                            it['max_stack_count'] = target_val
-                if apply_inf_dura:
-                    for it in self._buff_rust_items:
-                        endurance = _safe_iv(it.get('max_endurance', 0))
-                        if endurance > 0 and endurance != 65535:
-                            it['max_endurance'] = 65535
-                            it['is_destroy_when_broken'] = 0
-                try:
-                    final_data = self._rebuild_full_iteminfo()
-                except Exception:
-                    try:
-                        final_data = bytearray(_iteminfo_serialize(
-                            self._buff_rust_items))
-                        unparsed = getattr(self, '_buff_unparsed_raw', []) or []
-                        for _raw in unparsed:
-                            final_data.extend(_raw)
-                        from item_creator import build_iteminfo_pabgh
-                        self._buff_rebuilt_pabgh = build_iteminfo_pabgh(
-                            bytes(final_data))
-                    except Exception as _ser2:
-                        QMessageBox.critical(self, "Serialize Failed",
-                            f"Cannot serialize iteminfo:\n{_ser2}")
-                        return
-                if self._apply_vfx_changes(final_data):
-                    pass
-                cd_patches = getattr(self, '_cd_patches', {})
-                if cd_patches:
-                    for item_key, (_, _, new_val) in cd_patches.items():
-                        cd_off, _ = self._cd_detect(item_key, bytes(final_data))
-                        if cd_off is not None:
-                            final_data[cd_off:cd_off + 4] = struct.pack('<I', new_val)
-                self._apply_transmog_swaps(final_data)
-                final_data = bytes(final_data)
-            except Exception as e:
-                log.warning("V2 rebuild failed, using byte buffer: %s", e)
-                final_data = bytes(self._buff_data)
-        else:
-            final_data = bytes(self._buff_data)
-
-        changes = []
-        if self._buff_modified:
-            changes.append("stat buffs")
-        if apply_stacks:
-            changes.append("max stacks")
-
-        buff_dir = f"{self._buff_overlay_spin.value():04d}"
-        IDX_GROUP = "0066"
-
-        reply = QMessageBox.question(
-            self, "Apply to Game V2 (LZ4)",
-            f"Pack modified iteminfo into split-compression overlays?\n\n"
-            f"Changes: {' + '.join(changes)}\n"
-            f"Raw data: {len(final_data):,} bytes\n\n"
-            f"V2 uses LZ4 for large .pabgb files (~84% smaller) and NONE\n"
-            f"for small .pabgh index files. This may fix infinite loading\n"
-            f"caused by large uncompressed overlays.\n\n"
-            f"  {buff_dir}/ — iteminfo.pabgb (LZ4 compressed)\n"
-            f"  {IDX_GROUP}/ — iteminfo.pabgh (uncompressed)\n\n"
-            f"Original 0008/0.paz is NOT modified.\n"
-            f"The game must be restarted for changes to take effect.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        self._buff_status_label.setText("Packing overlay V2 (split LZ4/NONE)...")
-        QApplication.processEvents()
-
-        self._ensure_elemental_skill_patch()
-
-        try:
-            import crimson_rs
-            import shutil
-            import tempfile
-
-            INTERNAL_DIR = "gamedata/binarystaticinfo__/bin"
-
-            papgt_path = os.path.join(game_path, "meta", "0.papgt")
-            papgt_vanilla = papgt_path + ".vanilla"
-            if not os.path.isfile(papgt_vanilla) and os.path.isfile(papgt_path):
-                shutil.copy2(papgt_path, papgt_vanilla)
-
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                # ── LZ4 group (buff_dir): large .pabgb data ──
-                group_dir = os.path.join(tmp_dir, buff_dir)
-                builder = crimson_rs.PackGroupBuilder(
-                    group_dir,
-                    crimson_rs.Compression.LZ4,
-                    crimson_rs.Crypto.NONE,
-                )
-                builder.add_file(INTERNAL_DIR, "iteminfo.pabgb", final_data)
-
-                staged_skill = getattr(self, "_staged_skill_files", None) or {}
-                if "skill.pabgb" in staged_skill:
-                    builder.add_file(INTERNAL_DIR, "skill.pabgb",
-                                     staged_skill["skill.pabgb"])
-
-                pamt_bytes = bytes(builder.finish())
-                pamt_checksum = crimson_rs.parse_pamt_bytes(pamt_bytes)["checksum"]
-
-                # ── NONE group (0066): small .pabgh index files ──
-                idx_dir = os.path.join(tmp_dir, IDX_GROUP)
-                idx_builder = crimson_rs.PackGroupBuilder(
-                    idx_dir,
-                    crimson_rs.Compression.NONE,
-                    crimson_rs.Crypto.NONE,
-                )
-                try:
-                    _pabgh = getattr(self, '_buff_rebuilt_pabgh', None)
-                    if not _pabgh:
-                        _pabgh = bytes(crimson_rs.extract_file(
-                            game_path, '0008', INTERNAL_DIR, 'iteminfo.pabgh'))
-                    idx_builder.add_file(INTERNAL_DIR, "iteminfo.pabgh", _pabgh)
-                except Exception as _e:
-                    log.warning("V2: pabgh regen failed (%s)", _e)
-
-                if "skill.pabgh" in staged_skill:
-                    idx_builder.add_file(INTERNAL_DIR, "skill.pabgh",
-                                         staged_skill["skill.pabgh"])
-
-                idx_pamt_bytes = bytes(idx_builder.finish())
-                idx_checksum = crimson_rs.parse_pamt_bytes(idx_pamt_bytes)["checksum"]
-
-                papgt_path = os.path.join(game_path, "meta", "0.papgt")
-                papgt = crimson_rs.parse_papgt_file(papgt_path)
-                papgt['entries'] = [
-                    e for e in papgt['entries']
-                    if e.get('group_name') not in (buff_dir, IDX_GROUP)
-                ]
-                papgt = crimson_rs.add_papgt_entry(
-                    papgt, buff_dir, pamt_checksum, 0, 16383)
-                papgt = crimson_rs.add_papgt_entry(
-                    papgt, IDX_GROUP, idx_checksum, 0, 16383)
-
-                # Deploy LZ4 group
-                game_mod = os.path.join(game_path, buff_dir)
-                if os.path.isdir(game_mod):
-                    shutil.rmtree(game_mod)
-                os.makedirs(game_mod, exist_ok=True)
-                shutil.copy2(os.path.join(group_dir, "0.paz"),
-                             os.path.join(game_mod, "0.paz"))
-                shutil.copy2(os.path.join(group_dir, "0.pamt"),
-                             os.path.join(game_mod, "0.pamt"))
-
-                # Deploy NONE index group
-                game_idx = os.path.join(game_path, IDX_GROUP)
-                if os.path.isdir(game_idx):
-                    shutil.rmtree(game_idx)
-                os.makedirs(game_idx, exist_ok=True)
-                shutil.copy2(os.path.join(idx_dir, "0.paz"),
-                             os.path.join(game_idx, "0.paz"))
-                shutil.copy2(os.path.join(idx_dir, "0.pamt"),
-                             os.path.join(game_idx, "0.pamt"))
-
-                crimson_rs.write_papgt_file(papgt, papgt_path)
-
-                with open(os.path.join(game_mod, ".se_itembuffs"), "w") as mf:
-                    mf.write("Created by CrimsonSaveEditor ItemBuffs tab\n")
-
-            # ── Deploy equipslotinfo to 0059/ ──
-            staged_equip_deploy = getattr(self, "_staged_equip_files", None) or {}
-            if (staged_equip_deploy.get('equipslotinfo.pabgb')
-                    and staged_equip_deploy.get('equipslotinfo.pabgh')):
-                try:
-                    self._buff_deploy_equipslotinfo_0059(
-                        game_path,
-                        staged_equip_deploy['equipslotinfo.pabgb'],
-                        staged_equip_deploy['equipslotinfo.pabgh'])
-                except Exception as _eq_e:
-                    log.exception("V2: equipslotinfo 0059 deploy failed")
-
-            # ── Deploy characterinfo to 0065/ ──
-            staged_charinfo = getattr(self, "_staged_charinfo_files", None) or {}
-            if (staged_charinfo.get('characterinfo.pabgb')
-                    and staged_charinfo.get('characterinfo.pabgh')):
-                try:
-                    self._buff_deploy_charinfo_0065(
-                        game_path,
-                        staged_charinfo['characterinfo.pabgb'],
-                        staged_charinfo['characterinfo.pabgh'])
-                except Exception as _ci_e:
-                    log.exception("V2: characterinfo 0065 deploy failed")
-
-            lz4_size = os.path.getsize(os.path.join(game_mod, "0.paz"))
-            none_size = os.path.getsize(os.path.join(game_idx, "0.paz"))
-            raw_size = len(final_data)
-            ratio = (1.0 - lz4_size / raw_size) * 100 if raw_size else 0
-            staged_extra = ""
-            if staged_equip_deploy:
-                staged_extra += f"\nUniversal Proficiency: equipslotinfo → 0059/"
-            if staged_charinfo:
-                staged_extra += f"\nKliff Gun Fix: characterinfo → 0065/"
-            msg = (
-                f"V2 split-compression overlay deployed:\n"
-                f"  {buff_dir}/ (LZ4): {lz4_size:,} bytes "
-                f"({ratio:.0f}% smaller than {raw_size:,} raw)\n"
-                f"  {IDX_GROUP}/ (NONE): {none_size:,} bytes (index)\n"
-                f"PAPGT updated\n"
-                f"Original 0008/0.paz untouched{staged_extra}"
-            )
-            msg += stack_msg
-
-            try:
-                from shared_state import record_overlay
-                record_overlay(game_path, buff_dir, "ItemBuffs", ["iteminfo.pabgb"])
-                record_overlay(game_path, IDX_GROUP, "ItemBuffs (index)",
-                               ["iteminfo.pabgh"])
-                if staged_equip_deploy:
-                    record_overlay(game_path, "0059", "ItemBuffs",
-                                   sorted(staged_equip_deploy.keys()))
-                if staged_charinfo:
-                    record_overlay(game_path, f"{self._config.get('charinfo_overlay_dir', 65):04d}", "ItemBuffs",
-                                   sorted(staged_charinfo.keys()))
-            except Exception:
-                pass
-
-            self._buff_status_label.setText(f"V2: packed to {buff_dir}/ + {IDX_GROUP}/")
-            QMessageBox.information(self, "V2 Applied Successfully", msg)
-            self.paz_refresh_requested.emit()
-
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            self._buff_status_label.setText(f"V2 Failed: {e}")
-            QMessageBox.critical(self, "V2 Apply Failed", str(e))
-
     def _rebuild_papgt_without(self, game_path: str, group_to_remove: str) -> str:
         try:
             import crimson_rs
@@ -15260,7 +13023,7 @@ class ItemBuffsTab(QWidget):
                 return f"PAPGT: {group_to_remove} was not registered"
 
             crimson_rs.write_papgt_file(papgt, papgt_path)
-            remaining = [e['group_name'] for e in papgt['entries'] if int(e['group_name']) >= 36]
+            remaining = [e['group_name'] for e in papgt['entries'] if not (str(e['group_name']).isdigit() and int(e['group_name']) <= 40)]
             extra = f" (other overlays still active: {', '.join(remaining)})" if remaining else ""
             return f"PAPGT: removed {group_to_remove} entry{extra}"
         except Exception as e:
@@ -15270,86 +13033,6 @@ class ItemBuffsTab(QWidget):
                 shutil.copy2(sebak, papgt_path)
                 return f"PAPGT: fell back to .sebak restore ({e})"
             return f"PAPGT rebuild failed: {e}"
-
-
-    def _buff_reset_vanilla_papgt(self) -> None:
-        if not self._buff_ensure_patcher():
-            return
-        game_path = self._buff_patcher.game_path
-        if not _can_write_game_dir(game_path):
-            QMessageBox.warning(
-                self, "No Write Access",
-                f"Cannot write to:\n{game_path}\n\n"
-                "Right-click → Run as administrator",
-            )
-            return
-
-        import shutil
-        papgt_path = os.path.join(game_path, "meta", "0.papgt")
-        vanilla = papgt_path + ".vanilla"
-        sebak = papgt_path + ".sebak"
-        buff_dir = f"{self._buff_overlay_spin.value():04d}"
-        game_mod = os.path.join(game_path, buff_dir)
-
-        source = vanilla if os.path.isfile(vanilla) else (sebak if os.path.isfile(sebak) else None)
-        if source is None and not os.path.isdir(game_mod):
-            QMessageBox.warning(
-                self, "No Backup",
-                "Neither .papgt.vanilla nor .papgt.sebak exists, and no overlay "
-                "directory to remove.\n"
-                "Use Steam > Verify Integrity of Game Files instead.",
-            )
-            return
-
-        parts: list[str] = []
-        if os.path.isdir(game_mod):
-            parts.append(f"Delete {buff_dir}/ overlay directory")
-        if source is not None:
-            parts.append(f"Restore meta/0.papgt from {os.path.basename(source)}")
-        parts.append("Disables ALL overlay registrations — re-apply other mods afterward.")
-
-        reply = QMessageBox.question(
-            self, "Reset to Vanilla PAPGT",
-            "\n".join(parts) + "\n\nProceed?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        messages: list[str] = []
-        if os.path.isdir(game_mod):
-            try:
-                shutil.rmtree(game_mod)
-                messages.append(f"Removed {buff_dir}/")
-            except Exception as e:
-                messages.append(f"Failed to remove {buff_dir}/: {e}")
-
-        if source is not None:
-            try:
-                shutil.copy2(source, papgt_path)
-                messages.append(f"Restored meta/0.papgt from {os.path.basename(source)}")
-            except Exception as e:
-                messages.append(f"PAPGT restore failed: {e}")
-
-        # Prune any PAPGT entries pointing to missing directories
-        try:
-            import crimson_rs as _crs
-            papgt = _crs.parse_papgt_file(papgt_path)
-            before = len(papgt['entries'])
-            papgt['entries'] = [
-                e for e in papgt['entries']
-                if os.path.isdir(os.path.join(game_path, e.get('group_name', '')))
-            ]
-            after = len(papgt['entries'])
-            if before != after:
-                _crs.write_papgt_file(papgt, papgt_path)
-                messages.append(f"Pruned {before - after} dead PAPGT entries")
-        except Exception as _pe:
-            messages.append(f"PAPGT prune failed: {_pe}")
-
-        self._buff_status_label.setText("Vanilla PAPGT restored — launch to verify.")
-        QMessageBox.information(self, "Reset Done", "\n".join(messages))
-        self.paz_refresh_requested.emit()
 
 
     def _buff_restore_original(self) -> None:
@@ -15367,11 +13050,15 @@ class ItemBuffsTab(QWidget):
         import shutil
         buff_dir = f"{self._buff_overlay_spin.value():04d}"
         game_mod = os.path.join(game_path, buff_dir)
-        legacy_mod = os.path.join(game_path, "0038")
+        # Only groups ItemBuffs itself writes. 0038 is a game group since
+        # 2.03, 0061 is BagSpace's and the characterinfo group (0065) is
+        # FieldEdit's - the old list deleted all of them.
+        _none = os.path.join(game_path, "__cgm_not_ours__")
+        legacy_mod = _none
         equip_group_dir = os.path.join(game_path, "0059")
-        charinfo_group_dir = os.path.join(game_path, f"{self._config.get('charinfo_overlay_dir', 65):04d}")
+        charinfo_group_dir = _none
         idx_group_dir = os.path.join(game_path, "0066")
-        equip_legacy_dir = os.path.join(game_path, "0061")
+        equip_legacy_dir = _none
         papgt_path = os.path.join(game_path, "meta", "0.papgt")
         vanilla = papgt_path + ".vanilla"
         sebak = papgt_path + ".sebak"
@@ -15403,13 +13090,7 @@ class ItemBuffsTab(QWidget):
             parts.append("Delete 0038/ (legacy overlay)")
         if has_charinfo:
             parts.append("Clear staged Kliff Gun Fix (characterinfo)")
-        if os.path.isfile(vanilla):
-            parts.append("Restore meta/0.papgt from .vanilla backup (removes ALL overlay "
-                         "registrations — re-apply any other mods afterward)")
-        elif os.path.isfile(sebak):
-            parts.append("Restore meta/0.papgt from .sebak backup")
-        if has_inplace_backup:
-            parts.append("Restore 0008/0.paz from .backup files (legacy in-place mode)")
+        parts.append("Remove only these entries from meta/0.papgt (other mods stay)")
 
         reply = QMessageBox.question(
             self, "Restore Original",
@@ -15428,7 +13109,7 @@ class ItemBuffsTab(QWidget):
             if os.path.isdir(d):
                 try:
                     group_name = os.path.basename(d)
-                    shutil.rmtree(d)
+                    safe_rmtree(d)
                     messages.append(f"Removed {group_name}/")
                     try:
                         from overlay_coordinator import post_restore
@@ -15443,7 +13124,7 @@ class ItemBuffsTab(QWidget):
         # tools. This preserves DMM, SkillTree, FieldEdit, and any other
         # mod overlays while cleaning up only what ItemBuffs deployed.
         removed_groups = set()
-        for d in (game_mod, legacy_mod, equip_group_dir, charinfo_group_dir, idx_group_dir, equip_legacy_dir):
+        for d in (game_mod, equip_group_dir, idx_group_dir):
             removed_groups.add(os.path.basename(d))
 
         try:
@@ -15454,11 +13135,8 @@ class ItemBuffsTab(QWidget):
                 e for e in papgt['entries']
                 if e.get('group_name') not in removed_groups
             ]
-            # Also prune any other entries pointing to missing directories
-            papgt['entries'] = [
-                e for e in papgt['entries']
-                if os.path.isdir(os.path.join(game_path, e.get('group_name', '')))
-            ]
+            # (The old code also dropped every entry whose folder is missing -
+            # that removed the game's own optional language groups.)
             after = len(papgt['entries'])
             _crs.write_papgt_file(papgt, papgt_path)
             messages.append(f"PAPGT: removed {before - after} entries "
@@ -16208,93 +13886,6 @@ class ItemBuffsTab(QWidget):
         self._set_mgr.save_set(es, es.filename if es.filename else "")
         self._set_refresh_local()
         self._set_status.setText(f"Added {display_name} to '{es.name}' ({len(ops)} ops)")
-
-
-    def _set_apply(self) -> None:
-        es = self._set_get_selected()
-        if not es:
-            QMessageBox.information(self, "No Set", "Select an equipment set first.")
-            return
-
-        if self._buff_data is None:
-            QMessageBox.warning(self, "No Data", "Extract iteminfo first (use Extract button above).")
-            return
-
-        if not self._buff_items:
-            QMessageBox.warning(self, "No Items", "Extract and search for items first.")
-            return
-
-        item_by_key = {}
-        for it in self._buff_items:
-            item_by_key[it.item_key] = it
-
-        lines = []
-        for si in es.items:
-            found = "YES" if si.item_key in item_by_key else "NO"
-            lines.append(f"  {si.item_name} (key={si.item_key}): {len(si.operations)} ops [{found}]")
-
-        reply = QMessageBox.question(
-            self, f"Apply Set: {es.name}",
-            f"Apply '{es.name}' by {es.author}?\n\n"
-            f"{len(es.items)} items:\n" + "\n".join(lines) + "\n\n"
-            f"Changes held in memory until 'Export JSON Patch'.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        applied = 0
-        skipped = 0
-        total_ops = 0
-
-        for si in es.items:
-            item_rec = item_by_key.get(si.item_key)
-            if not item_rec:
-                skipped += 1
-                continue
-
-            arrays = ItemBuffPatcher.find_stat_arrays(bytes(self._buff_data), item_rec)
-            all_entries = []
-            for arr in arrays:
-                all_entries.extend(arr.entries)
-
-            if not all_entries:
-                skipped += 1
-                continue
-
-            entries_by_class = {}
-            for e in all_entries:
-                entries_by_class.setdefault(e.size_class, []).append(e)
-
-            ops_by_class = {}
-            for op in si.operations:
-                ops_by_class.setdefault(op.size_class, []).append(op)
-
-            for cls, ops in ops_by_class.items():
-                entries = entries_by_class.get(cls, [])
-                for i, op in enumerate(ops):
-                    if i >= len(entries):
-                        break
-                    entry = entries[i]
-                    if op.operation == "set_value":
-                        ItemBuffPatcher.overwrite_stat_value(self._buff_data, entry, op.value)
-                        total_ops += 1
-                    elif op.operation == "swap_hash":
-                        if ItemBuffPatcher.swap_stat_hash(self._buff_data, entry, op.target_hash):
-                            ItemBuffPatcher.overwrite_stat_value(self._buff_data, entry, op.value)
-                            total_ops += 1
-
-            applied += 1
-
-        self._buff_modified = True
-        if self._buff_current_item:
-            self._buff_refresh_stats()
-
-        msg = f"Applied '{es.name}': {applied}/{len(es.items)} items, {total_ops} operations"
-        if skipped:
-            msg += f" ({skipped} items not found in iteminfo)"
-        self._set_status.setText(msg)
-        self._buff_status_label.setText(msg + ". Click 'Export JSON Patch' to write.")
 
 
     def _set_preview(self) -> None:

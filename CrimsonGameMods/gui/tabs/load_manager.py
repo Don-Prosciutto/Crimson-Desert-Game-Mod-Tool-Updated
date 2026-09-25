@@ -22,10 +22,11 @@ from PySide6.QtWidgets import (
 )
 
 from gui.theme import COLORS
+from overlay_coordinator import safe_rmtree  # refuses to delete game data folders
 
 log = logging.getLogger(__name__)
 
-_VANILLA_RANGE = set(str(g).zfill(4) for g in range(0, 36))
+_VANILLA_RANGE = set(str(g).zfill(4) for g in range(0, 41))  # the game uses 0000-0040 since 2.03
 
 _OUR_GROUPS = {
     "0058": "ItemBuffs (iteminfo)",
@@ -725,7 +726,7 @@ class LoadManagerTab(QWidget):
 
             # 3. Delete directory
             if os.path.isdir(overlay_dir):
-                shutil.rmtree(overlay_dir)
+                safe_rmtree(overlay_dir)
                 if os.path.isdir(overlay_dir):
                     errors.append(f"Directory still exists after delete")
 

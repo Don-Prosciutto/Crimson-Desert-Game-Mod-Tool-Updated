@@ -26,7 +26,8 @@ from typing import Callable, Dict, List, Optional
 log = logging.getLogger(__name__)
 
 TABLE_DIR = "gamedata/binary__/client/bin"
-RESULT_FORMAT = 1
+RESULT_FORMAT = 2
+LEGACY_DROPSET = "dropsetinfo (DropSets page reader)"
 
 # Pages that write game tables, and the tables each one edits.
 # Key: class name of the page widget. Label: what the navigation shows.
@@ -42,7 +43,9 @@ PAGES: Dict[str, dict] = {
         "characterinfo", "factionnode", "gameplaytrigger", "inventory"]},
     "StoreEditorTab": {"label": "Stores", "tables": ["storeinfo"]},
     "BagSpaceTab": {"label": "BagSpace", "tables": ["inventory"]},
-    "DropsetTab": {"label": "DropSets", "tables": ["dropsetinfo"]},
+    # The DropSets page still reads and writes with the old Python reader
+    # (dropset_editor.py), so that reader is checked too.
+    "DropsetTab": {"label": "DropSets", "tables": ["dropsetinfo", LEGACY_DROPSET]},
     "SpawnTab": {"label": "SpawnEdit", "tables": [
         "spawningpoolautospawninfo", "terrainregionautospawninfo", "factionnodespawninfo",
         "factionnode", "characterinfo"]},
@@ -119,6 +122,41 @@ def _check_table(dmm, game_path: str, name: str) -> dict:
     return res
 
 
+def _check_legacy_dropset(dmm, game_path: str) -> dict:
+    """Every drop set through dropset_editor.py and back, byte for byte."""
+    import tempfile
+    try:
+        from dropset_editor import DropsetEditor
+        body = bytes(dmm.extract_file(game_path, "0008", TABLE_DIR, "dropsetinfo.pabgb"))
+        head = bytes(dmm.extract_file(game_path, "0008", TABLE_DIR, "dropsetinfo.pabgh"))
+        with tempfile.TemporaryDirectory() as tmp:
+            gh, gb = os.path.join(tmp, "d.pabgh"), os.path.join(tmp, "d.pabgb")
+            with open(gh, "wb") as f:
+                f.write(head)
+            with open(gb, "wb") as f:
+                f.write(body)
+            ed = DropsetEditor()
+            ed.load(gh, gb)
+    except Exception as e:  # noqa: BLE001
+        return {"status": "READ_FAIL", "detail": f"{type(e).__name__}: {e}"[:300], "records": None}
+    bad = 0
+    first = None
+    for key, _off in ed.records:
+        try:
+            ds = ed.parse_dropset(key)
+            ok = ds is not None and ed._serialize_dropset(ds) == body[ds.body_offset:ds.body_offset + ds.total_size]
+        except Exception:  # noqa: BLE001
+            ok = False
+        if not ok:
+            bad += 1
+            first = first or key
+    if bad:
+        return {"status": "WRITE_DIFF", "records": len(ed.records),
+                "detail": f"{bad} of {len(ed.records)} drop sets are written back differently "
+                          f"(first: key {first})"}
+    return {"status": "OK", "detail": "", "records": len(ed.records)}
+
+
 def _diff(original: bytes, written: bytes) -> str:
     size = (f"size {len(original)} -> {len(written)} ({len(written) - len(original):+d} bytes)"
             if len(original) != len(written) else f"same size ({len(original)} bytes)")
@@ -141,7 +179,8 @@ def run(game_path: str, progress: Optional[Callable[[int, int, str], None]] = No
     for i, name in enumerate(tables):
         if progress:
             progress(i, len(tables), name)
-        results[name] = _check_table(dmm, game_path, name)
+        results[name] = (_check_legacy_dropset(dmm, game_path) if name == LEGACY_DROPSET
+                         else _check_table(dmm, game_path, name))
         if results[name]["status"] != "OK":
             log.warning("Self-test: %s %s %s", name, results[name]["status"], results[name]["detail"])
     if progress:

@@ -119,21 +119,13 @@ from gui.tabs.items import DatabaseBrowserTab
 from gui.tabs.buffs_v319 import ItemBuffsTab
 from gui.tabs.stacker import StackerTab
 from gui.tabs.browser import GameBrowserTab
-try:
-    from gui.tabs.dmm_webview import DmmWebViewTab, HAS_WEBENGINE
-except ImportError:
-    DmmWebViewTab = None
-    HAS_WEBENGINE = False
 from iteminfo_reader import ItemInfoCache
 from gui.tabs.world import (
     DropsetTab, SpawnTab, StoreEditorTab,
 )
-from gui.tabs.patches import GamePatchesTab
 from gui.tabs.field_edit import FieldEditTab
 from gui.tabs.bagspace import BagSpaceTab
 from gui.tabs.skill_tree import SkillTreeTab
-from gui.tabs.pas_editor import PasEditorTab
-from gui.tabs.quest_mods import QuestModsTab
 from gui.dialogs import (
     _FloatingTabWindow, DetachableTabWidget,
     GiveItemDialog, AddItemDialog, QuestEditorWindow,
@@ -712,11 +704,6 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._mods_tabs.setTabPosition(QTabWidget.South)
         self._tabs.addTab(self._mods_tabs, tr("tab.game_mods"))
 
-        # if DmmWebViewTab is not None:
-        #     self._dmm_webview_tab = DmmWebViewTab(config=self._config)
-        #     self._dmm_webview_tab.status_message.connect(self._update_status)
-        #     self._tabs.addTab(self._dmm_webview_tab, "Mod Manager")
-
         self._items_tabs = QTabWidget()
         self._items_tabs.setTabPosition(QTabWidget.South)
         self._tabs.addTab(self._items_tabs, tr("tab.items"))
@@ -728,15 +715,6 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
         self._tabs = self._mods_tabs
 
-        self._patches_tab = GamePatchesTab(
-            config=self._config,
-            paz_manager=self._paz_manager,
-            experimental_mode=self._experimental_mode,
-            show_guide_fn=self._show_guide,
-        )
-        self._patches_tab.status_message.connect(self._update_status)
-        self._patches_tab.game_path_changed.connect(self._set_game_path)
-        self._patches_tab.config_save_requested.connect(self._save_config)
 
         self._field_edit_tab_obj = FieldEditTab(
             config=self._config,
@@ -766,9 +744,6 @@ class MainWindow(SelfTestMixin, QMainWindow):
         )
         self._buffs_tab.status_message.connect(self._update_status)
         self._buffs_tab.config_save_requested.connect(self._save_config)
-        self._buffs_tab.paz_refresh_requested.connect(
-            lambda: self._patches_tab._paz_refresh_status() if hasattr(self, "_patches_tab") else None
-        )
         self._buffs_tab.dirty.connect(lambda: setattr(self, "_dirty", True))
         if hasattr(self, "_undo_stack"):
             self._buffs_tab.undo_entry_added.connect(self._undo_stack.append)
@@ -821,9 +796,6 @@ class MainWindow(SelfTestMixin, QMainWindow):
         )
         self._store_tab.status_message.connect(self._update_status)
         self._store_tab.config_save_requested.connect(self._save_config)
-        self._store_tab.paz_refresh_requested.connect(
-            lambda: self._patches_tab._paz_refresh_status() if hasattr(self, "_patches_tab") else None
-        )
         _saved_gp = self._config.get("game_install_path", "")
         if _saved_gp:
             try:
@@ -873,21 +845,6 @@ class MainWindow(SelfTestMixin, QMainWindow):
                 pass
         self._mods_tabs.addTab(self._skill_tree_tab, "SkillTree")
 
-        # PAS Editor disabled — uses byte-level npc_swap, needs migration to field-level.
-        # self._pas_editor_tab = PasEditorTab(
-        #     config=self._config,
-        #     game_path_getter=lambda: self._config.get("game_install_path", ""),
-        #     rebuild_papgt_fn=self._rebuild_papgt_without,
-        # )
-        # self._pas_editor_tab.status_message.connect(self._update_status)
-        # self._pas_editor_tab.config_save_requested.connect(self._save_config)
-        # self._mods_tabs.addTab(self._pas_editor_tab, "PAS Editor")
-
-        # self._quest_mods_tab = QuestModsTab(config=self._config)
-        # self._quest_mods_tab.status_message.connect(self._update_status)
-        # self._quest_mods_tab.config_save_requested.connect(self._save_config)
-        # self._mods_tabs.addTab(self._quest_mods_tab, "Quest Mods")
-
         try:
             from gui.tabs.mercpets import MercPetsTab
             self._mercpets_tab = MercPetsTab(
@@ -916,8 +873,6 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._game_browser_tab.config_save_requested.connect(self._save_config)
         # if self._config.get('browser'):
         self._mods_tabs.addTab(self._game_browser_tab, tr("Game Browser"))
-
-
 
 
         self._tabs = _real_tabs
@@ -956,7 +911,6 @@ class MainWindow(SelfTestMixin, QMainWindow):
                 ('fieldedit',   '_field_edit_tab_obj'),
                 ('spawnedit',   '_spawn_tab'),
                 ('dropsets',    '_dropset_tab'),
-                ('questmods',   '_quest_mods_tab'),
             ]:
                 _tab = getattr(self, _attr, None)
                 if _tab is not None:
@@ -2147,17 +2101,6 @@ class MainWindow(SelfTestMixin, QMainWindow):
             self._settings_path.setText(path)
 
 
-    @staticmethod
-    def _make_wip_banner() -> QLabel:
-        wip = QLabel("WORK IN PROGRESS")
-        wip.setAlignment(Qt.AlignCenter)
-        wip.setStyleSheet(
-            "color: #ff3333; font-size: 28px; font-weight: bold; "
-            "padding: 12px; border: 3px solid #ff3333; border-radius: 8px; "
-            "background-color: rgba(255, 50, 50, 0.1);"
-        )
-        return wip
-
     def _build_menu(self) -> None:
         menu_bar = self.menuBar()
 
@@ -2875,7 +2818,7 @@ QCheckBox {{
             if hasattr(se, '_dye_add_btn'):
                 se._dye_add_btn.setVisible(self._experimental_mode)
         # Game Mods tab export buttons (dev-gated, unsupported)
-        for tab_attr in ('_field_edit_tab_obj', '_patches_tab', '_store_tab',
+        for tab_attr in ('_field_edit_tab_obj', '_store_tab',
                          '_dropset_tab', '_spawn_tab', '_mercpets_tab'):
             tab = getattr(self, tab_attr, None)
             if tab and hasattr(tab, 'set_experimental_mode'):
@@ -3010,24 +2953,6 @@ QCheckBox {{
             if item.offset in vendor_by_offset:
                 item.source = vendor_by_offset[item.offset]
 
-    def _nav_to_swap(self) -> None:
-        self._tabs.setCurrentIndex(self._tabs.indexOf(self._save_tabs))
-        if hasattr(self, '_swap_tab'):
-            swap_idx = self._save_tabs.indexOf(self._swap_tab)
-            if swap_idx >= 0:
-                self._save_tabs.setCurrentIndex(swap_idx)
-
-    def _open_quest_editor(self) -> None:
-        if not self._save_data:
-            QMessageBox.warning(self, "Quest Editor", "Load a save file first.")
-            return
-
-        dlg = QuestEditorWindow(self._save_data, self._loaded_path, self)
-        dlg.exec()
-        if dlg.dirty:
-            self._dirty = True
-            self._update_status("Quest changes made — save with Ctrl+S")
-
 
     def _set_game_path(self, path: str) -> None:
         self._config["game_install_path"] = path
@@ -3052,8 +2977,6 @@ QCheckBox {{
             self._cmod_refresh()
         if hasattr(self, '_asi_refresh'):
             self._asi_refresh()
-        if hasattr(self, '_patches_tab'):
-            self._patches_tab.set_game_path(path)
         if hasattr(self, '_se_window'):
             self._se_sync_game_path(path)
         if hasattr(self, '_skills_tab_obj'):
@@ -3066,8 +2989,6 @@ QCheckBox {{
             self._bagspace_tab.set_game_path(path)
         if hasattr(self, '_load_manager_tab'):
             self._load_manager_tab.set_game_path(path)
-        if hasattr(self, '_quest_mods_tab'):
-            self._quest_mods_tab.set_game_path(path)
         if hasattr(self, '_game_browser_tab'):
             self._game_browser_tab.set_game_path(path)
         if hasattr(self, '_database_tab'):
@@ -3130,31 +3051,6 @@ QCheckBox {{
         lay.addWidget(buttons)
         dlg.exec()
 
-    def _warn_on_version_mismatch(self, path: str) -> None:
-        """Report when the installed game version does not match the parser.
-
-        A parser that is too old reads tables at the wrong positions and can
-        silently damage them when writing back. This message makes the case
-        visible right away instead of at the first broken mod. At most one
-        warning per game version.
-        """
-        try:
-            import game_version
-        except ImportError:
-            return
-        try:
-            verdict = game_version.check(path)
-        except Exception:  # noqa: BLE001 - a warning must never break startup
-            return
-        if not verdict:
-            return
-        title, text = verdict
-        installed = game_version.read_game_version(path)
-        if self._config.get("version_warning_seen") == installed:
-            return
-        self._config["version_warning_seen"] = installed
-        self._save_config()
-        QMessageBox.warning(self, title, text)
 
     def _validate_game_path(self, path: str) -> bool:
         paz = os.path.join(path, "0008", "0.paz")
@@ -3228,64 +3124,21 @@ QCheckBox {{
         except Exception:
             pass
 
-    def _open_transmog_tab(self) -> None:
-        try:
-            tab = getattr(self, '_buffs_tab', None)
-            if tab is None:
-                return
-            idx = self._mods_tabs.indexOf(tab)
-            if idx >= 0:
-                self._mods_tabs.setCurrentIndex(idx)
-            try:
-                parent_idx = self._tabs.indexOf(self._mods_tabs)
-                if parent_idx >= 0:
-                    self._tabs.setCurrentIndex(parent_idx)
-            except Exception:
-                pass
-        except Exception:
-            pass
 
     def _rebuild_papgt_without(self, game_path: str, group_to_remove: str) -> str:
+        """Remove one overlay entry from meta/0.papgt, keep all others.
+
+        The old version crashed on DMM's group names (int("dmmsa")) right
+        after writing, and its error path then copied an old .sebak/.vanilla
+        backup over the pack list - which dropped DMM's and other tools'
+        entries and could restore a pack list from an older game version."""
         try:
-            import crimson_rs
-            papgt_path = os.path.join(game_path, "meta", "0.papgt")
-            if not os.path.isfile(papgt_path):
-                return "PAPGT not found"
-
-            papgt = crimson_rs.parse_papgt_file(papgt_path)
-            original_count = len(papgt['entries'])
-            papgt['entries'] = [
-                e for e in papgt['entries']
-                if e['group_name'] != group_to_remove
-            ]
-            new_count = len(papgt['entries'])
-
-            if new_count == original_count:
-                return f"PAPGT: {group_to_remove} was not registered"
-
-            crimson_rs.write_papgt_file(papgt, papgt_path)
-            remaining = [e['group_name'] for e in papgt['entries'] if int(e['group_name']) >= 36]
-            extra = f" (other overlays still active: {', '.join(remaining)})" if remaining else ""
-            return f"PAPGT: removed {group_to_remove} entry{extra}"
-        except Exception as e:
-            sebak = os.path.join(game_path, "meta", "0.papgt.sebak")
-            if os.path.isfile(sebak):
-                try:
-                    import shutil
-                    shutil.copy2(sebak, papgt_path)
-                    return f"PAPGT: fell back to .sebak restore ({e})"
-                except Exception as e2:
-                    e = e2
-            vanilla = os.path.join(game_path, "meta", "0.papgt.vanilla")
-            if os.path.isfile(vanilla):
-                try:
-                    import shutil
-                    shutil.copy2(vanilla, papgt_path)
-                    return f"PAPGT: fell back to .vanilla restore ({e})"
-                except Exception as e3:
-                    return f"PAPGT rebuild failed (all tiers): {e} / vanilla={e3}"
-            return f"PAPGT rebuild failed: {e}"
-
+            from overlay_coordinator import remove_papgt_groups
+            return remove_papgt_groups(game_path, [group_to_remove])
+        except Exception as e:  # noqa: BLE001
+            log.exception("PAPGT: removing %s failed", group_to_remove)
+            return (f"PAPGT: could not remove {group_to_remove} ({e}). "
+                    "The pack list was not changed.")
 
     def _set_refresh_local(self) -> None:
         sets = self._set_mgr.scan_local()
@@ -4151,10 +4004,6 @@ QCheckBox {{
             self._mercenary_tab.set_icons_enabled(self._icons_enabled)
 
 
-    def _on_icon_loaded(self, item_key: int, pixmap) -> None:
-        self._icon_ready.emit(item_key)
-
-
     def _create_backup(self, save_path: str) -> str:
         if not os.path.isfile(save_path):
             return ""
@@ -4785,44 +4634,6 @@ QCheckBox {{
         ),
     }
 
-    def _make_help_btn(self, guide_key: str) -> QPushButton:
-        btn = QPushButton("?")
-        btn.setFixedSize(28, 28)
-        btn.setToolTip("Show help for this tab")
-        btn.setStyleSheet(
-            f"QPushButton {{ background-color: {COLORS['accent']}; color: {COLORS['on_accent']}; "
-            f"font-weight: bold; font-size: 14px; border: 2px solid {COLORS['accent']}; "
-            f"border-radius: 14px; padding: 0; }}"
-            f"QPushButton:hover {{ background-color: {COLORS['accent_hover']}; border-color: {COLORS['accent_hover']}; }}"
-        )
-        btn.clicked.connect(lambda: self._show_guide(guide_key))
-        return btn
-
-    def _make_scope_label(self, scope: str) -> QLabel:
-        if scope == "save":
-            text = "This tab modifies your SAVE FILE"
-            color = COLORS['scope_save']
-            bg = "rgba(79,195,247,0.08)"
-        elif scope == "game":
-            text = "This tab modifies GAME FILES (requires admin + restart)"
-            color = COLORS['scope_game']
-            bg = "rgba(255,183,77,0.08)"
-        elif scope == "readonly":
-            text = "This tab is READ-ONLY (browse only)"
-            color = COLORS['text_dim']
-            bg = "rgba(139,148,158,0.06)"
-        else:
-            text = scope
-            color = "#4FC3F7"
-            bg = "rgba(79,195,247,0.08)"
-        lbl = QLabel(text)
-        lbl.setStyleSheet(
-            f"color: {color}; font-size: 11px; padding: 3px 8px; "
-            f"border: 1px solid {color}; border-radius: 3px; "
-            f"background-color: {bg}; font-weight: bold;"
-        )
-        lbl.setFixedHeight(22)
-        return lbl
 
     def _show_guide(self, key: str) -> None:
         title, text = self._GUIDES.get(key, ("Unknown", "No guide available."))

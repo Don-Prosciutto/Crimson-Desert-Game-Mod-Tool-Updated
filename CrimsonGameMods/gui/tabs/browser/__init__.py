@@ -402,16 +402,11 @@ class GameBrowserTab(QWidget):
                         papgt = dmm.parse_papgt_file(
                             f"{game_dir}/meta/0.papgt"
                         )
-                        new_group = f"{
-                            (
-                                max(
-                                    [
-                                        int(entry['group_name'])
-                                        for entry in papgt['entries']
-                                    ]
-                                )
-                                + 1
-                            ):04}"
+                        # Next free overlay number. The old code took
+                        # max(int(name)) over all entries and crashed on
+                        # DMM's named groups (dmmsa, dmmv3_...).
+                        from overlay_coordinator import free_overlay_number
+                        new_group = f"{free_overlay_number(game_dir):04d}"
 
                         # print(new_group)
 

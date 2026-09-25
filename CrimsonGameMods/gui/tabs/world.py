@@ -27,6 +27,7 @@ from gui.dialogs import ItemSearchDialog
 from icon_cache import ICON_SIZE
 from gui.utils import make_scope_label, make_help_btn
 from i18n import tr
+from overlay_coordinator import safe_rmtree, _safe_overlay_default  # guard game data folders
 
 log = logging.getLogger(__name__)
 
@@ -37,458 +38,6 @@ def _is_admin() -> bool:
         return ctypes.windll.shell32.IsUserAnAdmin() != 0
     except Exception:
         return False
-
-
-class GameDataTab(QWidget):
-
-    status_message = Signal(str)
-
-    def __init__(self, game_path_fn=None, show_guide_fn=None, parent=None):
-        super().__init__(parent)
-        self._game_path: str = ""
-        self._game_path_fn = game_path_fn
-        self._show_guide_fn = show_guide_fn
-        self._build_ui()
-
-    def set_game_path(self, path: str) -> None:
-        self._game_path = path
-
-    def set_experimental_mode(self, enabled: bool) -> None:
-        if hasattr(self, '_dev_export_btn_gd'):
-            self._dev_export_btn_gd.setVisible(bool(enabled))
-
-    def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
-        layout.addWidget(make_scope_label("game"))
-
-        top_row = QHBoxLayout()
-        top_row.addWidget(QLabel(tr("File:")))
-        self._gd_file_combo = QComboBox()
-        self._gd_file_combo.setMinimumWidth(250)
-        from gamedata_editor import GameDataEditor
-        for name, desc in GameDataEditor.KNOWN_FILES.items():
-            self._gd_file_combo.addItem(f"{name} — {desc}", name)
-        top_row.addWidget(self._gd_file_combo, 1)
-
-        gd_load_btn = QPushButton(tr("Load"))
-        gd_load_btn.setObjectName("accentBtn")
-        gd_load_btn.clicked.connect(self._gd_load)
-        top_row.addWidget(gd_load_btn)
-
-        self._gd_status = QLabel("")
-        self._gd_status.setStyleSheet(f"color: {COLORS['accent']}; padding: 4px;")
-        top_row.addWidget(self._gd_status, 1)
-
-        top_row.addWidget(make_help_btn("gamedata", self._show_guide_fn))
-        layout.addLayout(top_row)
-
-        splitter = QSplitter(Qt.Horizontal)
-
-        left = QFrame()
-        left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-
-        search_row = QHBoxLayout()
-        search_row.addWidget(QLabel(tr("Search:")))
-        self._gd_search = QLineEdit()
-        self._gd_search.setPlaceholderText(tr("Filter by name or key..."))
-        self._gd_search.textChanged.connect(self._gd_filter)
-        search_row.addWidget(self._gd_search, 1)
-        left_layout.addLayout(search_row)
-
-        self._gd_record_table = QTableWidget()
-        self._gd_record_table.setColumnCount(4)
-        self._gd_record_table.setHorizontalHeaderLabels(["#", "Key", "Name", "Size"])
-        self._gd_record_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._gd_record_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._gd_record_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        gh = self._gd_record_table.horizontalHeader()
-        gh.setSectionResizeMode(0, QHeaderView.Interactive)
-        self._gd_record_table.setColumnWidth(0, 40)
-        gh.setSectionResizeMode(1, QHeaderView.Interactive)
-        self._gd_record_table.setColumnWidth(1, 80)
-        gh.setSectionResizeMode(2, QHeaderView.Interactive)
-        self._gd_record_table.setColumnWidth(2, 200)
-        gh.setSectionResizeMode(3, QHeaderView.Interactive)
-        self._gd_record_table.setColumnWidth(3, 60)
-        self._gd_record_table.verticalHeader().setDefaultSectionSize(22)
-        self._gd_record_table.selectionModel().selectionChanged.connect(self._gd_record_selected)
-        left_layout.addWidget(self._gd_record_table)
-
-        self._gd_record_count = QLabel("")
-        self._gd_record_count.setStyleSheet(f"color: {COLORS['text_dim']};")
-        left_layout.addWidget(self._gd_record_count)
-        splitter.addWidget(left)
-
-        right = QFrame()
-        right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        self._gd_record_label = QLabel(tr("Select a record to view"))
-        self._gd_record_label.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold; padding: 4px;")
-        right_layout.addWidget(self._gd_record_label)
-
-        self._gd_hex_view = QTextEdit()
-        self._gd_hex_view.setReadOnly(True)
-        self._gd_hex_view.setFont(QFont("Consolas", 11))
-        self._gd_hex_view.setStyleSheet(
-            f"background-color: {COLORS['input_bg']}; color: {COLORS['text']}; "
-            f"border: 1px solid {COLORS['border']};"
-        )
-        right_layout.addWidget(self._gd_hex_view, 1)
-
-        edit_row = QHBoxLayout()
-        edit_row.addWidget(QLabel(tr("Offset:")))
-        self._gd_edit_offset = QLineEdit()
-        self._gd_edit_offset.setPlaceholderText(tr("0x00"))
-        self._gd_edit_offset.setFixedWidth(80)
-        edit_row.addWidget(self._gd_edit_offset)
-
-        edit_row.addWidget(QLabel(tr("Bytes (hex):")))
-        self._gd_edit_bytes = QLineEdit()
-        self._gd_edit_bytes.setPlaceholderText(tr("FF FF FF FF"))
-        self._gd_edit_bytes.setMinimumWidth(150)
-        edit_row.addWidget(self._gd_edit_bytes, 1)
-
-        gd_patch_btn = QPushButton(tr("Patch Bytes"))
-        gd_patch_btn.clicked.connect(self._gd_patch_bytes)
-        edit_row.addWidget(gd_patch_btn)
-        right_layout.addLayout(edit_row)
-
-        apply_row = QHBoxLayout()
-        gd_apply_btn = QPushButton(tr("Apply to Game"))
-        gd_apply_btn.setObjectName("accentBtn")
-        gd_apply_btn.setToolTip(tr("Write changes to original game PAZ file (in-place)"))
-        gd_apply_btn.clicked.connect(self._gd_apply)
-        apply_row.addWidget(gd_apply_btn)
-
-        gd_restore_btn = QPushButton(tr("Restore"))
-        gd_restore_btn.setToolTip(tr("Restore from .sebak backup"))
-        gd_restore_btn.clicked.connect(self._gd_restore)
-        apply_row.addWidget(gd_restore_btn)
-
-        gd_export_btn = QPushButton(tr("Export Record"))
-        gd_export_btn.setToolTip(tr("ADVANCED — Export selected record as hex/binary"))
-        gd_export_btn.clicked.connect(self._gd_export_record)
-        gd_export_btn.setVisible(False)
-        apply_row.addWidget(gd_export_btn)
-        self._dev_export_btn_gd = gd_export_btn
-
-        apply_row.addStretch()
-        right_layout.addLayout(apply_row)
-
-        batch_row = QHBoxLayout()
-        batch_row.addWidget(QLabel(tr("Quick:")))
-
-        gd_boost_drops = QPushButton(tr("5x Drop Rates"))
-        gd_boost_drops.setToolTip(tr("Multiply ALL drop rates in this file by 5x (dropsetinfo only)"))
-        gd_boost_drops.clicked.connect(lambda: self._gd_batch_multiply_rates(5))
-        batch_row.addWidget(gd_boost_drops)
-
-        gd_max_drops = QPushButton(tr("Max Drop Rates"))
-        gd_max_drops.setToolTip(tr("Set all drop rates to 100% (dropsetinfo only)"))
-        gd_max_drops.clicked.connect(lambda: self._gd_batch_multiply_rates(0))
-        batch_row.addWidget(gd_max_drops)
-
-        gd_zero_cooldowns = QPushButton(tr("Zero Cooldowns"))
-        gd_zero_cooldowns.setToolTip(tr("Set all cooldown timers to 0 (skill only)"))
-        gd_zero_cooldowns.clicked.connect(self._gd_batch_zero_cooldowns)
-        batch_row.addWidget(gd_zero_cooldowns)
-
-        batch_row.addStretch()
-        right_layout.addLayout(batch_row)
-
-        splitter.addWidget(right)
-        splitter.setSizes([350, 500])
-        layout.addWidget(splitter, 1)
-
-        self._gd_editor = None
-        self._gd_current_file = None
-
-
-    def _gd_load(self) -> None:
-        game_path = self._game_path.strip() if hasattr(self, '_paz_game_path') else ""
-        if not game_path:
-            QMessageBox.warning(self, tr("No Game Path"), tr("Set the game install path using the Browse button at the top."))
-            return
-
-        file_name = self._gd_file_combo.currentData()
-        if not file_name:
-            return
-
-        self._gd_status.setText(f"Loading {file_name}...")
-        QApplication.processEvents()
-
-        try:
-            from gamedata_editor import GameDataEditor
-            if not self._gd_editor:
-                self._gd_editor = GameDataEditor(game_path)
-                self._gd_editor.load_item_names()
-
-            pf = self._gd_editor.extract_file(file_name)
-            if pf:
-                self._gd_current_file = file_name
-                self._gd_status.setText(
-                    f"{file_name}: {len(pf.records)} records, {len(pf.body_bytes):,} bytes"
-                )
-                self._gd_populate_records()
-            else:
-                self._gd_status.setText(f"Failed to load {file_name}")
-        except Exception as e:
-            self._gd_status.setText(f"Error: {e}")
-            log.exception("Unhandled exception")
-
-    def _gd_populate_records(self, filter_text: str = "") -> None:
-        if not self._gd_editor or not self._gd_current_file:
-            return
-        records = self._gd_editor.search_records(self._gd_current_file, filter_text)
-
-        table = self._gd_record_table
-        table.setSortingEnabled(False)
-        table.setRowCount(len(records))
-        for row, rec in enumerate(records):
-            idx_w = QTableWidgetItem()
-            idx_w.setData(Qt.DisplayRole, rec.index)
-            idx_w.setData(Qt.UserRole, rec.index)
-            table.setItem(row, 0, idx_w)
-
-            key_w = QTableWidgetItem()
-            key_w.setData(Qt.DisplayRole, rec.key)
-            table.setItem(row, 1, key_w)
-
-            display_name = self._gd_editor.resolve_record_display_name(self._gd_current_file, rec)
-            name_w = QTableWidgetItem(display_name)
-            if not rec.name:
-                name_w.setForeground(QBrush(QColor(COLORS['text_dim'])))
-            name_w.setToolTip(rec.name)
-            table.setItem(row, 2, name_w)
-
-            size_w = QTableWidgetItem()
-            size_w.setData(Qt.DisplayRole, rec.size)
-            table.setItem(row, 3, size_w)
-
-        table.setSortingEnabled(True)
-        self._gd_record_count.setText(f"{len(records)} records")
-
-    def _gd_filter(self, text: str) -> None:
-        self._gd_populate_records(text)
-
-    def _gd_record_selected(self, *_args) -> None:
-        if not self._gd_editor or not self._gd_current_file:
-            return
-        rows = self._gd_record_table.selectionModel().selectedRows()
-        if not rows:
-            return
-        rec_idx = self._gd_record_table.item(rows[0].row(), 0).data(Qt.UserRole)
-        pf = self._gd_editor.get_file(self._gd_current_file)
-        if not pf or rec_idx >= len(pf.records):
-            return
-        rec = pf.records[rec_idx]
-        self._gd_record_label.setText(
-            f"{rec.name or '(unnamed)'}  |  Key: {rec.key}  |  "
-            f"Offset: 0x{rec.offset:X}  |  Size: {rec.size} bytes"
-        )
-
-        display_parts = []
-
-        try:
-            from pabgb_field_parsers import get_parser
-            parser_fn = get_parser(self._gd_current_file)
-            if parser_fn:
-                item_keys = set(self._gd_editor._name_lookup.keys()) if self._gd_editor._name_lookup else set()
-                if 'known_item_keys' in parser_fn.__code__.co_varnames:
-                    parsed_fields = parser_fn(pf.body_bytes, rec.offset, rec.size, item_keys)
-                else:
-                    parsed_fields = parser_fn(pf.body_bytes, rec.offset, rec.size)
-
-                if parsed_fields:
-                    display_parts.append(f"=== PARSED FIELDS ({len(parsed_fields)}) ===")
-                    display_parts.append(f"{'Offset':<10s} {'Type':<10s} {'Category':<12s} {'Name':<20s} {'Value':<20s} Display")
-                    display_parts.append("-" * 90)
-                    by_cat = {}
-                    for pf_field in parsed_fields:
-                        by_cat.setdefault(pf_field.category, []).append(pf_field)
-                    for cat, cat_fields in by_cat.items():
-                        display_parts.append(f"\n  [{cat}]")
-                        for pf_field in cat_fields[:20]:
-                            val_str = str(pf_field.value)
-                            if len(val_str) > 18:
-                                val_str = val_str[:15] + "..."
-                            name = self._gd_editor.get_item_name(pf_field.value) if pf_field.field_type == 'item_key' else ''
-                            disp = name if name else pf_field.display
-                            display_parts.append(
-                                f"  0x{pf_field.offset:06X}  {pf_field.field_type:<10s} {pf_field.category:<12s} "
-                                f"{pf_field.name:<20s} {val_str:<20s} {disp}"
-                            )
-                        if len(cat_fields) > 20:
-                            display_parts.append(f"  ... +{len(cat_fields)-20} more")
-                    display_parts.append("")
-        except Exception as e:
-            display_parts.append(f"Parser error: {e}")
-
-        hex_dump = self._gd_editor.get_record_hex(self._gd_current_file, rec_idx, max_bytes=2048)
-        display_parts.append("=== HEX DUMP ===")
-        display_parts.append(hex_dump)
-
-        self._gd_hex_view.setPlainText('\n'.join(display_parts))
-        self._gd_edit_offset.setText(f"0x{rec.offset:X}")
-
-    def _gd_patch_bytes(self) -> None:
-        if not self._gd_editor or not self._gd_current_file:
-            return
-        try:
-            off_text = self._gd_edit_offset.text().strip()
-            offset = int(off_text, 16) if off_text.startswith('0x') else int(off_text)
-            hex_text = self._gd_edit_bytes.text().strip().replace(' ', '')
-            new_bytes = bytes.fromhex(hex_text)
-        except (ValueError, TypeError) as e:
-            QMessageBox.warning(self, tr("Invalid Input"), f"Bad offset or hex: {e}")
-            return
-
-        ok = self._gd_editor.patch_bytes(self._gd_current_file, offset, new_bytes)
-        if ok:
-            self._gd_status.setText(f"Patched {len(new_bytes)} bytes at 0x{offset:X}")
-            self._gd_record_selected()
-        else:
-            QMessageBox.warning(self, tr("Patch Failed"), tr("Offset out of range."))
-
-    def _gd_apply(self) -> None:
-        if not self._gd_editor or not self._gd_current_file:
-            QMessageBox.warning(self, tr("Game Data"), tr("Load a file first."))
-            return
-        if not _is_admin():
-            QMessageBox.warning(self, tr("Admin Required"),
-                tr("Run as administrator to write game files."))
-            return
-
-        reply = QMessageBox.question(
-            self, tr("Apply Game Data Changes"),
-            f"Write modified {self._gd_current_file}.pabgb to the game?\n\n"
-            f"This patches the original PAZ file in-place.\n"
-            f"A backup (.sebak) is created automatically.\n\n"
-            f"RESTART THE GAME for changes to take effect.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        ok, msg = self._gd_editor.apply_to_game(self._gd_current_file)
-        if ok:
-            self._gd_status.setText(f"Applied: {self._gd_current_file}")
-            QMessageBox.information(self, tr("Applied"),
-                f"{msg}\n\nRESTART THE GAME for changes to take effect.")
-        else:
-            self._gd_status.setText(f"Failed: {msg}")
-            QMessageBox.critical(self, tr("Failed"), msg)
-
-    def _gd_restore(self) -> None:
-        if not self._gd_editor or not self._gd_current_file:
-            return
-        reply = QMessageBox.question(
-            self, tr("Restore Game Data"),
-            f"Restore {self._gd_current_file} from backup?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-        ok, msg = self._gd_editor.restore_file(self._gd_current_file)
-        self._gd_status.setText(msg)
-        QMessageBox.information(self, tr("Restore"), msg)
-
-    def _gd_export_record(self) -> None:
-        if not self._gd_editor or not self._gd_current_file:
-            return
-        rows = self._gd_record_table.selectionModel().selectedRows()
-        if not rows:
-            return
-        rec_idx = self._gd_record_table.item(rows[0].row(), 0).data(Qt.UserRole)
-        pf = self._gd_editor.get_file(self._gd_current_file)
-        if not pf or rec_idx >= len(pf.records):
-            return
-        rec = pf.records[rec_idx]
-        raw = bytes(pf.body_bytes[rec.offset:rec.offset + rec.size])
-        safe_name = (rec.name or str(rec.key)).replace(' ', '_').replace('/', '_')
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Export Record",
-            f"{self._gd_current_file}_{safe_name}.bin",
-            "Binary Files (*.bin);;All Files (*)")
-        if path:
-            with open(path, 'wb') as f:
-                f.write(raw)
-            self._gd_status.setText(f"Exported {len(raw)} bytes to {os.path.basename(path)}")
-
-    def _gd_batch_multiply_rates(self, multiplier: int) -> None:
-        if not self._gd_editor or self._gd_current_file != 'dropsetinfo':
-            QMessageBox.information(self, tr("Drop Rates"), tr("Load dropsetinfo first."))
-            return
-
-        pf = self._gd_editor.get_file('dropsetinfo')
-        if not pf:
-            return
-
-        label = "100% (max)" if multiplier == 0 else f"{multiplier}x"
-        reply = QMessageBox.question(
-            self, tr("Batch Drop Rate Edit"),
-            f"Set ALL drop rates to {label} across all drop sets?\n\n"
-            f"Modifies rate fields via dmm_parser (update-proof).\n",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        import dmm_parser as _dmp_dr
-        drops = _dmp_dr.parse_table('drop_set_info', bytes(pf.body_bytes),
-                                     pf.header_bytes)
-        changed = 0
-        for d in drops:
-            for item in d.get('list', []):
-                old_val = item.get('raw_16', 0)
-                if 100 <= old_val <= 100000 and old_val % 100 == 0:
-                    if multiplier == 0:
-                        new_val = 10000
-                    else:
-                        new_val = min(old_val * multiplier, 10000)
-                    if new_val != old_val:
-                        item['raw_16'] = new_val
-                        changed += 1
-
-        pf.body_bytes = bytearray(_dmp_dr.serialize_table('drop_set_info', drops))
-        self._gd_status.setText(f"Modified {changed} rate values to {label}")
-        self._gd_record_selected()
-
-    def _gd_batch_zero_cooldowns(self) -> None:
-        if not self._gd_editor or self._gd_current_file != 'skill':
-            QMessageBox.information(self, tr("Cooldowns"), tr("Load skill data first."))
-            return
-
-        pf = self._gd_editor.get_file('skill')
-        if not pf:
-            return
-
-        reply = QMessageBox.question(
-            self, tr("Zero Cooldowns"),
-            f"Set all cooldown timers to 100ms?\n\n"
-            f"Modifies cooltime field via dmm_parser (update-proof).\n",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        import dmm_parser as _dmp_sk
-        skills = _dmp_sk.parse_table('skill_info', bytes(pf.body_bytes),
-                                      pf.header_bytes)
-        changed = 0
-        for sk in skills:
-            ct = sk.get('cooltime', 0)
-            if ct > 100:
-                sk['cooltime'] = 100
-                changed += 1
-
-        pf.body_bytes = bytearray(_dmp_sk.serialize_table('skill_info', skills))
-        self._gd_status.setText(f"Zeroed {changed} cooldown values")
-        self._gd_record_selected()
 
 
 class StoreEditorTab(QWidget):
@@ -928,7 +477,7 @@ class StoreEditorTab(QWidget):
             return
 
         stock_list = store.get('stock_data_list', [])
-        row = cell.row()
+        row = self._store_stock_index(cell.row())
         if row >= len(stock_list):
             return
         stock = stock_list[row]
@@ -969,8 +518,17 @@ class StoreEditorTab(QWidget):
             f"Set {col_name}={new_val} on {self._store_get_item_name(item_key)}"
         )
 
+    def _store_stock_index(self, view_row: int) -> int:
+        """Position in stock_data_list for a table row. The table can be
+        sorted, so the row on screen is not the position in the list; the
+        position is stored on the key cell when the table is filled."""
+        cell = self._store_items_table.item(view_row, 1)
+        idx = cell.data(Qt.UserRole) if cell is not None else None
+        return int(idx) if idx is not None else view_row
+
     def _store_get_selected_items(self):
-        rows = set(idx.row() for idx in self._store_items_table.selectedIndexes())
+        rows = set(self._store_stock_index(idx.row())
+                   for idx in self._store_items_table.selectedIndexes())
         return sorted(rows)
 
     def _store_swap_item(self) -> None:
@@ -1040,53 +598,6 @@ class StoreEditorTab(QWidget):
         else:
             QMessageBox.warning(self, tr("Swap Failed"), tr("Could not swap any items."))
 
-    def _store_add_item(self) -> None:
-        if not hasattr(self, '_store_dmm') or not self._store_dmm:
-            QMessageBox.warning(self, tr("Stores"), tr("Load store data first."))
-            return
-
-        store = self._store_get_selected_store()
-        if not store:
-            QMessageBox.warning(self, tr("Add"), tr("Select a store."))
-            return
-
-        stock_list = store.get('stock_data_list', [])
-        sel_rows = self._store_get_selected_items()
-        if not sel_rows or sel_rows[0] >= len(stock_list):
-            QMessageBox.information(self, tr("No Selection"),
-                tr("Select an existing item to use as template (donor)."))
-            return
-
-        import copy as _copy
-        donor = stock_list[sel_rows[0]]
-        donor_key = self._store_get_stock_item_key(donor)
-
-        dlg = ItemSearchDialog(
-            self._name_db,
-            title="Add Item to Store",
-            prompt=f"Select the item to add (cloned from {self._store_get_item_name(donor_key)}):",
-            parent=self,
-        ) if hasattr(self, '_name_db') else None
-
-        if dlg is None:
-            return
-        if dlg.exec() != QDialog.Accepted or dlg.selected_key == 0:
-            return
-
-        new_key = dlg.selected_key
-        new_name = self._store_get_item_name(new_key)
-
-        new_stock = _copy.deepcopy(donor)
-        v = new_stock.get('value')
-        if isinstance(v, dict):
-            v['raw_q'] = new_key
-            p = v.get('payload')
-            if isinstance(p, dict):
-                p['body'] = new_key
-        stock_list.append(new_stock)
-        self._store_update_change_count()
-        self._store_status.setText(f"Added {new_name} to store")
-        self._store_selected()
 
     def _store_set_limit(self) -> None:
         if not hasattr(self, '_store_dmm') or not self._store_dmm:
@@ -1360,7 +871,7 @@ class StoreEditorTab(QWidget):
 
                 game_mod = os.path.join(game_path, store_dir)
                 if os.path.isdir(game_mod):
-                    shutil.rmtree(game_mod)
+                    safe_rmtree(game_mod)
                 os.makedirs(game_mod, exist_ok=True)
                 for fn in os.listdir(group_dir):
                     shutil.copy2(os.path.join(group_dir, fn),
@@ -1382,7 +893,7 @@ class StoreEditorTab(QWidget):
             try:
                 import crimson_rs as _crs
                 papgt_check = _crs.parse_papgt_file(papgt_path)
-                overlay_entries = [e['group_name'] for e in papgt_check['entries'] if int(e['group_name']) >= 36]
+                overlay_entries = [e['group_name'] for e in papgt_check['entries'] if not (str(e['group_name']).isdigit() and int(e['group_name']) <= 40)]
                 papgt_verify = f"\nPAPGT overlays: {', '.join(overlay_entries)}" if overlay_entries else ""
                 if papgt_check['entries'][0]['group_name'] != store_dir:
                     papgt_verify += f"\n⚠ WARNING: {store_dir} is not at the front of PAPGT!"
@@ -1461,7 +972,7 @@ class StoreEditorTab(QWidget):
         messages.append(msg)
 
         try:
-            shutil.rmtree(game_mod)
+            safe_rmtree(game_mod)
             messages.append(f"Removed {store_dir}/ override directory")
             try:
                 from overlay_coordinator import post_restore
@@ -1589,7 +1100,7 @@ class SpawnTab(QWidget):
         header.addWidget(QLabel("Mod#:"))
         self._spawn_overlay_spin = QSpinBox()
         self._spawn_overlay_spin.setRange(1, 9999)
-        self._spawn_overlay_spin.setValue(self._config.get("spawn_overlay_dir", 37))
+        self._spawn_overlay_spin.setValue(_safe_overlay_default(self._config.get("spawn_overlay_dir", 70), 70))
         self._spawn_overlay_spin.setFixedWidth(70)
         self._spawn_overlay_spin.setToolTip(
             "Overlay folder number for spawn mods.\n"
@@ -2948,7 +2459,14 @@ class SpawnTab(QWidget):
             QMessageBox.critical(self, tr("Game Path"), tr("Game install path not set."))
             return
 
-        mod_group = f"{self._spawn_overlay_spin.value():04d}"
+        from gui.utils import resolve_overlay_group
+        _req = self._spawn_overlay_spin.value()
+        _num = resolve_overlay_group(game_path, _req, "SpawnEdit", parent=self)
+        if _num is None:
+            return
+        if _num != _req:
+            self._spawn_overlay_spin.setValue(_num)
+        mod_group = f"{_num:04d}"
         reply = QMessageBox.question(
             self, tr("Apply Spawn Changes"),
             f"Deploy modified spawn data to the game?\n\n"
@@ -3060,8 +2578,11 @@ class SpawnTab(QWidget):
             if os.path.isdir(game_mod):
                 try:
                     import shutil
-                    msg = self._rebuild_papgt_fn(game_path, mod_group)
-                    shutil.rmtree(game_mod)
+                    # _rebuild_papgt_fn was never passed to SpawnTab, so this
+                    # always failed before and the overlay stayed.
+                    from overlay_coordinator import remove_papgt_groups
+                    safe_rmtree(game_mod)
+                    msg = remove_papgt_groups(game_path, [mod_group])
                     self._spawn_status.setText(tr("Restored vanilla spawns"))
                     QMessageBox.information(self, tr("Restore Vanilla"),
                         f"Spawn data reset to vanilla and {mod_group}/ overlay removed.\n"
@@ -3186,7 +2707,7 @@ class DropsetTab(QWidget):
         self._dropset_overlay_spin = QSpinBox()
         self._dropset_overlay_spin.setRange(1, 9999)
         self._dropset_overlay_spin.setValue(
-            self._config.get("dropset_overlay_dir", 42))
+            _safe_overlay_default(self._config.get("dropset_overlay_dir", 71), 71))
         self._dropset_overlay_spin.setFixedWidth(70)
         self._dropset_overlay_spin.setToolTip(
             "Overlay group number (0042 = default). Change if another mod\n"
@@ -3872,11 +3393,19 @@ class DropsetTab(QWidget):
                 return
 
             self._dropset_editor.apply_modifications(modified)
-            # Cache modified objects in _parsed_sets so Export Field JSON can find them
+            # Read the changed sets again from the updated bytes. The old
+            # objects still carry their old byte positions; Loot Bonanza adds
+            # drops, so everything after them moved. Caching the old objects
+            # (as this did before) made the next write-out put them back at
+            # the old positions and damaged dropsetinfo.
+            fresh = []
             for ds in modified:
-                self._dropset_editor._parsed_sets[ds.key] = ds
-            for ds in modified:
+                re_ds = self._dropset_editor.parse_dropset(ds.key)
+                if re_ds is not None:
+                    fresh.append(re_ds)
+            for ds in fresh:
                 self._dropset_mark_modified(key=ds.key)
+            modified = fresh
             self._dropset_filter()
 
             if self._dropset_current_key is not None:
@@ -4058,73 +3587,6 @@ class DropsetTab(QWidget):
             f"Set all drops in '{name}' to {pct}% rate, x{qty} quantity.\n\n"
             "")
 
-    def _dropset_export_json(self):
-        if not self._dropset_editor or not self._dropset_modified:
-            QMessageBox.information(self, tr("No Changes"), tr("No modifications to export."))
-            return
-
-        self._dropset_flush_dirty()
-
-        from PySide6.QtWidgets import QFileDialog
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Export DropSet JSON Patch", "", "JSON Files (*.json)")
-        if not path:
-            return
-
-        try:
-            import json
-            patch = {
-                "type": "dropset_patch",
-                "version": "1.0",
-                "description": "DropSet modifications from CrimsonSaveEditor",
-                "original_size": len(self._dropset_original_body),
-                "modified_size": len(self._dropset_editor.body_bytes),
-                "changes": [],
-            }
-
-            from dropset_editor import DropsetEditor
-            orig = DropsetEditor()
-            orig.header_bytes = self._dropset_original_header
-            orig.body_bytes = bytearray(self._dropset_original_body)
-            _hdr = orig.header_bytes
-            _c = int.from_bytes(_hdr[0:2], 'little')
-            orig.record_count = _c
-            orig.records = []
-            for i in range(_c):
-                _p = 2 + i * 8
-                orig.records.append((int.from_bytes(_hdr[_p:_p+4], 'little'),
-                                     int.from_bytes(_hdr[_p+4:_p+8], 'little')))
-
-            for key, _ in self._dropset_editor.records:
-                ds_new = self._dropset_editor.parse_dropset(key)
-                ds_old = orig.parse_dropset(key)
-                if not ds_new or not ds_old:
-                    continue
-                new_ser = self._dropset_editor._serialize_dropset(ds_new)
-                old_ser = orig._serialize_dropset(ds_old)
-                if new_ser != old_ser:
-                    drops_data = []
-                    for d in ds_new.drops:
-                        drops_data.append({
-                            "item_key": d.item_key,
-                            "rate": d.rates,
-                            "rate_pct": round(d.rates / 10000, 2),
-                            "qty_min": d.max_amt,
-                            "qty_max": d.min_amt,
-                        })
-                    patch["changes"].append({
-                        "key": key,
-                        "name": ds_new.name,
-                        "drops": drops_data,
-                    })
-
-            with open(path, "w") as f:
-                json.dump(patch, f, indent=2)
-
-            self._dropset_status.setText(f"Exported {len(patch['changes'])} changes to {os.path.basename(path)}")
-        except Exception as e:
-            log.exception("Unhandled exception")
-            QMessageBox.critical(self, tr("Export Failed"), str(e))
 
     def _dropset_export_mod(self):
         if not self._dropset_editor or not self._dropset_modified:
@@ -4210,7 +3672,14 @@ class DropsetTab(QWidget):
         body_data = bytes(self._dropset_editor.body_bytes)
         header_data = self._dropset_editor.header_bytes
 
-        group_name = f"{self._dropset_overlay_spin.value():04d}"
+        from gui.utils import resolve_overlay_group
+        _req = self._dropset_overlay_spin.value()
+        _num = resolve_overlay_group(game_path, _req, "DropSets", parent=self)
+        if _num is None:
+            return
+        if _num != _req:
+            self._dropset_overlay_spin.setValue(_num)
+        group_name = f"{_num:04d}"
 
         reply = QMessageBox.question(
             self, tr("Apply DropSet Changes"),
@@ -4363,7 +3832,7 @@ class DropsetTab(QWidget):
 
         reply = QMessageBox.question(
             self, tr("Restore Original"),
-            tr(f"Remove {group_name}/ overlay and restore PAPGT backup?"),
+            tr(f"Remove the {group_name}/ overlay and its pack list entry?"),
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply != QMessageBox.Yes:
             return
@@ -4372,15 +3841,13 @@ class DropsetTab(QWidget):
             import shutil
             messages = []
 
-            if backup.exists():
-                shutil.copyfile(backup, gp / "meta" / "0.papgt")
-                backup.unlink()
-                messages.append("Restored PAPGT from backup")
-            else:
-                msg = self._rebuild_papgt_fn(game_path, group_name)
-                messages.append(msg)
+            # Only take our entry out of the pack list. Copying the backup
+            # from the first Apply back (as before) also dropped every mod
+            # registered since, DMM's included.
+            from overlay_coordinator import remove_papgt_groups
+            messages.append(remove_papgt_groups(game_path, [group_name]))
 
-            shutil.rmtree(overlay)
+            safe_rmtree(overlay)
             messages.append(f"Removed {group_name}/")
             try:
                 from overlay_coordinator import post_restore
@@ -4799,10 +4266,6 @@ class DropsetTab(QWidget):
             f"File: {path}")
 
     @staticmethod
-    def _drop_differs(a, b) -> bool:
-        return (a.item_key != b.item_key or a.rates != b.rates or
-                a.rates_100 != b.rates_100 or
-                a.min_amt != b.min_amt or a.max_amt != b.max_amt)
 
     def _dropset_import_field_json(self) -> None:
         if not hasattr(self, '_dropset_editor') or not self._dropset_editor:
@@ -4873,514 +4336,3 @@ class DropsetTab(QWidget):
             f"Click")
 
 
-class PabgbBrowserTab(QWidget):
-
-    status_message = Signal(str)
-
-    def __init__(self, game_path_fn=None, parent=None):
-        super().__init__(parent)
-        self._game_path_fn = game_path_fn
-        self._build_ui()
-
-    def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
-
-        info = QLabel(
-            "Browse any PABGB file inside the game's PAZ archives. "
-            "Lists all records with name, key, and data size. Click a record to view its raw hex data."
-        )
-        info.setWordWrap(True)
-        info.setStyleSheet(
-            f"color: {COLORS['text_dim']}; padding: 6px; "
-            f"border: 1px solid {COLORS['border']}; border-radius: 4px;"
-        )
-        layout.addWidget(info)
-
-        file_row = QHBoxLayout()
-        file_row.addWidget(QLabel(tr("PABGB File:")))
-        self._pabgb_file_combo = QComboBox()
-        self._pabgb_file_combo.setMinimumWidth(200)
-        file_row.addWidget(self._pabgb_file_combo, 1)
-
-        scan_btn = QPushButton(tr("Scan PAZ"))
-        scan_btn.setToolTip(tr("Scan PAMT index to list all PABGB files in the game"))
-        scan_btn.clicked.connect(self._pabgb_scan_files)
-        file_row.addWidget(scan_btn)
-
-        load_btn = QPushButton(tr("Load File"))
-        load_btn.setObjectName("accentBtn")
-        load_btn.clicked.connect(self._pabgb_load_file)
-        file_row.addWidget(load_btn)
-        layout.addLayout(file_row)
-
-        search_row = QHBoxLayout()
-        search_row.addWidget(QLabel(tr("Search Records:")))
-        self._pabgb_search = QLineEdit()
-        self._pabgb_search.setPlaceholderText(tr("Filter by name or key..."))
-        self._pabgb_search.textChanged.connect(self._pabgb_filter_records)
-        search_row.addWidget(self._pabgb_search, 1)
-
-        self._pabgb_record_count = QLabel("")
-        search_row.addWidget(self._pabgb_record_count)
-        layout.addLayout(search_row)
-
-        splitter = QSplitter(Qt.Horizontal)
-
-        self._pabgb_record_table = QTableWidget()
-        self._pabgb_record_table.setColumnCount(4)
-        self._pabgb_record_table.setHorizontalHeaderLabels(["Key", "Name", "Data Size", "Offset"])
-        self._pabgb_record_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._pabgb_record_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._pabgb_record_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        hdr = self._pabgb_record_table.horizontalHeader()
-        hdr.setSectionResizeMode(0, QHeaderView.Fixed)
-        hdr.setSectionResizeMode(1, QHeaderView.Interactive)
-        self._pabgb_record_table.setColumnWidth(1, 200)
-        hdr.setSectionResizeMode(2, QHeaderView.Fixed)
-        hdr.setSectionResizeMode(3, QHeaderView.Fixed)
-        self._pabgb_record_table.setColumnWidth(0, 90)
-        self._pabgb_record_table.setColumnWidth(2, 80)
-        self._pabgb_record_table.setColumnWidth(3, 80)
-        self._pabgb_record_table.verticalHeader().setDefaultSectionSize(22)
-        self._pabgb_record_table.selectionModel().selectionChanged.connect(self._pabgb_record_selected)
-        splitter.addWidget(self._pabgb_record_table)
-
-        hex_frame = QFrame()
-        hex_layout = QVBoxLayout(hex_frame)
-        hex_layout.setContentsMargins(0, 0, 0, 0)
-        self._pabgb_hex_label = QLabel(tr("Select a record to view hex data"))
-        self._pabgb_hex_label.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
-        hex_layout.addWidget(self._pabgb_hex_label)
-
-        from PySide6.QtWidgets import QTextEdit
-        self._pabgb_hex_view = QTextEdit()
-        self._pabgb_hex_view.setReadOnly(True)
-        self._pabgb_hex_view.setFont(QFont("Consolas", 9))
-        self._pabgb_hex_view.setStyleSheet(
-            f"background: {COLORS['bg']}; color: {COLORS['text']}; "
-            f"border: 1px solid {COLORS['border']};"
-        )
-        hex_layout.addWidget(self._pabgb_hex_view)
-        splitter.addWidget(hex_frame)
-
-        splitter.setSizes([350, 500])
-        layout.addWidget(splitter, 1)
-
-        self._pabgb_status = QLabel(tr("Click 'Scan PAZ' to list PABGB files. Requires game path (set in GPatch or ItemBuffs tab)."))
-        self._pabgb_status.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
-        layout.addWidget(self._pabgb_status)
-
-
-        self._pabgb_raw_data: Optional[bytes] = None
-        self._pabgb_records: list = []
-
-    def _pabgb_get_game_path(self) -> str:
-        return self._game_path_fn() if callable(self._game_path_fn) else ""
-
-    def _pabgb_scan_files(self) -> None:
-        game_path = self._pabgb_get_game_path()
-        if not game_path:
-            QMessageBox.warning(self, tr("No Game Path"),
-                                tr("Set the game install path in GPatch or ItemBuffs tab first."))
-            return
-
-        self._pabgb_status.setText(tr("Scanning PAMT index..."))
-        QApplication.processEvents()
-
-        try:
-            import sys as _sys
-            my_dir = os.path.dirname(os.path.abspath(__file__))
-            for d in [os.path.join(my_dir, 'Includes', 'source'),
-                       os.path.join(my_dir, 'Includes', 'BestCrypto')]:
-                if os.path.isdir(d) and d not in _sys.path:
-                    _sys.path.insert(0, d)
-            from paz_parse import parse_pamt
-
-            pabgb_files = []
-            for subdir in sorted(os.listdir(game_path)):
-                pamt = os.path.join(game_path, subdir, "0.pamt")
-                if not os.path.isfile(pamt):
-                    continue
-                try:
-                    entries = parse_pamt(pamt, paz_dir=os.path.join(game_path, subdir))
-                    for e in entries:
-                        if e.path.lower().endswith('.pabgb'):
-                            pabgb_files.append((subdir, e))
-                except Exception:
-                    continue
-
-            self._pabgb_file_combo.clear()
-            self._pabgb_entries = {}
-            for subdir, e in pabgb_files:
-                label = f"{subdir}/{os.path.basename(e.path)}  ({e.orig_size:,}B)"
-                self._pabgb_file_combo.addItem(label)
-                self._pabgb_entries[label] = e
-
-            self._pabgb_status.setText(f"Found {len(pabgb_files)} PABGB files across {game_path}")
-        except Exception as ex:
-            self._pabgb_status.setText(f"Scan failed: {ex}")
-
-    def _pabgb_load_file(self) -> None:
-        label = self._pabgb_file_combo.currentText()
-        if not label or not hasattr(self, '_pabgb_entries'):
-            return
-
-        entry = self._pabgb_entries.get(label)
-        if not entry:
-            return
-
-        self._pabgb_status.setText(f"Loading {label}...")
-        QApplication.processEvents()
-
-        try:
-            with open(entry.paz_file, 'rb') as f:
-                f.seek(entry.offset)
-                compressed = f.read(entry.comp_size)
-
-            if entry.compressed:
-                import lz4.block
-                self._pabgb_raw_data = lz4.block.decompress(compressed, uncompressed_size=entry.orig_size)
-            else:
-                self._pabgb_raw_data = compressed
-
-            data = self._pabgb_raw_data
-            self._pabgb_records = []
-
-            if len(data) < 4:
-                self._pabgb_status.setText(tr("File too small"))
-                return
-
-            record_count = int.from_bytes(data[0:4], 'little')
-
-            offset = 4
-            while offset < len(data) - 8:
-                if offset + 8 > len(data):
-                    break
-                key = int.from_bytes(data[offset:offset+4], 'little')
-                name_len = int.from_bytes(data[offset+4:offset+8], 'little')
-
-                if name_len < 1 or name_len > 200:
-                    offset += 1
-                    continue
-
-                name_end = offset + 8 + name_len
-                if name_end >= len(data):
-                    break
-
-                candidate = data[offset + 8:name_end]
-                if not all(32 <= b < 127 for b in candidate):
-                    offset += 1
-                    continue
-
-                if data[name_end] != 0:
-                    offset += 1
-                    continue
-
-                name = candidate.decode('ascii')
-
-                if not name[0:1].isalpha():
-                    offset += 1
-                    continue
-
-                data_start = name_end + 1
-
-                self._pabgb_records.append((offset, key, name, data_start))
-                offset = data_start
-                continue
-
-            records_with_end = []
-            for i, (off, key, name, dstart) in enumerate(self._pabgb_records):
-                if i + 1 < len(self._pabgb_records):
-                    dend = self._pabgb_records[i + 1][0]
-                else:
-                    dend = len(data)
-                records_with_end.append((off, key, name, dstart, dend))
-            self._pabgb_records = records_with_end
-
-            self._pabgb_filter_records("")
-            self._pabgb_status.setText(
-                f"Loaded {os.path.basename(entry.path)}: {len(self._pabgb_records)} records, "
-                f"{len(data):,} bytes decompressed"
-            )
-
-        except Exception as ex:
-            log.exception("Unhandled exception")
-            self._pabgb_status.setText(f"Load failed: {ex}")
-
-    def _pabgb_filter_records(self, text: str = None) -> None:
-        if text is None:
-            text = self._pabgb_search.text()
-        q = text.lower().strip()
-
-        table = self._pabgb_record_table
-        table.setSortingEnabled(False)
-
-        filtered = []
-        for off, key, name, dstart, dend in self._pabgb_records:
-            if q and q not in name.lower() and q not in str(key):
-                continue
-            filtered.append((off, key, name, dstart, dend))
-
-        table.setRowCount(len(filtered))
-        for row, (off, key, name, dstart, dend) in enumerate(filtered):
-            table.setItem(row, 0, QTableWidgetItem(str(key)))
-            name_cell = QTableWidgetItem(name)
-            name_cell.setData(Qt.UserRole, (off, key, name, dstart, dend))
-            table.setItem(row, 1, name_cell)
-            table.setItem(row, 2, QTableWidgetItem(f"{dend - dstart}"))
-            table.setItem(row, 3, QTableWidgetItem(f"0x{off:X}"))
-
-        table.setSortingEnabled(True)
-        self._pabgb_record_count.setText(f"{len(filtered)}/{len(self._pabgb_records)} records")
-
-    def _pabgb_record_selected(self) -> None:
-        if self._pabgb_raw_data is None:
-            return
-
-        rows = self._pabgb_record_table.selectionModel().selectedRows()
-        if not rows:
-            return
-
-        name_cell = self._pabgb_record_table.item(rows[0].row(), 1)
-        if not name_cell:
-            return
-        rec = name_cell.data(Qt.UserRole)
-        if not rec:
-            return
-
-        off, key, name, dstart, dend = rec
-        data = self._pabgb_raw_data[dstart:dend]
-
-        self._pabgb_hex_label.setText(
-            f"{name} (key={key})  |  Data: {dend - dstart} bytes  |  Offset: 0x{dstart:X}"
-        )
-        self._pabgb_hex_label.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold; padding: 4px;")
-
-        lines = []
-        for i in range(0, min(len(data), 4096), 16):
-            hex_part = ' '.join(f'{b:02x}' for b in data[i:i + 16])
-            ascii_part = ''.join(chr(b) if 32 <= b < 127 else '.' for b in data[i:i + 16])
-            lines.append(f"{dstart + i:08X}  {hex_part:<48s}  {ascii_part}")
-
-        if len(data) > 4096:
-            lines.append(f"\n... truncated ({len(data):,} bytes total, showing first 4096)")
-
-        self._pabgb_hex_view.setPlainText('\n'.join(lines))
-
-
-class BackupTab(QWidget):
-
-    status_message = Signal(str)
-    restore_requested = Signal(str)
-    tab_title_changed = Signal(str)
-
-    def __init__(self, show_guide_fn=None, parent=None):
-        super().__init__(parent)
-        self._loaded_path: str = ""
-        self._show_guide_fn = show_guide_fn
-        self._build_ui()
-
-    def set_loaded_path(self, path: str) -> None:
-        self._loaded_path = path
-        self._refresh_backups()
-
-    def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
-        layout.addWidget(make_scope_label("save"))
-
-        info_label = QLabel(
-            "Auto-backups are created every time you save. "
-            "Backups are stored alongside the save file in a 'backups' folder."
-        )
-        info_label.setWordWrap(True)
-        help_row = QHBoxLayout()
-        help_row.addWidget(info_label, 1)
-        help_row.addWidget(make_help_btn("backup", self._show_guide_fn))
-        layout.addLayout(help_row)
-
-        self._backup_list = QListWidget()
-        layout.addWidget(self._backup_list, 1)
-
-        btn_row = QHBoxLayout()
-
-        refresh_btn = QPushButton(tr("Refresh"))
-        refresh_btn.clicked.connect(self._refresh_backups)
-        btn_row.addWidget(refresh_btn)
-
-        restore_btn = QPushButton(tr("Restore Selected"))
-        restore_btn.setObjectName("accentBtn")
-        restore_btn.clicked.connect(self._restore_backup)
-        btn_row.addWidget(restore_btn)
-
-        open_folder_btn = QPushButton(tr("Open Backup Folder"))
-        open_folder_btn.clicked.connect(self._open_backup_folder)
-        btn_row.addWidget(open_folder_btn)
-
-        delete_btn = QPushButton(tr("Delete Selected"))
-        delete_btn.clicked.connect(self._delete_backup)
-        btn_row.addWidget(delete_btn)
-
-        reset_pristine_btn = QPushButton(tr("Set Current as PRISTINE"))
-        reset_pristine_btn.setToolTip(
-            "Replace the PRISTINE backup with the currently loaded save. "
-            "Use this if the old PRISTINE was corrupted."
-        )
-        reset_pristine_btn.clicked.connect(self._reset_pristine)
-        btn_row.addWidget(reset_pristine_btn)
-
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
-
-
-    def _get_backup_dir(self) -> str:
-        if not self._loaded_path:
-            return ""
-        save_dir = os.path.dirname(self._loaded_path)
-        return os.path.join(save_dir, "backups")
-
-    def _refresh_backups(self) -> None:
-        self._backup_list.clear()
-        backup_dir = self._get_backup_dir()
-        if not backup_dir or not os.path.isdir(backup_dir):
-            self._backup_list.addItem("(No backups found)")
-            self.tab_title_changed.emit("Backup/Restore")
-            return
-
-        backups = []
-        for name in os.listdir(backup_dir):
-            path = os.path.join(backup_dir, name)
-            if os.path.isfile(path):
-                mtime = os.path.getmtime(path)
-                size = os.path.getsize(path)
-                backups.append((name, path, mtime, size))
-
-        backups.sort(key=lambda x: x[2], reverse=True)
-
-        if not backups:
-            self._backup_list.addItem("(No backups found)")
-            self.tab_title_changed.emit("Backup/Restore")
-            return
-
-        for name, path, mtime, size in backups:
-            dt = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-            is_pristine = ".PRISTINE." in name
-            tag = "  [PRISTINE]" if is_pristine else ""
-            display = f"{name}  |  {dt}  |  {size:,} bytes{tag}"
-            item = QListWidgetItem(display)
-            item.setData(Qt.UserRole, path)
-            if is_pristine:
-                item.setForeground(QBrush(QColor(COLORS["success"])))
-            self._backup_list.addItem(item)
-
-        self.tab_title_changed.emit(f"Backup/Restore ({len(backups)})")
-
-    def _restore_backup(self) -> None:
-        current = self._backup_list.currentItem()
-        if not current:
-            QMessageBox.information(self, tr("Restore"), tr("Select a backup first."))
-            return
-
-        backup_path = current.data(Qt.UserRole)
-        if not backup_path or not os.path.isfile(backup_path):
-            QMessageBox.warning(self, tr("Restore"), tr("Backup file not found."))
-            return
-
-        if not self._loaded_path:
-            QMessageBox.warning(self, tr("Restore"), tr("No save file loaded to restore to."))
-            return
-
-        reply = QMessageBox.warning(
-            self, tr("Restore Backup"),
-            f"Restore backup:\n{os.path.basename(backup_path)}\n\n"
-            f"This will OVERWRITE your current save:\n{self._loaded_path}\n\n"
-            "This cannot be undone. Continue?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-
-        try:
-            from save_crypto import load_save_file
-            try:
-                test = load_save_file(backup_path)
-                if not test or not test.decompressed_blob or len(test.decompressed_blob) < 100:
-                    raise ValueError("Backup appears corrupted (too small or empty)")
-            except Exception as ve:
-                reply2 = QMessageBox.warning(
-                    self, tr("Backup May Be Corrupted"),
-                    f"This backup failed validation:\n{ve}\n\n"
-                    f"Restoring it may result in a save that crashes the game.\n"
-                    f"Restore anyway?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No,
-                )
-                if reply2 != QMessageBox.Yes:
-                    return
-
-            shutil.copy2(backup_path, self._loaded_path)
-            self.restore_requested.emit(self._loaded_path)
-            self.status_message.emit(f"Restored from backup: {os.path.basename(backup_path)}")
-        except Exception as e:
-            QMessageBox.critical(self, tr("Restore Error"), f"Failed to restore:\n{e}")
-
-    def _delete_backup(self) -> None:
-        current = self._backup_list.currentItem()
-        if not current:
-            QMessageBox.information(self, tr("Delete"), tr("Select a backup first."))
-            return
-        backup_path = current.data(Qt.UserRole)
-        if not backup_path:
-            return
-        name = os.path.basename(backup_path)
-        reply = QMessageBox.warning(
-            self, tr("Delete Backup"),
-            f"Permanently delete:\n{name}\n\nThis cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-        try:
-            os.remove(backup_path)
-            self._refresh_backups()
-            self.status_message.emit(f"Deleted backup: {name}")
-        except Exception as e:
-            QMessageBox.critical(self, tr("Delete Error"), f"Failed to delete:\n{e}")
-
-    def _reset_pristine(self) -> None:
-        if not self._loaded_path:
-            QMessageBox.warning(self, tr("Reset PRISTINE"), tr("No save file loaded."))
-            return
-        backup_dir = os.path.join(os.path.dirname(self._loaded_path), "backups")
-        base = os.path.basename(self._loaded_path)
-        pristine_path = os.path.join(backup_dir, f"{base}.PRISTINE.bak")
-
-        msg = "Set the currently loaded save as the new PRISTINE backup?"
-        if os.path.isfile(pristine_path):
-            msg += "\n\nThis will REPLACE the existing PRISTINE backup."
-
-        reply = QMessageBox.question(
-            self, tr("Reset PRISTINE"), msg,
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-        try:
-            os.makedirs(backup_dir, exist_ok=True)
-            shutil.copy2(self._loaded_path, pristine_path)
-            self._refresh_backups()
-            self.status_message.emit("PRISTINE backup updated from current save.")
-        except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"Failed to update PRISTINE:\n{e}")
-
-    def _open_backup_folder(self) -> None:
-        backup_dir = self._get_backup_dir()
-        if not backup_dir:
-            QMessageBox.information(self, tr("Backup Folder"), tr("No save file loaded."))
-            return
-        os.makedirs(backup_dir, exist_ok=True)
-        os.startfile(backup_dir)

@@ -1013,8 +1013,6 @@ class QuestEditorWindow(QDialog):
         self._filter()
         self._status.setText(f"'{entry['name']}' -> Available (unsaved)")
 
-    def _advance_chain_counter(self, blob: bytearray, chain_id: str) -> bool:
-        return False
 
     def _get_chain_info(self, key: int) -> dict:
         chain = self._quest_chains.get(key)

@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
     QCheckBox, QToolButton,
 )
 from gui.theme import button_css
+from overlay_coordinator import safe_rmtree  # refuses to delete game data folders
 
 
 def _size_button(btn: QPushButton, extra_px: int = 28, primary: bool = False) -> QPushButton:
@@ -1189,113 +1190,6 @@ del _entry
 #   - A bulk import-and-export pipeline ("convert this folder of PNGs to DDS
 #     and export as a mod")
 #   - Programmatic callers (CLI, scripted bulk operations)
-
-
-def _build_texture_mod_folder(
-    out_dir: str,
-    mod_name: str,
-    textures: list[tuple[str, str]],
-    *,
-    title: str = "",
-    author: str = "CrimsonGameMods Stacker",
-    version: str = "1.0",
-    description: str = "",
-) -> str:
-    """Produce a DMM-compatible folder texture mod.
-
-    Args:
-        out_dir:   parent directory the mod folder is created under
-        mod_name:  folder name to create (also default title if `title` empty)
-        textures:  list of (source_dds_path, vpath) tuples. `vpath` is the
-                   slash-separated path inside the game's PAZ archive
-                   STARTING with the PAZ group number. Examples:
-                       "0012/ui/texture/cd_icon_common_01.dds"
-                       "0009/character/texture/macduff/diffuse.dds"
-        title:     optional manifest title (defaults to mod_name)
-        author:    manifest author
-        version:   manifest version (SemVer-ish)
-        description: free-form description shown in DMM's mod list
-
-    Returns:
-        Absolute path to the created mod folder.
-
-    Raises:
-        ValueError: if `textures` is empty or any source file is missing
-        OSError:    on filesystem errors during write
-
-    DMM consumption path:
-        manifest-free folder mods are auto-detected by DMM as long as the
-        `files/` tree is present and the first sub-folder is a 4-digit PAZ
-        group number. Including manifest.json gives DMM nicer mod-list
-        metadata (title, version, author, description); leaving it out is
-        also fine. We ALWAYS write the manifest here so authors get a
-        polished mod-list entry without thinking about it.
-
-    Output structure:
-        <out_dir>/<mod_name>/
-            manifest.json
-            files/
-                <vpath of texture #1>
-                <vpath of texture #2>
-                ...
-
-    File writing strategy: copy-not-symlink so the mod folder is
-    self-contained and can be zipped + shipped without follow-up.
-    """
-    import shutil
-
-    if not textures:
-        raise ValueError("textures list is empty — nothing to export")
-
-    # Validate every source up front; partial mods are confusing.
-    for i, (src, vpath) in enumerate(textures):
-        if not os.path.isfile(src):
-            raise ValueError(
-                f"texture[{i}] source file not found: {src}")
-        if not vpath or not vpath.lower().endswith('.dds'):
-            raise ValueError(
-                f"texture[{i}] vpath must end in .dds (got: {vpath!r})")
-        # Quick PAZ-group-prefix sanity. The first segment of vpath should
-        # be a 4-digit numeric group like "0009" / "0012".
-        first_seg = vpath.replace('\\', '/').split('/', 1)[0]
-        if not (first_seg.isdigit() and len(first_seg) == 4):
-            raise ValueError(
-                f"texture[{i}] vpath should START with a 4-digit PAZ group "
-                f"(got first segment {first_seg!r}). Common groups: "
-                f"0009 (character), 0012 (UI), 0014 (level data)")
-
-    mod_dir = os.path.join(out_dir, mod_name)
-    files_dir = os.path.join(mod_dir, "files")
-    os.makedirs(files_dir, exist_ok=True)
-
-    # Write each texture into files/<vpath>
-    written: list[str] = []
-    for src, vpath in textures:
-        norm_vpath = vpath.replace('\\', '/').lstrip('/')
-        dst = os.path.join(files_dir, *norm_vpath.split('/'))
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-        shutil.copy2(src, dst)
-        written.append(norm_vpath)
-
-    # Manifest. DMM reads `id`/`name`/`version`/`author`/`description` for
-    # the mod-list display; other fields are optional.
-    manifest = {
-        "id": f"com.crimsongamemods.texture.{mod_name.lower().replace(' ', '_')}",
-        "name": title or mod_name,
-        "version": version,
-        "author": author,
-        "description": description or (
-            f"{len(written)} texture replacement(s) — built by "
-            f"CrimsonGameMods Stacker"),
-        "format": "folder_mod",
-        "_built_by": "CrimsonGameMods Stacker (texture export backend)",
-        "_texture_count": len(written),
-    }
-    with open(os.path.join(mod_dir, "manifest.json"), 'w',
-              encoding='utf-8') as f:
-        json.dump(manifest, f, indent=2, ensure_ascii=False)
-
-    return mod_dir
 
 
 def _merge_all(vanilla_items: list[dict],
@@ -3651,6 +3545,10 @@ class StackerTab(QWidget):
         skill.pabgb/pabgh + equipslotinfo.pabgb/pabgh when an
         ItemBuffs source staged them (UP v2, passive skill mods).
         """
+        from overlay_coordinator import is_game_data_group
+        if is_game_data_group(game, group):
+            raise RuntimeError(f"Group {group} belongs to the game itself (since game 2.03 "
+                               f"the game uses the numbers up to 0040). Pick another number.")
         import crimson_rs
 
         sibling_files = sibling_files or {}
@@ -3678,7 +3576,7 @@ class StackerTab(QWidget):
             # Copy group files into <game>/NNNN/
             dst_group = os.path.join(game, group)
             if os.path.isdir(dst_group):
-                shutil.rmtree(dst_group)
+                safe_rmtree(dst_group)
             os.makedirs(dst_group, exist_ok=True)
             for fname in os.listdir(build_dir):
                 shutil.copy2(os.path.join(build_dir, fname),
@@ -3716,6 +3614,10 @@ class StackerTab(QWidget):
         files individually contain correct data. Split into its own group
         and it works. Confirmed empirically 2026-04-21 vs v1.0.3.
         """
+        from overlay_coordinator import is_game_data_group
+        if is_game_data_group(game, group):
+            raise RuntimeError(f"Group {group} belongs to the game itself (since game 2.03 "
+                               f"the game uses the numbers up to 0040). Pick another number.")
         import crimson_rs
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -3729,7 +3631,7 @@ class StackerTab(QWidget):
 
             dst_group = os.path.join(game, group)
             if os.path.isdir(dst_group):
-                shutil.rmtree(dst_group)
+                safe_rmtree(dst_group)
             os.makedirs(dst_group, exist_ok=True)
             for fname in os.listdir(build_dir):
                 shutil.copy2(os.path.join(build_dir, fname),
@@ -4004,7 +3906,7 @@ class StackerTab(QWidget):
         try:
             for g, d in group_dirs:
                 if os.path.isdir(d):
-                    shutil.rmtree(d)
+                    safe_rmtree(d)
                     self._log_line(f"  deleted {d}")
             import crimson_rs
             if os.path.isfile(papgt_path):

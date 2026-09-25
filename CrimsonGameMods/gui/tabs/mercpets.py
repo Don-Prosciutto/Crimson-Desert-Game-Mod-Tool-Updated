@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from gui.theme import COLORS, button_css
+from overlay_coordinator import safe_rmtree  # refuses to delete game data folders
 
 log = logging.getLogger(__name__)
 
@@ -482,40 +483,6 @@ class MercPetsTab(QWidget):
             import traceback; traceback.print_exc()
             QMessageBox.critical(self, "Apply", f"Failed:\n{e}")
 
-    def _export_mod(self) -> None:
-        if not self._records:
-            QMessageBox.information(self, "Export", "Load first.")
-            return
-        from PySide6.QtWidgets import QInputDialog
-        name, ok = QInputDialog.getText(self, "Export Mod",
-            "Mod name:", text="MercPets Custom Caps")
-        if not ok or not name.strip():
-            return
-        name = name.strip()
-        exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        folder = "".join(c if (c.isalnum() or c in "-_") else "_" for c in name)
-        out = os.path.join(exe_dir, "packs", folder)
-        os.makedirs(out, exist_ok=True)
-        files_dir = os.path.join(out, "files", "gamedata", "binary__", "client", "bin")
-        os.makedirs(files_dir, exist_ok=True)
-        new_h, new_b = self._serialize()
-        with open(os.path.join(files_dir, "mercenaryinfo.pabgb"), "wb") as f:
-            f.write(new_b)
-        with open(os.path.join(files_dir, "mercenaryinfo.pabgh"), "wb") as f:
-            f.write(new_h)
-        import json
-        with open(os.path.join(out, "modinfo.json"), "w", encoding="utf-8") as f:
-            json.dump({
-                "id": name.lower().replace(" ", "_"),
-                "name": name,
-                "version": "1.0.0",
-                "game_version": "1.00.03",
-                "author": "CrimsonSaveEditor",
-                "description": f"MercPets mod: {name}",
-            }, f, indent=2)
-        self._status.setText(f"Exported mod to packs/{folder}/")
-        QMessageBox.information(self, "Exported",
-            f"Mod written to:\n{out}")
 
     def _restore(self) -> None:
         gp = self._get_game_path()
@@ -527,14 +494,17 @@ class MercPetsTab(QWidget):
         bak = papgt + ".mercpets_bak"
         try:
             if os.path.isdir(overlay):
-                shutil.rmtree(overlay)
+                safe_rmtree(overlay)
                 try:
                     from overlay_coordinator import post_restore
                     post_restore(gp, overlay_group)
                 except Exception:
                     pass
-            if os.path.exists(bak):
-                shutil.copy2(bak, papgt)
+            # Only take our entry out of the pack list (restoring the old
+            # backup copy dropped every mod registered since, DMM's included).
+            from overlay_coordinator import remove_papgt_groups
+            if os.path.isfile(papgt):
+                remove_papgt_groups(gp, [overlay_group])
             self._status.setText(f"Restored — {overlay_group}/ overlay removed.")
             QMessageBox.information(self, "Restored",
                 "MercPets overlay removed. Restart game to confirm.")

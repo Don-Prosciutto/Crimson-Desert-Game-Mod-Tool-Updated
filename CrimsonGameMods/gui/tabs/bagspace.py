@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from gui.theme import COLORS, button_css
 from gui.utils import make_scope_label
+from overlay_coordinator import safe_rmtree  # refuses to delete game data folders
 
 
 INTERNAL_DIR = "gamedata/binary__/client/bin"
@@ -550,7 +551,7 @@ class BagSpaceTab(QWidget):
 
                 dst = os.path.join(game_path, grp)
                 if os.path.isdir(dst):
-                    shutil.rmtree(dst)
+                    safe_rmtree(dst)
                 os.makedirs(dst, exist_ok=True)
                 shutil.copy2(os.path.join(group_dir, "0.paz"), os.path.join(dst, "0.paz"))
                 shutil.copy2(os.path.join(group_dir, "0.pamt"), os.path.join(dst, "0.pamt"))
@@ -669,7 +670,7 @@ class BagSpaceTab(QWidget):
             return
 
         try:
-            shutil.rmtree(overlay_dir)
+            safe_rmtree(overlay_dir)
             try:
                 from overlay_coordinator import post_restore
                 post_restore(game_path, grp)
