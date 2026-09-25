@@ -34,6 +34,26 @@ from overlay_coordinator import safe_rmtree  # refuses to delete game data folde
 
 INTERNAL_DIR = "gamedata/binary__/client/bin"
 OVERLAY_GROUP = "0062"
+
+# "Enlarge Storages": inventory record -> (start slots, max slots or None = keep).
+# Values other mods use and players confirm on Nexus: housing storages and the
+# Kuku pot at 732 (max stays 1000); camp storage start 640 - the camp upgrades
+# still add on top, up to the game's 1000. Town warehouse and bank are left
+# out until tested. Only ever raised, never lowered.
+STORAGE_PRESET = {
+    "CampWareHouse": (640, None),
+    "Kuku": (732, 732),
+    "Housing_Dresser": (732, None),
+    "Housing_Refrigerator": (732, None),
+    "Housing_Symbol": (732, None),
+    "Housing_Collecting": (732, None),
+    "Housing_GatheredMaterials": (732, None),
+}
+STORAGE_LABELS = {
+    "CampWareHouse": "camp storage", "Kuku": "Kuku pot", "Housing_Dresser": "dresser",
+    "Housing_Refrigerator": "refrigerator", "Housing_Symbol": "symbol storage",
+    "Housing_Collecting": "collection storage", "Housing_GatheredMaterials": "gathered materials",
+}
 PABGEDITOR_PARSER = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "pabgb_parser_local.py",
@@ -99,6 +119,16 @@ class BagSpaceTab(QWidget):
         force_btn = QPushButton("Force Character 700 / 700")
         force_btn.clicked.connect(lambda: self._set_character_slots(700, 700))
         top_row.addWidget(force_btn)
+
+        storages_btn = QPushButton("Enlarge Storages")
+        storages_btn.setToolTip(
+            "Camp storage starts at 640 (camp upgrades still add on top, up to 1000).\n"
+            "Dresser, refrigerator, symbol, collection and gathered-materials storage\n"
+            "and the Kuku pot get 732 slots.\n"
+            "Town warehouse and bank are not changed (edit them in the table).\n"
+            "Values are only raised, never lowered.")
+        storages_btn.clicked.connect(self._enlarge_storages)
+        top_row.addWidget(storages_btn)
 
         top_row.addWidget(QLabel("Mod#:"))
         self._overlay_spin = QSpinBox()
@@ -487,6 +517,45 @@ class BagSpaceTab(QWidget):
         self.status_message.emit(
             f"BagSpace Character slots staged: {default_slots}/{max_slots}"
         )
+
+    def _enlarge_storages(self) -> None:
+        if self._inventory_data is None:
+            self._load_from_game()
+            if self._inventory_data is None:
+                return
+        if self._dmm_items is None:
+            QMessageBox.warning(self, "Enlarge Storages",
+                                "The inventory table was not read with dmm_parser - nothing changed.")
+            return
+        changed = []
+        for it in self._dmm_items:
+            name = it.get("string_key")
+            if name not in STORAGE_PRESET:
+                continue
+            want_def, want_max = STORAGE_PRESET[name]
+            old_def = int(it.get("default_slot_count") or 0)
+            old_max = int(it.get("max_slot_count") or 0)
+            new_def = max(old_def, want_def)
+            new_max = max(old_max, want_max or 0, new_def)
+            if (new_def, new_max) != (old_def, old_max):
+                it["default_slot_count"], it["max_slot_count"] = new_def, new_max
+                changed.append(f"{STORAGE_LABELS.get(name, name)} {old_def}/{old_max} -> {new_def}/{new_max}")
+                for r in self._records:
+                    if r.get("key") == it.get("key"):
+                        r["default_slots"], r["max_slots"] = new_def, new_max
+        if not changed:
+            self._status.setText("Storages are already at least this large - nothing changed.")
+            return
+        new_pabgb = self._serialize_dmm(self._dmm_items)
+        if not new_pabgb:
+            QMessageBox.critical(self, "Enlarge Storages", "Could not write the inventory table.")
+            return
+        self._inventory_data = bytearray(new_pabgb)
+        self._dirty = True
+        self._refresh_table()
+        self._status.setText("Staged: " + "; ".join(changed) +
+                             ". Now Export Field JSON or Apply to Game.")
+        self.status_message.emit(f"BagSpace: {len(changed)} storages enlarged (staged)")
 
     def get_staged_files(self) -> dict[str, bytes]:
         if not self._dirty or self._inventory_data is None:
