@@ -11270,6 +11270,13 @@ QCheckBox::indicator {{
         self._qg_complete_btn.setToolTip(
             "Set the quest, its missions and its stages to completed.\n"
             "Only what is already in the save is changed; nothing is inserted.")
+        self._qg_complete_btn.setStyleSheet(
+            "QPushButton { background-color: #2E7D32; color: white; font-weight: bold;"
+            " padding: 4px 16px; border: 1px solid #43A047; border-radius: 4px; }"
+            "QPushButton:hover { background-color: #388E3C; }"
+            "QPushButton:pressed { background-color: #1B5E20; }"
+            "QPushButton:disabled { background-color: #26332A; color: #6F7F72;"
+            " border: 1px solid #33443A; }")
         self._qg_complete_btn.clicked.connect(self._qg_complete_quest)
         self._qg_complete_btn.setEnabled(False)
         act.addWidget(self._qg_complete_btn)
