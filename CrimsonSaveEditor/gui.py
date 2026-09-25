@@ -11280,6 +11280,14 @@ QCheckBox::indicator {{
         self._qg_complete_btn.clicked.connect(self._qg_complete_quest)
         self._qg_complete_btn.setEnabled(False)
         act.addWidget(self._qg_complete_btn)
+        self._qg_reset_btn = QPushButton("Reset Quest")
+        self._qg_reset_btn.setToolTip(
+            "Set the quest, its missions and its stages back to Available (not started)\n"
+            "and clear their completion times - for a quest that is stuck.\n"
+            "Only what is already in the save is changed; nothing is inserted.")
+        self._qg_reset_btn.clicked.connect(self._qg_reset_quest)
+        self._qg_reset_btn.setEnabled(False)
+        act.addWidget(self._qg_reset_btn)
         act.addWidget(QLabel("(quest + missions + stages)"))
         act.addStretch()
         self._qg_table_btn = QPushButton("Show in Table")
@@ -11412,6 +11420,7 @@ QCheckBox::indicator {{
         qk, e = self._qg_selected()
         self._qg_missions.clear()
         self._qg_complete_btn.setEnabled(bool(e) and not (e and self._qg_done(e)))
+        self._qg_reset_btn.setEnabled(bool(e) and self._qg_kind(e) != 'available')
         self._qg_table_btn.setEnabled(bool(e))
         if qk is None:
             self._qg_title.setText("")
@@ -11438,6 +11447,79 @@ QCheckBox::indicator {{
             row.setForeground(1, QBrush(QColor(self._QG_STATE_COLORS[self._qg_kind(m)])))
             row.setToolTip(0, f"Mission key {mk}")
             self._qg_missions.addTopLevelItem(row)
+
+    def _qg_reset_quest(self) -> None:
+        """Quest, missions and stages back to Available with their completion
+        times / counts cleared (what the C++ editor's Reset Quest does). Same
+        size writes only; undoable."""
+        qk, e = self._qg_selected()
+        if not e or not self._save_data:
+            return
+        chapters = quest_chapters.load()
+        info = chapters.quests.get(qk, {})
+        name = e.get('display') or info.get('display') or str(qk)
+        _q, missions = self._qg_index()
+        todo_missions = [missions[mk] for mk in chapters.missions_of(qk) if mk in missions]
+        todo_stages = []
+        if self._qe_deep_data:
+            for sk in self._qe_deep_data.quest_to_stages.get(qk, []):
+                st = self._qe_deep_data.stage_map.get(sk)
+                if st and st.state_offset:
+                    todo_stages.append(st)
+        main = info.get('category_name') == quest_chapters.MAIN_STORY
+        warn = ("\n\nThis is a MAIN STORY quest. Resetting it does not undo what already "
+                "happened in the world (rewards, unlocked areas, later quests) and can break "
+                "the story. Keep a backup." if main else
+                "\n\nRewards you already got stay. Whether the quest starts again depends on "
+                "the game. Keep a backup.")
+        reply = QMessageBox.question(
+            self, "Reset Quest",
+            f"Reset '{name}' to Available (not started)?\n\n"
+            f"Quest -> Available, times cleared\n"
+            f"{len(todo_missions)} mission(s) -> Available, times cleared\n"
+            f"{len(todo_stages)} stage(s) -> Available, times cleared\n"
+            f"Only entries already in the save are changed; nothing is inserted." + warn,
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply != QMessageBox.Yes:
+            return
+        blob = self._save_data.decompressed_blob
+        ranges = []
+        for ent in [e] + todo_missions:
+            if ent.get('state_offset', -1) >= 0:
+                ranges.append((ent['state_offset'], ent.get('state_size', 4)))
+            for k, n in (('completed_time_offset', 8), ('branched_time_offset', 8),
+                         ('complete_count_offset', 2)):
+                if ent.get(k):
+                    ranges.append((ent[k], n))
+        for st in todo_stages:
+            ranges.append((st.state_offset, 1))
+            for at in (st.completed_time_at, st.completed_count_at):
+                if at:
+                    ranges.append(at)
+        before = {r: bytes(blob[r[0]:r[0] + r[1]]) for r in ranges}
+
+        for ent in [e] + todo_missions:
+            if ent.get('state_offset', -1) >= 0:
+                _write_quest_state(blob, ent, 0x0902)       # also clears times + count
+                self._qe_refresh_entry_state(ent)
+        for st in todo_stages:
+            blob[st.state_offset] = 2
+            st.state = 2
+            for at in (st.completed_time_at, st.completed_count_at):
+                if at:
+                    blob[at[0]:at[0] + at[1]] = bytes(at[1])
+            st.completed_time = 0
+            st.completed_count = 0
+
+        patches = [(off, old, bytes(blob[off:off + len(old)]))
+                   for (off, _n), old in before.items() if bytes(blob[off:off + len(old)]) != old]
+        if patches:
+            self._undo_stack.append(UndoEntry(description=f"Reset quest {name}", patches=patches))
+            self._mark_modified()
+        self._update_status(
+            f"Reset {name}: quest, {len(todo_missions)} missions, {len(todo_stages)} stages "
+            f"back to Available. Save with Ctrl+S.")
+        self._qe_filter()
 
     def _qg_show_in_table(self) -> None:
         qk, e = self._qg_selected()

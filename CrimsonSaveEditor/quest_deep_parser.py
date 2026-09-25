@@ -21,7 +21,9 @@ class StageEntry:
                  'completed_count', 'completed_time', 'delayed_time', 'branched_time',
                  'position', 'delayed_from_mission', 'delayed_from_stage',
                  'sub_timeline_name', 'connected_actors',
-                 'state_offset', 'element_start', 'element_end')
+                 'state_offset', 'element_start', 'element_end',
+                 # (offset, size) of fields a reset clears; None if absent
+                 'completed_count_at', 'completed_time_at')
 
     def __init__(self):
         for s in self.__slots__:
@@ -308,8 +310,10 @@ def _parse_stage_list(raw, elements, data):
                 s.is_skip_complete = val
             elif cf.name == '_completedCount':
                 s.completed_count = val
+                s.completed_count_at = (cf.start_offset, cf.end_offset - cf.start_offset)
             elif cf.name == '_completedTime':
                 s.completed_time = val
+                s.completed_time_at = (cf.start_offset, cf.end_offset - cf.start_offset)
             elif cf.name == '_delayedTime':
                 s.delayed_time = val
             elif cf.name == '_branchedTime':
