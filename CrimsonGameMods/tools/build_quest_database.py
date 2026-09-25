@@ -6,9 +6,11 @@ from the installed game.
 
 Reads from the game: questinfo (every quest, its group, missions, stages,
 gauges), questgroupinfo (the groups - Prologue, chapters, Exploration, ... -
-with their quests in the game's order) and quest.paloc (English names).
---from-dir takes those files from a folder instead (questinfo.pabgb/.pabgh,
-questgroupinfo.pabgb/.pabgh, quest.paloc).
+with their quests in the game's order), missioninfo (mission names) and
+quest.paloc (English names). --from-dir takes those files from a folder
+instead (questinfo/questgroupinfo/missioninfo .pabgb/.pabgh, quest.paloc).
+
+Writes quest_database.json, quest_groups.json and mission_names.json.
 
 Without --write it only prints a comparison with the current files. With
 --write it replaces them - but only if every questinfo record parsed and no
@@ -30,6 +32,7 @@ GMT_DIR = os.path.dirname(HERE)
 SE_DIR = os.path.join(os.path.dirname(GMT_DIR), "CrimsonSaveEditor")
 DB_PATH = os.path.join(SE_DIR, "quest_database.json")
 GROUPS_PATH = os.path.join(SE_DIR, "quest_groups.json")
+MISSIONS_PATH = os.path.join(SE_DIR, "mission_names.json")
 BIN_DIR = "gamedata/binary__/client/bin"
 LOC_DIR = "gamedata/stringtable/binary__/eng"
 
@@ -45,7 +48,7 @@ def _read_game(game: str) -> dict:
     import dmm_parser  # noqa: PLC0415
     from item_db import ItemNameDB  # noqa: PLC0415
     files = {}
-    for stem in ("questinfo", "questgroupinfo"):
+    for stem in ("questinfo", "questgroupinfo", "missioninfo"):
         for ext in ("pabgb", "pabgh"):
             files[f"{stem}.{ext}"] = bytes(crimson_rs.extract_file(game, "0008", BIN_DIR,
                                                                    f"{stem}.{ext}"))
@@ -58,7 +61,7 @@ def _read_game(game: str) -> dict:
 def _read_dir(folder: str) -> dict:
     files = {}
     for name in ("questinfo.pabgb", "questinfo.pabgh", "questgroupinfo.pabgb",
-                 "questgroupinfo.pabgh", "quest.paloc"):
+                 "questgroupinfo.pabgh", "missioninfo.pabgb", "missioninfo.pabgh", "quest.paloc"):
         path = os.path.join(folder, name)
         if os.path.isfile(path):
             with open(path, "rb") as f:
@@ -116,6 +119,40 @@ def _parse_groups(body: bytes, head: bytes, loc: dict):
             "quests": [int(q) for q in (r.get("quest_list") or [])],
         })
     return groups
+
+
+def _mission_names(body: bytes, head: bytes, loc: dict, old: dict):
+    """Mission key -> (internal name, display name).
+
+    dmm-parser cannot decode missioninfo in 2.03, so the name is found by
+    its shape: a LocalizableString is u8 category, u64 paloc key, then a
+    CString that repeats the key as text. The first one in a record is the
+    mission's name (the next ones are its descriptions). Missions without
+    one keep the name from the old mission_names.json."""
+    import struct  # noqa: PLC0415
+    import questinfo_parser as qp  # noqa: PLC0415
+    idx = qp.parse_pabgh(head)
+    offs = sorted(set(idx.values()))
+    nxt = {o: (offs[i + 1] if i + 1 < len(offs) else len(body)) for i, o in enumerate(offs)}
+    out = {}
+    for key, off in idx.items():
+        end = nxt[off]
+        n = struct.unpack_from("<I", body, off + 4)[0]
+        skey = body[off + 8:off + 8 + n].decode("utf-8", "replace") if n < 500 else ""
+        label = ""
+        i = off + 8 + n
+        while i + 13 <= end:
+            ix = struct.unpack_from("<Q", body, i + 1)[0]
+            if ix in loc:
+                ln = struct.unpack_from("<I", body, i + 9)[0]
+                if body[i + 13:i + 13 + ln] == str(ix).encode():
+                    label = loc[ix]
+                    break
+            i += 1
+        prev = old.get(key) or {}
+        display = label or (prev.get("display") if prev.get("display") != prev.get("name") else "") or skey
+        out[key] = (skey or prev.get("name", ""), display)
+    return out
 
 
 def _old_displays():
@@ -180,6 +217,24 @@ def main(argv) -> int:
     except Exception as e:  # noqa: BLE001
         print(f"questgroupinfo not read: {type(e).__name__}: {e}")
 
+    missions = None
+    if "missioninfo.pabgb" in files:
+        try:
+            with open(MISSIONS_PATH, encoding="utf-8") as f:
+                old_m = {e["key"]: e for e in json.load(f)}
+        except (OSError, ValueError):
+            old_m = {}
+        missions = _mission_names(files["missioninfo.pabgb"], files["missioninfo.pabgh"], loc, old_m)
+        named = sum(1 for k, (n, d) in missions.items() if d and d != n)
+        refs = {m for e in new for m in e["missions"]}
+        unnamed = [m for m in refs if m not in missions or missions[m][1] == missions[m][0]]
+        print(f"missioninfo: {len(missions)} missions, {named} with a display name "
+              f"(old file: {len(old_m)}); missions of quests without a name: {len(unnamed)}")
+        if set(old_m) - set(missions):
+            print(f"  {len(set(old_m) - set(missions))} missions of the old file are gone - kept")
+            for k in set(old_m) - set(missions):
+                missions[k] = (old_m[k].get("name", ""), old_m[k].get("display", ""))
+
     if not write:
         print("(dry run - add --write to replace the files)")
         return 0
@@ -193,6 +248,11 @@ def main(argv) -> int:
         with open(GROUPS_PATH, "w", encoding="utf-8") as f:
             json.dump(groups, f, ensure_ascii=False, indent=1)
         print("written:", GROUPS_PATH)
+    if missions:
+        with open(MISSIONS_PATH, "w", encoding="utf-8") as f:
+            json.dump([{"key": k, "name": n, "display": d} for k, (n, d) in missions.items()],
+                      f, ensure_ascii=False, indent=1)
+        print("written:", MISSIONS_PATH)
     return 0
 
 
