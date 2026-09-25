@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 from typing import List, Optional, Tuple
 
 from PySide6.QtCore import (
-    Qt, QTimer, QSortFilterProxyModel, Signal, QSize, QObject, QThread, Slot,
+    Qt, QTimer, QSortFilterProxyModel, Signal, QSize, QObject, QThread, Slot, QEvent,
 )
 from PySide6.QtGui import (
     QAction, QActionGroup, QColor, QCursor, QFont, QIcon, QKeySequence, QBrush, QShortcut,
@@ -1748,6 +1748,7 @@ class QuestEditorWindow(QDialog):
             self._loaded_path = path
             self._dirty = False
             self._undo_stack.clear()
+            self._reset_save_structure_watch()
             self._quest_entries = []
             self._mission_entries = []
             self._items = items
@@ -2797,6 +2798,24 @@ def _num_item(value: int) -> QTableWidgetItem:
     return item
 
 
+class _SaveStructureWatch(QObject):
+    """Application-wide event filter: before the user's next click or key
+    press is handled, check whether the save got longer or shorter since the
+    last check (see MainWindow._check_save_structure)."""
+
+    def __init__(self, owner):
+        super().__init__(owner)
+        self._owner = owner
+
+    def eventFilter(self, obj, event):  # noqa: N802 - Qt name
+        if event.type() in (QEvent.MouseButtonPress, QEvent.KeyPress):
+            try:
+                self._owner._check_save_structure()
+            except Exception:  # noqa: BLE001 - never block input
+                log.exception("save structure check failed")
+        return False
+
+
 class MainWindow(QMainWindow):
 
     _icon_ready = Signal(int)
@@ -2853,6 +2872,12 @@ class MainWindow(QMainWindow):
             pass
         self._icon_ready.connect(self._apply_icon_to_table)
         self._undo_stack: List[UndoEntry] = []
+        # Save-structure watch (see _check_save_structure)
+        self._struct_stamp = None
+        self._struct_copy = None
+        self._struct_undo_len = 0
+        self._struct_checking = False
+        QApplication.instance().installEventFilter(_SaveStructureWatch(self))
         self._loaded_path: str = ""
         self._dirty: bool = False
         self._parc_status: str = ""
@@ -15983,6 +16008,94 @@ QCheckBox::indicator {{
             return
         self._dirty = True
         self._populate_sublevels()
+
+    # ── Save structure watch ─────────────────────────────────────────
+    # Many edits make the save longer or shorter (inserting knowledge,
+    # renaming a mercenary, rebuilding dye data, ...). Everything behind that
+    # point moves, but the item list, the other pages and the byte-patch undo
+    # entries still hold the old offsets. So before each user input:
+    #   - if the save changed size since the last check, read it again from
+    #     memory (items, equipment, sockets; other pages reload when opened),
+    #   - replace the undo entries of that change by one entry that restores
+    #     the whole save as it was before (a copy taken at the previous input).
+    # item_scanner additionally refuses to write when an item is no longer at
+    # its stored offset.
+    _STRUCT_UNDO_KEEP = 8          # whole-save undo copies kept
+
+    def _reset_save_structure_watch(self) -> None:
+        self._struct_stamp = None
+        self._struct_copy = None
+        self._struct_undo_len = len(self._undo_stack)
+
+    def _check_save_structure(self) -> None:
+        sd = getattr(self, "_save_data", None)
+        if sd is None or self._struct_checking:
+            return
+        blob = sd.decompressed_blob
+        stamp = (id(blob), len(blob))
+        if self._struct_stamp is not None and stamp != self._struct_stamp:
+            self._struct_checking = True
+            try:
+                self._after_structure_change()
+            finally:
+                self._struct_checking = False
+            blob = sd.decompressed_blob
+            stamp = (id(blob), len(blob))
+        self._struct_stamp = stamp
+        self._struct_copy = bytes(blob)
+        self._struct_undo_len = len(self._undo_stack)
+
+    def _after_structure_change(self) -> None:
+        before = self._struct_copy
+        new_entries = self._undo_stack[self._struct_undo_len:]
+        desc = new_entries[-1].description if new_entries else "change to the save structure"
+        # entries recorded by the change itself hold offsets of the old layout
+        del self._undo_stack[self._struct_undo_len:]
+        if before is not None:
+            self._undo_stack.append(UndoEntry(description=desc, snapshot=before))
+            copies = [e for e in self._undo_stack if e.snapshot is not None]
+            for e in copies[:-self._STRUCT_UNDO_KEEP]:
+                e.snapshot = None          # too old: memory; its undo becomes a no-op
+                e.description += " (no longer undoable)"
+        log.info("Save size changed (%s) - reading items again", desc)
+        self._rescan_now()
+
+    def _rescan_now(self) -> None:
+        """Read items and the dependent pages again from the save in memory."""
+        if not self._save_data:
+            return
+        self._update_status("The save changed size - reading it again...")
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            blob = self._save_data.decompressed_blob
+            items = scan_items(blob)
+            enriched, status = enrich_items_with_parc(blob, items)
+            for item in items:
+                item.name = self._name_db.get_name(item.item_key)
+                item.category = self._name_db.get_category(item.item_key)
+            self._items = items
+            self._parc_status = status
+            self._quest_entries = []
+            self._mission_entries = []
+            self._repurch_items = []
+            self._repurchase_loaded = False
+            self._faction_loaded_blob_id = None
+            self._update_inv_subtab_counts()
+            self._populate_inventory()
+            self._populate_equipment()
+            self._populate_socket_items()
+            if hasattr(self, "_inv_count_label"):
+                self._inv_count_label.setText(str(len(self._items)))
+            # Pages that keep their own offsets: read again if they were open.
+            for attr, loader in (("_dye_items", "_dye_load"), ("_qe_entries", "_qe_load")):
+                if getattr(self, attr, None) and hasattr(self, loader):
+                    try:
+                        getattr(self, loader)()
+                    except Exception:  # noqa: BLE001
+                        log.exception("reload %s after size change failed", loader)
+            self._update_status(f"Save read again after a size change - {len(items)} items.")
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def _set_backup_tab_text(self, text: str) -> None:
         """Rename the Backup tab by looking it up, not by its old index: inside
@@ -31661,6 +31774,7 @@ QCheckBox::indicator {{
             self._loaded_path = path
             self._dirty = False
             self._undo_stack.clear()
+            self._reset_save_structure_watch()
             self._scan_and_populate()
             self._update_status(f"Loaded raw stream: {os.path.basename(path)}")
         except Exception as e:
@@ -31730,6 +31844,7 @@ QCheckBox::indicator {{
             self._loaded_path = path
             self._dirty = False
             self._undo_stack.clear()
+            self._reset_save_structure_watch()
             self._snapshot_loaded_save()
 
             _step("Creating backup...", 2)
@@ -34733,7 +34848,16 @@ QCheckBox::indicator {{
             self._update_status("Nothing to undo.")
             return
 
+        self._check_save_structure()     # a size change just before Undo
         entry = self._undo_stack.pop()
+        if entry.snapshot is not None:
+            self._save_data.decompressed_blob = bytearray(entry.snapshot)
+            self._rescan_now()
+            self._struct_stamp = None      # new blob: start the watch again
+            self._check_save_structure()
+            self._dirty = bool(self._undo_stack)
+            self._update_status(f"Undone: {entry.description}")
+            return
         blob = self._save_data.decompressed_blob
 
         for offset, old_bytes, _new_bytes in entry.patches:

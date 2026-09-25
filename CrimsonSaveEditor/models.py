@@ -71,3 +71,6 @@ class UndoEntry:
     old_bytes: bytes = b""
     new_bytes: bytes = b""
     patches: list = field(default_factory=list)
+    # Whole save before a change that made it longer or shorter. Byte
+    # patches cannot undo those (every later offset moved), a copy can.
+    snapshot: Optional[bytes] = None

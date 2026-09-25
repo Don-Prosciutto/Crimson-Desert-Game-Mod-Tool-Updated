@@ -304,6 +304,32 @@ def _classify_items(data: bytes | bytearray, items: List[SaveItem]) -> None:
                 break
 
 
+class StaleItemError(ValueError):
+    """The item is no longer where it was read - the save changed size."""
+
+
+def _check_item_identity(data: bytearray, item: SaveItem) -> None:
+    """Before writing: is this item still at the place it was read from?
+
+    If something made the save longer or shorter since the item was read,
+    every offset behind that point moved. Writing at the old offset would
+    change a different item or break the save. The item's number (and key,
+    when known) must still be at the stored offsets."""
+    fo = item.field_offsets or {}
+    no_off = fo.get("_itemNo")
+    if no_off is not None and item.item_no and 0 <= no_off <= len(data) - 8:
+        if struct.unpack_from("<q", data, no_off)[0] != item.item_no:
+            raise StaleItemError(
+                "The save changed since this item was read (it moved). Nothing was "
+                "written - the item list is read again, then try once more.")
+    key_off = fo.get("_itemKey")
+    if key_off is not None and item.item_key and 0 <= key_off <= len(data) - 4:
+        if struct.unpack_from("<I", data, key_off)[0] != (item.item_key & 0xFFFFFFFF):
+            raise StaleItemError(
+                "The save changed since this item was read (it moved). Nothing was "
+                "written - the item list is read again, then try once more.")
+
+
 def _require_parc_field_offset(
     data: bytearray,
     item: SaveItem,
@@ -320,6 +346,7 @@ def _require_parc_field_offset(
         raise ValueError(
             f"Safe edit unavailable: {field_name} is absent or outside this item record."
         )
+    _check_item_identity(data, item)
     record_start = item.field_offsets.get("_record_start", 0)
     record_end = item.field_offsets.get("_record_end", len(data))
     if record_start and offset < record_start:
