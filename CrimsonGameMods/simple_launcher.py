@@ -137,10 +137,6 @@ MOD_DEFS = [
      "desc": "Every equipment piece can be dyed", "section": "Item Mods"},
     {"id": "five_sockets", "title": "5 Sockets",
      "desc": "Gear that has gem sockets gets 5 of them, all unlocked", "section": "Item Mods"},
-    {"id": "thief_gloves_no_cd", "title": "Thief Gloves: No Cooldown",
-     "desc": "Only the Thief Gloves: 30 minute cooldown down to 1 second", "section": "Item Mods"},
-    {"id": "refine_cost_1", "title": "Refinement Costs 1",
-     "desc": "Refining gear needs only 1 of each material, at every level", "section": "Item Mods"},
     {"id": "unlock_abyss", "title": "Unlock Abyss Gear",
      "desc": "Abyss gear can be equipped without the abyss requirement", "section": "Item Mods"},
     {"id": "universal_prof", "title": "Universal Proficiency",
@@ -161,8 +157,6 @@ MOD_DEFS = [
     # ── Player ──
     {"id": "speed_3x", "title": "3x Player Speed",
      "desc": "Attack speed and move speed x3", "section": "Player"},
-    {"id": "gift_trust_5x", "title": "5x Trust from Gifts",
-     "desc": "Gifts to NPCs give 5x the trust (talking and quests unchanged)", "section": "Player"},
     {"id": "merc_max", "title": "Max Mercenaries / Pets",
      "desc": "Summon limit 9999, no hire limit", "section": "Player"},
     # ── Difficulty ──

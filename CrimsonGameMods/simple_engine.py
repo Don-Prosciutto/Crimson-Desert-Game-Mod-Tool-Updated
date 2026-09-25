@@ -75,9 +75,6 @@ MOD_TABLES: Dict[str, Tuple[str, ...]] = {
     "store_max_stock": ("storeinfo",),
     "bagspace_240": ("inventory",),
     "bagspace_700": ("inventory",),
-    "refine_cost_1": ("multichangeinfo",),
-    "thief_gloves_no_cd": ("iteminfo",),
-    "gift_trust_5x": ("characterinfo",),
 }
 
 PLAYER_CHAR_KEYS = {1, 4, 6}          # Kliff, Damiane, Oongka in equipslotinfo
@@ -338,44 +335,6 @@ def _bag(t, character_slots: int):
     return n
 
 
-REFINE_TOOL = 28001                   # crafttoolinfo CraftTool_Enchant = refinement
-THIEF_GLOVES = "ThiefGloves"          # iteminfo string_key, 30 min cooldown in vanilla
-
-
-def _m_refine_cost_1(t):
-    """Refinement recipes: every material amount above 1 becomes 1 (all levels)."""
-    n = 0
-    for r in t["multichangeinfo"]:
-        if r.get("craft_tool_info") != REFINE_TOOL:
-            continue
-        for m in (r.get("fixed_material_data_list") or []) + (r.get("recipe_item_group_info_list") or []):
-            if isinstance(m.get("count"), int) and m["count"] > 1:
-                m["count"] = 1
-                n += 1
-    return n
-
-
-def _m_thief_gloves_no_cd(t):
-    n = 0
-    for it in t["iteminfo"]:
-        if it.get("string_key") == THIEF_GLOVES and _iv(it.get("cooltime")) > 1000:
-            it["cooltime"] = _abc(1000)            # 1 s; 0 crashes the game
-            n += 1
-    return n
-
-
-def _m_gift_trust_5x(t):
-    """Trust an NPC gives for a gift (characterinfo friendly item data) x5."""
-    n = 0
-    for c in t["characterinfo"]:
-        for g in c.get("character_friendly_item_data_list") or []:
-            v = g.get("reward_friendly")
-            if isinstance(v, int) and 0 < v < 2 ** 40:
-                g["reward_friendly"] = v * 5
-                n += 1
-    return n
-
-
 MOD_FUNCS: Dict[str, Callable] = {
     "no_cooldown": _m_no_cooldown,
     "max_charges": _m_max_charges,
@@ -396,9 +355,6 @@ MOD_FUNCS: Dict[str, Callable] = {
     "store_max_stock": _m_store_max_stock,
     "bagspace_240": lambda t: _bag(t, 240),
     "bagspace_700": lambda t: _bag(t, 700),
-    "refine_cost_1": _m_refine_cost_1,
-    "thief_gloves_no_cd": _m_thief_gloves_no_cd,
-    "gift_trust_5x": _m_gift_trust_5x,
 }
 
 
@@ -531,7 +487,7 @@ def _write_papgt(dmm, gp: str, entries: list) -> None:
 
 # Multipliers change the value again every time they run, so "nothing left
 # to change" cannot be checked for them.
-_NOT_VERIFIABLE = {"drop_5x", "speed_3x", "hard_2x_hp", "gift_trust_5x"}
+_NOT_VERIFIABLE = {"drop_5x", "speed_3x", "hard_2x_hp"}
 
 
 def verify(gp: str, progress: Callable[[str], None] = lambda m: None, dmm=None) -> Dict[str, str]:
