@@ -8,7 +8,7 @@ a = Analysis(
     hiddenimports=[
         'lz4', 'lz4.block',
         'dmm_parser', 'dmm_parser.dmm_parser', 'dmm_parser.enums',
-        'table_layout', 'simple_engine', 'game_version', 'paz_patcher', 'paz_parse',
+        'table_layout', 'simple_engine', 'simple_report', 'game_version', 'paz_patcher', 'paz_parse',
     ],
     hookspath=[],
     hooksconfig={},

@@ -105,8 +105,9 @@ def _abc(v: int) -> dict:
 def _m_no_cooldown(t):
     n = 0
     for it in t["iteminfo"]:
-        if _iv(it.get("cooltime")) > 1000:                    # milliseconds; 0 crashes the game
-            target = 8000 if "kuku" in (it.get("string_key") or "").lower() else 1000
+        # milliseconds; 0 crashes the game. Only ever lowered.
+        target = 8000 if "kuku" in (it.get("string_key") or "").lower() else 1000
+        if _iv(it.get("cooltime")) > target:
             it["cooltime"] = _abc(target)
             n += 1
     return n
@@ -222,7 +223,7 @@ def _m_mounts_in_towns(t):
     for c in t["characterinfo"]:
         if not c.get("vehicle_info"):
             continue
-        if _iv(c.get("call_mercenary_spawn_duration")) > 0:
+        if 0 < _iv(c.get("call_mercenary_spawn_duration")) != 0x7FFFFFFF:
             c["call_mercenary_spawn_duration"] = 0x7FFFFFFF
             n += 1
         if _iv(c.get("call_mercenary_cool_time")) > 0:
@@ -446,6 +447,7 @@ class _Tables(dict):
 
     def __missing__(self, stem):
         grp = source_group(self.dmm, self.gp, stem, self._pamt_cache)
+        log.info("Simple: %s taken from group %s", stem, grp)
         self.progress(f"Reading {stem}" + (f" (from {grp})" if grp != "0008" else "") + "...")
         body, head = _read(self.dmm, self.gp, grp, stem)
         recs = self.dmm.parse_table(stem, body, head)
@@ -482,6 +484,40 @@ def _write_papgt(dmm, gp: str, entries: list) -> None:
 
 
 # ── public API ───────────────────────────────────────────────────────────
+
+# Multipliers change the value again every time they run, so "nothing left
+# to change" cannot be checked for them.
+_NOT_VERIFIABLE = {"drop_5x", "speed_3x", "hard_2x_hp"}
+
+
+def verify(gp: str, progress: Callable[[str], None] = lambda m: None, dmm=None) -> Dict[str, str]:
+    """Check the installed Simple tables: run every installed switch once more
+    on them. A switch that is really in the game files finds nothing left to
+    change. Changes nothing on disk. Returns mod id -> short result text."""
+    if dmm is None:
+        import dmm_parser as dmm  # noqa: PLC0415
+    mark = installed(gp) or {}
+    out: Dict[str, str] = {}
+    tables: Dict[str, list] = {}
+    for mid in mark.get("mods", []):
+        if mid not in MOD_FUNCS:
+            out[mid] = "unknown mod"
+            continue
+        if mid in _NOT_VERIFIABLE:
+            out[mid] = "not checkable (multiplier)"
+            continue
+        try:
+            for stem in MOD_TABLES[mid]:
+                if stem not in tables:
+                    progress(f"Checking {stem}...")
+                    tables[stem] = dmm.parse_table(stem, *_read(dmm, gp, GROUP, stem))
+            left = MOD_FUNCS[mid](tables)
+            out[mid] = ("OK - in the game files" if left == 0
+                        else f"NOT COMPLETE - {left} values still unchanged")
+        except Exception as e:  # noqa: BLE001
+            out[mid] = f"check failed: {type(e).__name__}: {e}"[:200]
+    return out
+
 
 def installed(gp: str) -> Optional[dict]:
     """Marker of the current install, or None."""
@@ -562,6 +598,7 @@ def apply(gp: str, active: Set[str], progress: Callable[[str], None] = lambda m:
         remove(gp, progress, dmm)
         return {"mods": {}, "tables": [], "removed": True}
 
+    log.info("Simple: apply %s to %s", sorted(active), gp)
     tables = _Tables(dmm, gp, progress)
     counts: Dict[str, int] = {}
     for mid in sorted(active):
@@ -569,6 +606,7 @@ def apply(gp: str, active: Set[str], progress: Callable[[str], None] = lambda m:
             tables[stem]                    # load + roundtrip check first
         progress(f"Applying {mid}...")
         counts[mid] = MOD_FUNCS[mid](tables)
+        log.info("Simple: %s changed %d values", mid, counts[mid])
 
     files: List[Tuple[str, bytes]] = []
     for stem, recs in tables.items():
@@ -642,6 +680,7 @@ def remove(gp: str, progress: Callable[[str], None] = lambda m: None, dmm=None) 
     if dmm is None:
         import dmm_parser as dmm  # noqa: PLC0415
     progress("Removing Simple's mods...")
+    log.info("Simple: remove from %s", gp)
     changed = False
     try:
         entries = dmm.parse_papgt_file(_papgt_path(gp))["entries"]

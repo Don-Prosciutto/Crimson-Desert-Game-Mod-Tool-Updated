@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 import simple_engine as engine
+import simple_report
 
 log = logging.getLogger(__name__)
 
@@ -238,6 +239,26 @@ def game_folder_ok(gp: str) -> bool:
 
 
 # ─── Background work ──────────────────────────────────────────────────
+class ReportWorker(QThread):
+    progress = Signal(str)
+    done = Signal(str)                  # path of the saved report
+    failed = Signal(str)
+
+    def __init__(self, game_path: str, selected: set):
+        super().__init__()
+        self.game_path = game_path
+        self.selected = sorted(selected)
+
+    def run(self):
+        try:
+            text = simple_report.build_report(APP_VERSION, GAME_BUILD, self.game_path,
+                                              self.selected, self.progress.emit)
+            self.done.emit(simple_report.write_report(text))
+        except Exception as e:  # noqa: BLE001
+            log.exception("Simple: report failed")
+            self.failed.emit(f"{type(e).__name__}: {e}")
+
+
 class EngineWorker(QThread):
     progress = Signal(str)
     finished_ok = Signal(object)
@@ -436,6 +457,15 @@ class SimpleWindow(QWidget):
             f"QPushButton:hover {{ border-color: {ACCENT}; }}")
         bb.clicked.connect(self._browse)
         pr.addWidget(bb)
+        self._report_btn = QPushButton("Create Report")
+        self._report_btn.setToolTip("Saves a report file on your desktop (versions, what Simple "
+                                    "installed, a check of each mod, the log). Send it as feedback.")
+        self._report_btn.setStyleSheet(
+            f"QPushButton {{ background: {HEADER}; color: {TEXT}; border: 1px solid {BORDER}; "
+            f"border-radius: 4px; padding: 5px 8px; }}"
+            f"QPushButton:hover {{ border-color: {ACCENT}; }}")
+        self._report_btn.clicked.connect(self._on_report)
+        pr.addWidget(self._report_btn)
         root.addLayout(pr)
 
         # State of the game: what is installed, updates, other mods
@@ -546,6 +576,34 @@ class SimpleWindow(QWidget):
         self._refresh_state()
 
     # ── State ──
+    def _on_report(self):
+        if self._worker and self._worker.isRunning():
+            return
+        self._report_btn.setEnabled(False)
+        self._set_status("Creating the report (takes a few seconds)...", ACCENT)
+        w = ReportWorker(self._game_path, self._active)
+        self._report_worker = w
+        w.progress.connect(lambda m: self._set_status(m, ACCENT))
+        w.done.connect(self._on_report_done)
+        w.failed.connect(lambda m: (self._report_btn.setEnabled(True),
+                                    self._set_status("Report failed.", ERROR),
+                                    QMessageBox.critical(self, "Report", m)))
+        w.start()
+
+    def _on_report_done(self, path: str):
+        self._report_btn.setEnabled(True)
+        self._set_status(f"Report saved: {path}", SUCCESS)
+        QApplication.clipboard().setText(path)
+        QMessageBox.information(
+            self, "Report saved",
+            f"The report was saved here:\n\n{path}\n\n"
+            "Please send this file together with a short description of what you did "
+            "and what happened in the game.\n\n(The path is also copied to the clipboard.)")
+        try:
+            subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
+        except Exception:  # noqa: BLE001 - only a convenience
+            pass
+
     def _refresh_state(self):
         """Read what is installed in the game and update everything."""
         gp = self._game_path
@@ -562,6 +620,8 @@ class SimpleWindow(QWidget):
                 self._active = set(self._installed)
         else:
             self._health = ("nogame", "")
+        log.info("Simple: game %r state %s %s installed=%s selected=%s", gp, self._health[0],
+                 self._health[1], sorted(self._installed), sorted(self._active))
         self._sync_badges()
         self._update_banner()
 
@@ -673,6 +733,8 @@ class SimpleWindow(QWidget):
         else:
             self._active.discard(mod_id)
         self._apply_mutex(mod_id)
+        log.info("Simple: %s %s -> selected %s", mod_id, "on" if want_on else "off",
+                 sorted(self._active))
         self._sync_badges()
         self._save_active()
         self._update_banner()
@@ -731,6 +793,7 @@ class SimpleWindow(QWidget):
             self._start_game()
 
     def _start_game(self):
+        log.info("Simple: start game")
         if not self._game_path:
             QMessageBox.warning(self, "No Game Path", "Set game folder first.")
             return
@@ -784,6 +847,7 @@ class SimpleWindow(QWidget):
             then()
 
     def _on_failed(self, msg: str, refused: bool):
+        log.error("Simple: %s: %s", "refused" if refused else "failed", msg)
         self._worker = None
         self._after_apply = None
         self._end()
@@ -792,13 +856,15 @@ class SimpleWindow(QWidget):
         if refused:
             QMessageBox.warning(
                 self, "Not compatible with this game version",
-                msg + "\n\nThe game was NOT changed. Wait for an updated Simple version.")
+                msg + "\n\nThe game was NOT changed. Wait for an updated Simple version.\n\n"
+                "Click 'Create Report' at the top and send the file.")
         else:
-            QMessageBox.critical(self, "Error", f"Failed:\n\n{msg}")
+            QMessageBox.critical(self, "Error", f"Failed:\n\n{msg}\n\n"
+                                 "Click 'Create Report' at the top and send the file.")
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    simple_report.setup_logging(APP_VERSION)
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     w = SimpleWindow()
