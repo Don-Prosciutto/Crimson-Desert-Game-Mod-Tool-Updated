@@ -52,7 +52,13 @@ CHARACTER_NAMES = {
 }
 
 
-def parse_quest_entry(D, eoff, end):
+def parse_quest_entry(D, eoff, end, game_event_field=True):
+    """One questinfo record.
+
+    Game 2.03: BranchData is 19 bytes (was 18) and a u16
+    global_game_event_info follows branch_data. game_event_field=False reads
+    the older layout (18-byte BranchData, no u16)."""
+    branch = 19 if game_event_field else 18
     p = eoff
     try:
         key, p = _u32(D, p)                          # 1. key
@@ -66,6 +72,7 @@ def parse_quest_entry(D, eoff, end):
         quest_type = D[p]; p += 1                     # 4. quest_type
         quest_category = D[p]; p += 1                 # 5. quest_category
 
+        name_index = struct.unpack_from('<Q', D, p + 1)[0]  # paloc key of the name
         p = _skip_locstr(D, p)                        # 6. name (localized)
         if p < 0: return None
         p = _skip_locstr(D, p)                        # 7. desc (localized)
@@ -80,14 +87,16 @@ def parse_quest_entry(D, eoff, end):
         p += fsd_count
         p += 4 + 4 + 1
 
-        p += 18                                       # 11. branch_data (fixed)
+        p += branch                                   # 11. branch_data (fixed)
+        if game_event_field:
+            p += 2                                    # 11b. global_game_event_info (u16)
 
         start_player_list, p = _read_array_4B(D, p)  # 12. start_player_list
         if p < 0: return None
 
         bdl_count, p = _u32(D, p)                    # 13. branch_data_list
         if bdl_count > 10000: return None
-        p += bdl_count * 18
+        p += bdl_count * branch
 
         executor_list, p = _read_array_4B(D, p)      # 14. executor_quest_list
         if p < 0: return None
@@ -112,10 +121,12 @@ def parse_quest_entry(D, eoff, end):
             'quest_category': quest_category,
             'category_name': CATEGORY_NAMES.get(quest_category, f"Cat_{quest_category}"),
             'quest_group': quest_group,
+            'name_index': name_index,
             'start_player_list': start_player_list,
             'character_names': [CHARACTER_NAMES.get(c, f"Char_{c}") for c in (start_player_list or [])],
             'missions': missions,
             'stages': stages,
+            'gauges': gauge_list,
             'executor_list': executor_list,
             'start_mission': start_mission,
             'start_stage': start_stage,
@@ -138,6 +149,8 @@ def parse_all(pabgb_path, pabgh_path):
         bi = sorted_offs.index(eoff)
         end = sorted_offs[bi + 1] if bi + 1 < len(sorted_offs) else len(D)
         entry = parse_quest_entry(D, eoff, end)
+        if entry is None:
+            entry = parse_quest_entry(D, eoff, end, game_event_field=False)
         if entry:
             entries.append(entry)
         else:

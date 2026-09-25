@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QSplitter, QFrame, QAbstractItemView,
     QListWidget, QListWidgetItem, QDialog, QDialogButtonBox,
     QProgressBar, QTextEdit, QCheckBox, QApplication, QDockWidget,
-    QSlider,
+    QSlider, QTreeWidget, QTreeWidgetItem,
 )
 
 from models import SaveItem, SaveData, UndoEntry
@@ -61,6 +61,40 @@ from theme_support import (
     DEFAULT_POPUP_BRANDING, normalize_popup_branding,
     DEFAULT_STARTUP_SPLASH_TITLE,
 )
+import quest_chapters
+
+
+class _SortKeyItem(QTableWidgetItem):
+    """Table cell that sorts by its sort_key (story order) instead of its text."""
+
+    def __init__(self, text: str = "", sort_key=None):
+        super().__init__(text)
+        self.sort_key = sort_key
+
+    def __lt__(self, other):
+        a = self.sort_key
+        b = getattr(other, "sort_key", None)
+        if a is not None and b is not None:
+            return a < b
+        return super().__lt__(other)
+
+
+def _fill_chapter_combo(combo: QComboBox) -> None:
+    """All / Main story / one entry per chapter; itemData is the group key
+    (None = all, -1 = whole main story)."""
+    combo.addItem("All", None)
+    combo.addItem("Main story (in order)", -1)
+    for grp in quest_chapters.load().groups:
+        if grp.is_chapter:
+            combo.addItem(grp.display, grp.key)
+
+
+def _chapter_choice(combo: QComboBox):
+    """(story_view, group or None) for a combo made by _fill_chapter_combo."""
+    data = combo.currentData()
+    if data is None:
+        return False, None
+    return True, (None if data == -1 else data)
 
 
 def _is_game_running() -> bool:
@@ -1101,11 +1135,13 @@ class QuestEditorWindow(QDialog):
         0x1105: "Completed",
         0x1502: "Side Content",
         0x1905: "Fully Completed",
+        # 1-byte states (current saves): 1 Locked ... 6 Reward received
         0x01: "Locked",
         0x02: "Available",
-        0x03: "Available (variant)",
-        0x04: "Unknown (0x04)",
-        0x05: "In Progress / Done",
+        0x03: "In Progress",
+        0x04: "Ready to Complete",
+        0x05: "Completed",
+        0x06: "Completed (reward received)",
     }
 
     def __init__(self, save_data, save_path: str, parent=None):
@@ -1267,6 +1303,8 @@ class QuestEditorWindow(QDialog):
 
             raw = self._save_data.decompressed_blob
             result = sp.build_result_from_raw(bytes(raw), {'input_kind': 'raw_blob'})
+            # kept for the Quest Editor page, which needs the same parse (it takes ~half the load time)
+            self._parse_result = (bytes(raw), result)
 
             for obj in result['objects']:
                 if obj.class_name != 'QuestSaveData':
@@ -10662,6 +10700,16 @@ QCheckBox::indicator {{
         self._qe_state_filter.currentTextChanged.connect(self._qe_filter)
         top_row.addWidget(self._qe_state_filter)
 
+        top_row.addWidget(QLabel("Chapter:"))
+        self._qe_chapter_filter = QComboBox()
+        _fill_chapter_combo(self._qe_chapter_filter)
+        self._qe_chapter_filter.setToolTip(
+            "Show the main story by chapter (Prologue, Chapter 1-12, Epilogue).\n"
+            "The list is then sorted in story order: chapter first, inside a chapter\n"
+            "the quests you already played in the order you played them.")
+        self._qe_chapter_filter.currentTextChanged.connect(self._qe_filter)
+        top_row.addWidget(self._qe_chapter_filter)
+
         self._qe_status = QLabel("")
         self._qe_status.setStyleSheet(f"color: {COLORS['accent']}; padding: 4px;")
         top_row.addWidget(self._qe_status)
@@ -10677,8 +10725,10 @@ QCheckBox::indicator {{
         top_layout.setSpacing(2)
 
         self._qe_table = QTableWidget()
-        self._qe_table.setColumnCount(10)
-        self._qe_table.setHorizontalHeaderLabels(["Key", "Name", "State", "Status", "Completed", "Type", "Category", "Characters", "Stages", "Chain"])
+        self._qe_table.setColumnCount(11)
+        self._qe_table.setHorizontalHeaderLabels(["Key", "Name", "Chapter", "State", "Status", "Completed", "Type", "Category", "Characters", "Stages", "Chain"])
+        self._qe_table.horizontalHeaderItem(2).setToolTip(
+            "Main story chapter. Click to sort in story order.")
         self._qe_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._qe_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self._qe_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -10766,7 +10816,10 @@ QCheckBox::indicator {{
         top_layout.addWidget(self._qe_chain_hint)
         self._qe_table.selectionModel().selectionChanged.connect(self._qe_show_chain_hint)
 
-        splitter.addWidget(top_panel)
+        self._qe_views = QTabWidget()
+        self._qe_views.addTab(self._qg_build_view(), "Story && Groups")
+        self._qe_views.addTab(top_panel, "All Quests (table)")
+        splitter.addWidget(self._qe_views)
 
         bottom_splitter = QSplitter(Qt.Vertical)
 
@@ -10878,6 +10931,10 @@ QCheckBox::indicator {{
         splitter.addWidget(bottom_splitter)
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 2)
+        # the stage / world-object browser belongs to the table view
+        self._qe_bottom = bottom_splitter
+        self._qe_views.currentChanged.connect(lambda i: self._qe_bottom.setVisible(i == 1))
+        self._qe_bottom.setVisible(self._qe_views.currentIndex() == 1)
         layout.addWidget(splitter, 1)
 
         warn = QLabel("Changing quest/stage/gimmick states can have unpredictable effects. Always back up first.")
@@ -10913,7 +10970,8 @@ QCheckBox::indicator {{
                     with open(_qdb_path, 'r', encoding='utf-8') as _f:
                         _qdb = {e['key']: e for e in json.load(_f)}
                     for entry in self._qe_entries:
-                        info = _qdb.get(entry.get('key'))
+                        # quest and mission keys overlap: only quests are looked up here
+                        info = None if entry.get('is_mission') else _qdb.get(entry.get('key'))
                         if info:
                             cat_name = info.get('category_name', '')
                             chars = info.get('character_names', [])
@@ -10931,13 +10989,26 @@ QCheckBox::indicator {{
             except Exception:
                 pass
 
+            _chapters = quest_chapters.load()
+            for entry in self._qe_entries:
+                g = _chapters.group_of(entry.get('key'), bool(entry.get('is_mission')))
+                if g is not None:
+                    entry['chapter_group'] = g
+                    if entry.get('is_mission'):
+                        entry['quest_category'] = quest_chapters.MAIN_STORY
+
             try:
                 import sys as _sys
                 import save_parser as _sp
                 from quest_deep_parser import parse_quest_deep
 
                 raw = bytes(self._save_data.decompressed_blob)
-                _result = _sp.build_result_from_raw(raw, {'input_kind': 'raw_blob'})
+                _cached = getattr(self._qe_window, '_parse_result', None)
+                if _cached and _cached[0] == raw:
+                    _result = _cached[1]
+                else:
+                    _result = _sp.build_result_from_raw(raw, {'input_kind': 'raw_blob'})
+                self._qe_window._parse_result = None
 
                 _base = getattr(_sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
                 _qn = {}
@@ -10998,6 +11069,7 @@ QCheckBox::indicator {{
 
         search = self._qe_search.text().lower().strip()
         state_filter = self._qe_state_filter.currentText()
+        story_view, chapter_group = _chapter_choice(self._qe_chapter_filter)
 
         filtered = []
         for entry in self._qe_entries:
@@ -11007,11 +11079,16 @@ QCheckBox::indicator {{
             if state_filter != "All":
                 if state_filter.lower() not in state_name.lower():
                     continue
+            if story_view:
+                g = entry.get('chapter_group')
+                if g is None or (chapter_group is not None and g != chapter_group):
+                    continue
             filtered.append(entry)
 
         table = self._qe_table
         table.setSortingEnabled(False)
         table.setRowCount(len(filtered))
+        _chapters = quest_chapters.load()
 
         STATE_COLORS = {
             'Completed': COLORS['success'], 'Fully Completed': COLORS['success'],
@@ -11030,14 +11107,23 @@ QCheckBox::indicator {{
             name_w.setToolTip(entry['name'])
             table.setItem(row, 1, name_w)
 
+            _g = entry.get('chapter_group')
+            _played = entry.get('completed_time', 0) or entry.get('branched_time', 0)
+            chap_w = _SortKeyItem(_chapters.group_display(_g) if _g is not None else "",
+                                  _chapters.sort_key(entry['key'], _played,
+                                                     bool(entry.get('is_mission'))))
+            if _g is not None:
+                chap_w.setForeground(QBrush(QColor(COLORS['accent'])))
+            table.setItem(row, 2, chap_w)
+
             state_name = entry.get('state_name', '?')
             state_w = QTableWidgetItem(state_name)
             color = STATE_COLORS.get(state_name, COLORS['text'])
             state_w.setForeground(QBrush(QColor(color)))
-            table.setItem(row, 2, state_w)
+            table.setItem(row, 3, state_w)
 
             state_hex = f"0x{entry.get('state_raw', 0):04X}"
-            table.setItem(row, 3, QTableWidgetItem(state_hex))
+            table.setItem(row, 4, QTableWidgetItem(state_hex))
 
             ct = entry.get('completed_time', 0)
             bt = entry.get('branched_time', 0)
@@ -11059,7 +11145,7 @@ QCheckBox::indicator {{
             else:
                 comp_w = QTableWidgetItem("-")
                 comp_w.setToolTip("No _completedTime — needs PARC expansion to complete")
-            table.setItem(row, 4, comp_w)
+            table.setItem(row, 5, comp_w)
 
             is_mission = entry.get('is_mission', False)
             needs_expand = entry.get('needs_parc_expand', False)
@@ -11090,7 +11176,7 @@ QCheckBox::indicator {{
             type_w = QTableWidgetItem(type_str)
             type_w.setForeground(QBrush(QColor(type_color)))
             type_w.setToolTip(tip)
-            table.setItem(row, 5, type_w)
+            table.setItem(row, 6, type_w)
 
             cat_name = entry.get('quest_category', '')
             cat_w = QTableWidgetItem(cat_name)
@@ -11098,13 +11184,13 @@ QCheckBox::indicator {{
                 cat_w.setForeground(QBrush(QColor(COLORS['accent'])))
             elif cat_name == 'Regional':
                 cat_w.setForeground(QBrush(QColor(COLORS['warning'])))
-            table.setItem(row, 6, cat_w)
+            table.setItem(row, 7, cat_w)
 
             chars = entry.get('character_restriction', '')
             char_w = QTableWidgetItem(chars)
             if chars:
                 char_w.setForeground(QBrush(QColor("#4FC3F7")))
-            table.setItem(row, 7, char_w)
+            table.setItem(row, 8, char_w)
 
             stage_count = 0
             if self._qe_deep_data:
@@ -11113,7 +11199,7 @@ QCheckBox::indicator {{
             stages_w = QTableWidgetItem(str(stage_count) if stage_count else "")
             if stage_count > 0:
                 stages_w.setForeground(QBrush(QColor(COLORS['success'])))
-            table.setItem(row, 8, stages_w)
+            table.setItem(row, 9, stages_w)
 
             chain = entry.get('chain')
             if chain and isinstance(chain, list) and chain:
@@ -11123,10 +11209,306 @@ QCheckBox::indicator {{
                 chain_w.setForeground(QBrush(QColor(COLORS['warning'])))
             else:
                 chain_w = QTableWidgetItem("")
-            table.setItem(row, 9, chain_w)
+            table.setItem(row, 10, chain_w)
 
         table.setSortingEnabled(True)
+        if story_view:
+            table.sortItems(2, Qt.AscendingOrder)
         self._qe_status.setText(f"{len(filtered)}/{len(self._qe_entries)} shown")
+        self._qg_refresh()
+
+    # ── Story & Groups view (like the C++ editor: groups | quests | details) ──
+
+    _QG_STATE_COLORS = {
+        'done': '#6BCB77', 'progress': '#4FC3F7', 'available': '#E0B050',
+        'locked': '#888888', 'missing': '#666666',
+    }
+
+    def _qg_build_view(self) -> QWidget:
+        w = QWidget()
+        outer = QVBoxLayout(w)
+        outer.setContentsMargins(0, 4, 0, 0)
+        outer.setSpacing(3)
+        self._qg_note = QLabel("Load a save and press Load Quests.")
+        self._qg_note.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 2px;")
+        self._qg_note.setWordWrap(True)
+        outer.addWidget(self._qg_note)
+
+        split = QSplitter(Qt.Horizontal)
+
+        left = QWidget(); ll = QVBoxLayout(left); ll.setContentsMargins(0, 0, 0, 0)
+        ll.addWidget(QLabel("Quest Groups"))
+        self._qg_groups = QListWidget()
+        self._qg_groups.setToolTip("[+] all quests done   [~] started   [ ] not started")
+        self._qg_groups.currentRowChanged.connect(lambda _r: self._qg_fill_quests())
+        ll.addWidget(self._qg_groups, 1)
+        split.addWidget(left)
+
+        mid = QWidget(); ml = QVBoxLayout(mid); ml.setContentsMargins(0, 0, 0, 0)
+        ml.addWidget(QLabel("Quests"))
+        self._qg_quests = QListWidget()
+        self._qg_quests.currentItemChanged.connect(lambda _c, _p: self._qg_show_details())
+        ml.addWidget(self._qg_quests, 1)
+        split.addWidget(mid)
+
+        right = QWidget(); rl = QVBoxLayout(right); rl.setContentsMargins(0, 0, 0, 0)
+        self._qg_title = QLabel("")
+        self._qg_title.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
+        self._qg_title.setWordWrap(True)
+        rl.addWidget(self._qg_title)
+        self._qg_sub = QLabel("")
+        self._qg_sub.setStyleSheet(f"color: {COLORS['text_dim']};")
+        self._qg_sub.setWordWrap(True)
+        rl.addWidget(self._qg_sub)
+        self._qg_missions = QTreeWidget()
+        self._qg_missions.setHeaderLabels(["Mission", "State"])
+        self._qg_missions.setRootIsDecorated(False)
+        self._qg_missions.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        rl.addWidget(self._qg_missions, 1)
+        act = QHBoxLayout()
+        self._qg_complete_btn = QPushButton("Complete Quest")
+        self._qg_complete_btn.setToolTip(
+            "Set the quest, its missions and its stages to completed.\n"
+            "Only what is already in the save is changed; nothing is inserted.")
+        self._qg_complete_btn.clicked.connect(self._qg_complete_quest)
+        self._qg_complete_btn.setEnabled(False)
+        act.addWidget(self._qg_complete_btn)
+        act.addWidget(QLabel("(quest + missions + stages)"))
+        act.addStretch()
+        self._qg_table_btn = QPushButton("Show in Table")
+        self._qg_table_btn.setToolTip("Select this quest in the table view (for the advanced tools)")
+        self._qg_table_btn.clicked.connect(self._qg_show_in_table)
+        self._qg_table_btn.setEnabled(False)
+        act.addWidget(self._qg_table_btn)
+        rl.addLayout(act)
+        split.addWidget(right)
+
+        self._qg_groups.setMinimumWidth(170)
+        self._qg_quests.setMinimumWidth(200)
+        split.setStretchFactor(0, 2)
+        split.setStretchFactor(1, 3)
+        split.setStretchFactor(2, 4)
+        split.setSizes([300, 330, 440])
+        outer.addWidget(split, 1)
+        return w
+
+    @staticmethod
+    def _qg_done(e) -> bool:
+        s = e.get('state', 0)
+        if e.get('state_size', 4) == 1:
+            return (s & 0xFF) >= 5
+        return s in (0x1105, 0x1905)
+
+    @staticmethod
+    def _qg_kind(e) -> str:
+        if e is None:
+            return 'missing'
+        if MainWindow._qg_done(e):
+            return 'done'
+        name = e.get('state_name', '')
+        if 'Progress' in name or 'Ready' in name:
+            return 'progress'
+        if 'Available' in name or 'Side' in name:
+            return 'available'
+        return 'locked'
+
+    def _qg_index(self):
+        quests, missions = {}, {}
+        for e in self._qe_entries or ():
+            (missions if e.get('is_mission') else quests)[e.get('key')] = e
+        return quests, missions
+
+    def _qg_refresh(self) -> None:
+        if not hasattr(self, '_qg_groups'):
+            return
+        chapters = quest_chapters.load()
+        quests, _missions = self._qg_index()
+        self._qg_saved_quests = quests
+        keep = self._qg_groups.currentItem().data(Qt.UserRole) if self._qg_groups.currentItem() else None
+        self._qg_groups.blockSignals(True)
+        self._qg_groups.clear()
+        select_row = 0
+        for grp in chapters.groups:
+            if not grp.quests:
+                continue
+            done = sum(1 for qk in grp.quests if qk in quests and self._qg_done(quests[qk]))
+            started = sum(1 for qk in grp.quests if qk in quests
+                          and self._qg_kind(quests[qk]) in ('done', 'progress'))
+            icon = "[+]" if done == len(grp.quests) else ("[~]" if started else "[ ]")
+            it = QListWidgetItem(f"{icon} {grp.display} ({len(grp.quests)})")
+            it.setData(Qt.UserRole, grp.key)
+            it.setToolTip(f"{done} of {len(grp.quests)} done")
+            if grp.is_chapter:
+                it.setForeground(QBrush(QColor(COLORS['accent'])))
+            if grp.key == keep:
+                select_row = self._qg_groups.count()
+            self._qg_groups.addItem(it)
+        self._qg_groups.blockSignals(False)
+        if self._qg_groups.count():
+            self._qg_groups.setCurrentRow(select_row)
+        self._qg_fill_quests()
+        if not self._qe_entries:
+            self._qg_note.setText("Load a save and press Load Quests.")
+        elif chapters.from_game:
+            self._qg_note.setText("Groups, names and order from the game.")
+        else:
+            self._qg_note.setText(
+                "Order inside a chapter: played quests by play time, the rest by key.")
+
+    def _qg_fill_quests(self) -> None:
+        keep = self._qg_quests.currentItem().data(Qt.UserRole) if self._qg_quests.currentItem() else None
+        self._qg_quests.blockSignals(True)
+        self._qg_quests.clear()
+        cur = self._qg_groups.currentItem()
+        chapters = quest_chapters.load()
+        grp = next((g for g in chapters.groups if g.key == cur.data(Qt.UserRole)), None) if cur else None
+        if grp is None:
+            self._qg_quests.blockSignals(False)
+            self._qg_show_details()
+            return
+        quests = getattr(self, '_qg_saved_quests', {})
+        search = self._qe_search.text().lower().strip()
+        state_filter = self._qe_state_filter.currentText()
+        order = list(grp.quests)
+        if not chapters.from_game:
+            order.sort(key=lambda qk: chapters.sort_key(
+                qk, (quests.get(qk) or {}).get('completed_time', 0)
+                or (quests.get(qk) or {}).get('branched_time', 0)))
+        for qk in order:
+            e = quests.get(qk)
+            info = chapters.quests.get(qk, {})
+            display = (e or {}).get('display') or info.get('display') or info.get('name') or str(qk)
+            if search and search not in display.lower() and search not in str(qk):
+                continue
+            state = e.get('state_name', '?') if e else "Not in save"
+            if state_filter != "All" and state_filter.lower() not in state.lower():
+                continue
+            it = QListWidgetItem(f"[{state}] {display}")
+            it.setData(Qt.UserRole, qk)
+            it.setForeground(QBrush(QColor(self._QG_STATE_COLORS[self._qg_kind(e)])))
+            if e is None:
+                it.setToolTip("Not in your save yet - the game adds it when the quest shows up.")
+            self._qg_quests.addItem(it)
+            if qk == keep:
+                self._qg_quests.setCurrentItem(it)
+        self._qg_quests.blockSignals(False)
+        self._qg_show_details()
+
+    def _qg_selected(self):
+        it = self._qg_quests.currentItem()
+        if it is None:
+            return None, None
+        qk = it.data(Qt.UserRole)
+        return qk, getattr(self, '_qg_saved_quests', {}).get(qk)
+
+    def _qg_show_details(self) -> None:
+        qk, e = self._qg_selected()
+        self._qg_missions.clear()
+        self._qg_complete_btn.setEnabled(bool(e) and not (e and self._qg_done(e)))
+        self._qg_table_btn.setEnabled(bool(e))
+        if qk is None:
+            self._qg_title.setText("")
+            self._qg_sub.setText("")
+            return
+        chapters = quest_chapters.load()
+        info = chapters.quests.get(qk, {})
+        self._qg_title.setText((e or {}).get('display') or info.get('display') or str(qk))
+        stage_txt = ""
+        if e and self._qe_deep_data:
+            sks = self._qe_deep_data.quest_to_stages.get(qk, [])
+            st = [self._qe_deep_data.stage_map[k] for k in sks if k in self._qe_deep_data.stage_map]
+            if st:
+                stage_txt = f"  |  Stages: {sum(1 for x in st if (x.state or 0) >= 5)}/{len(st)} done"
+        self._qg_sub.setText(
+            f"{info.get('name', '')}  |  {info.get('category_name', '')}  |  key {qk}\n"
+            f"State: {(e or {}).get('state_name', 'Not in save')}{stage_txt}")
+        _q, missions = self._qg_index()
+        mnames = getattr(getattr(self, '_qe_window', None), '_mission_names', {}) or {}
+        for mk in chapters.missions_of(qk):
+            m = missions.get(mk)
+            name = (m or {}).get('display') or mnames.get(mk) or f"Mission {mk}"
+            row = QTreeWidgetItem([name, m.get('state_name', '?') if m else "Not in save"])
+            row.setForeground(1, QBrush(QColor(self._QG_STATE_COLORS[self._qg_kind(m)])))
+            row.setToolTip(0, f"Mission key {mk}")
+            self._qg_missions.addTopLevelItem(row)
+
+    def _qg_show_in_table(self) -> None:
+        qk, e = self._qg_selected()
+        if e is None:
+            return
+        self._qe_chapter_filter.setCurrentIndex(0)
+        self._qe_search.setText(str(qk))
+        self._qe_views.setCurrentIndex(1)
+        t = self._qe_table
+        for r in range(t.rowCount()):
+            w = t.item(r, 0)
+            d = w.data(Qt.UserRole) if w else None
+            if d and d.get('key') == qk and not d.get('is_mission'):
+                t.selectRow(r)
+                t.scrollToItem(w)
+                break
+
+    def _qg_complete_quest(self) -> None:
+        qk, e = self._qg_selected()
+        if not e or not self._save_data:
+            return
+        chapters = quest_chapters.load()
+        info = chapters.quests.get(qk, {})
+        name = e.get('display') or info.get('display') or str(qk)
+        _q, missions = self._qg_index()
+        todo_missions = [missions[mk] for mk in chapters.missions_of(qk)
+                         if mk in missions and not self._qg_done(missions[mk])]
+        todo_stages = []
+        if self._qe_deep_data:
+            for sk in self._qe_deep_data.quest_to_stages.get(qk, []):
+                st = self._qe_deep_data.stage_map.get(sk)
+                if st and st.state_offset and (st.state or 0) < 5:
+                    todo_stages.append(st)
+        main = info.get('category_name') == quest_chapters.MAIN_STORY
+        warn = ("\n\nThis is a MAIN STORY quest. Marking it done skips what the game does "
+                "when you finish it (cutscenes, rewards, the next quest). The story can get "
+                "stuck. Keep a backup." if main else
+                "\n\nThe game's own finishing steps (rewards, follow-up quests) do not run. "
+                "Keep a backup.")
+        reply = QMessageBox.question(
+            self, "Complete Quest",
+            f"Complete '{name}'?\n\n"
+            f"Quest state -> Completed\n"
+            f"{len(todo_missions)} mission(s) -> Completed\n"
+            f"{len(todo_stages)} stage(s) -> Completed\n"
+            f"Only entries already in the save are changed; nothing is inserted." + warn,
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply != QMessageBox.Yes:
+            return
+        blob = self._save_data.decompressed_blob
+        patches = []
+
+        def write_entry(entry):
+            off, sz = entry.get('state_offset', -1), entry.get('state_size', 4)
+            if off < 0:
+                return
+            old = bytes(blob[off:off + sz])
+            _write_quest_state(blob, entry, 0x1905)
+            self._qe_refresh_entry_state(entry)
+            new = bytes(blob[off:off + sz])
+            if old != new:
+                patches.append((off, old, new))
+
+        write_entry(e)
+        for m in todo_missions:
+            write_entry(m)
+        for st in todo_stages:
+            old = bytes(blob[st.state_offset:st.state_offset + 1])
+            blob[st.state_offset] = 5
+            st.state = 5
+            patches.append((st.state_offset, old, b"\x05"))
+        if patches:
+            self._undo_stack.append(UndoEntry(description=f"Complete quest {name}", patches=patches))
+            self._mark_modified()
+        self._update_status(
+            f"Completed {name}: quest, {len(todo_missions)} missions, {len(todo_stages)} stages. "
+            f"Save with Ctrl+S.")
+        self._qe_filter()
 
     def _qe_get_selected_entry(self):
         rows = self._qe_table.selectionModel().selectedRows()
@@ -11140,7 +11522,18 @@ QCheckBox::indicator {{
             return False
         blob = self._save_data.decompressed_blob
         _write_quest_state(blob, entry, new_state)
+        self._qe_refresh_entry_state(entry)
         return True
+
+    @staticmethod
+    def _qe_refresh_entry_state(entry: dict) -> None:
+        """After a write: state, state_raw and state_name as the save now holds them
+        (the list showed the old name until the quests were loaded again)."""
+        if entry.get('state_size', 4) == 1:
+            entry['state'] = entry.get('state', 0) & 0xFF
+        entry['state_raw'] = entry['state']
+        entry['state_name'] = QuestEditorWindow.QUEST_STATE_NAMES.get(
+            entry['state'], f"0x{entry['state']:02X}")
 
     def _qe_force_state(self) -> None:
         entry = self._qe_get_selected_entry()
@@ -12887,7 +13280,7 @@ QCheckBox::indicator {{
         layout.addWidget(self._make_scope_label("readonly"))
 
         info = QLabel(
-            "QUEST DATABASE — All 898 quests from game data.\n"
+            "QUEST DATABASE — all quests and missions from game data.\n"
             "Search by name to find quest keys. Use the Quest Editor tab in World to modify quest states."
         )
         info.setWordWrap(True)
@@ -12905,14 +13298,23 @@ QCheckBox::indicator {{
         self._qdb_search.textChanged.connect(self._filter_quest_db)
         top.addWidget(self._qdb_search, 1)
 
+        top.addWidget(QLabel("Chapter:"))
+        self._qdb_chapter_filter = QComboBox()
+        _fill_chapter_combo(self._qdb_chapter_filter)
+        self._qdb_chapter_filter.setToolTip(
+            "Show only the main story, sorted by chapter (Prologue, Chapter 1-12, Epilogue).")
+        self._qdb_chapter_filter.currentTextChanged.connect(
+            lambda _t: self._filter_quest_db(self._qdb_search.text()))
+        top.addWidget(self._qdb_chapter_filter)
+
         self._qdb_count = QLabel("")
         self._qdb_count.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
         top.addWidget(self._qdb_count)
         layout.addLayout(top)
 
         self._qdb_table = QTableWidget()
-        self._qdb_table.setColumnCount(3)
-        self._qdb_table.setHorizontalHeaderLabels(["Key", "Internal Name", "Display Name"])
+        self._qdb_table.setColumnCount(4)
+        self._qdb_table.setHorizontalHeaderLabels(["Key", "Internal Name", "Display Name", "Chapter"])
         self._qdb_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._qdb_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._qdb_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -12966,6 +13368,16 @@ QCheckBox::indicator {{
         except Exception:
             pass
 
+        # quests the older quest_names.json does not know yet (current game data)
+        try:
+            _known = {e.get('key') for e in self._qdb_entries}
+            for _k, _e in quest_chapters.load().quests.items():
+                if _k not in _known:
+                    self._qdb_entries.append({'key': _k, 'name': _e.get('name', ''),
+                                              'display': _e.get('display') or _e.get('name', '')})
+        except Exception:
+            pass
+
         self._qdb_mission_entries = []
         try:
             import json as _json
@@ -12991,18 +13403,31 @@ QCheckBox::indicator {{
         search = text.strip().lower()
 
         all_entries = self._qdb_entries + self._qdb_mission_entries
+        chapters = quest_chapters.load()
+        story_view, chapter_group = _chapter_choice(self._qdb_chapter_filter)
+        n_quests = len(self._qdb_entries)
+        # quest and mission keys overlap: remember which list each row came from
+        all_entries = [(e, i >= n_quests) for i, e in enumerate(all_entries)]
+        if story_view:
+            all_entries = [(e, m) for e, m in all_entries
+                           if chapters.group_of(e.get('key'), m) is not None
+                           and (chapter_group is None or chapters.group_of(e.get('key'), m) == chapter_group)]
 
         if search:
-            filtered = [e for e in all_entries
+            filtered = [(e, m) for e, m in all_entries
                         if search in e.get('name', '').lower()
                         or search in e.get('display', '').lower()
                         or search in str(e.get('key', ''))]
+        elif story_view:
+            filtered = all_entries
         else:
             filtered = all_entries[:500]
 
         table.setRowCount(len(filtered))
-        for row, e in enumerate(filtered):
-            table.setItem(row, 0, QTableWidgetItem(str(e.get('key', ''))))
+        for row, (e, is_mission) in enumerate(filtered):
+            key_cell = QTableWidgetItem(str(e.get('key', '')))
+            key_cell.setData(Qt.UserRole, bool(is_mission))
+            table.setItem(row, 0, key_cell)
 
             name_item = QTableWidgetItem(e.get('name', ''))
             name_item.setForeground(QBrush(QColor(COLORS['text_dim'])))
@@ -13014,7 +13439,16 @@ QCheckBox::indicator {{
                 disp_item.setForeground(QBrush(QColor(COLORS['accent'])))
             table.setItem(row, 2, disp_item)
 
+            g = chapters.group_of(e.get('key'), is_mission)
+            chap_item = _SortKeyItem(chapters.group_display(g) if g is not None else "",
+                                     chapters.sort_key(e.get('key'), 0, is_mission))
+            if g is not None:
+                chap_item.setForeground(QBrush(QColor(COLORS['accent'])))
+            table.setItem(row, 3, chap_item)
+
         table.setSortingEnabled(True)
+        if story_view:
+            table.sortItems(3, Qt.AscendingOrder)
         total = len(self._qdb_entries) + len(self._qdb_mission_entries)
         self._qdb_count.setText(
             f"{len(self._qdb_entries)} quests + {len(self._qdb_mission_entries)} missions = {total}  |  "
@@ -13105,6 +13539,7 @@ QCheckBox::indicator {{
                     'key': int(key_item.text()),
                     'name': name_item.text() if name_item else '',
                     'display': disp_item.text() if disp_item else '',
+                    'is_mission': bool(key_item.data(Qt.UserRole)),
                 })
         return entries
 
@@ -13221,7 +13656,10 @@ QCheckBox::indicator {{
             raw = bytes(blob)
             result = build_result_from_raw(raw, {'input_kind': 'raw_blob'})
 
-            target_keys = {e['key'] for e in entries}
+            # Quest and mission keys overlap (1000157 is a quest and a mission),
+            # so each selected row only matches the list it came from.
+            target_quests = {e['key'] for e in entries if not e.get('is_mission')}
+            target_missions = {e['key'] for e in entries if e.get('is_mission')}
             completed = 0
 
             # The lists are _questStateList (key _questKey) and _missionStateList
@@ -13234,6 +13672,7 @@ QCheckBox::indicator {{
                 for f in obj.fields:
                     if f.name not in ('_questStateList', '_missionStateList') or not f.list_elements:
                         continue
+                    target_keys = target_quests if f.name == '_questStateList' else target_missions
                     for elem in f.list_elements:
                         if not getattr(elem, 'child_fields', None):
                             continue
@@ -13272,8 +13711,9 @@ QCheckBox::indicator {{
                 parts.append(f"{inserted} PARC-inserted")
             if insert_failed:
                 parts.append(f"{len(insert_failed)} failed")
-            if target_keys:
-                parts.append(f"{len(target_keys)} not in this save yet (start them in the game first)")
+            missing = len(target_quests) + len(target_missions)
+            if missing:
+                parts.append(f"{missing} not in this save yet (start them in the game first)")
             self._qdb_count.setText(f"Completed: {' | '.join(parts)}")
 
             if insert_failed:
@@ -13324,15 +13764,19 @@ QCheckBox::indicator {{
             raw = bytes(blob)
             result = build_result_from_raw(raw, {'input_kind': 'raw_blob'})
 
-            target_keys = {e['key'] for e in entries}
+            # Only the quest and mission state lists, and each selected row only
+            # in the list it came from (quest and mission keys overlap).
+            target_quests = {e['key'] for e in entries if not e.get('is_mission')}
+            target_missions = {e['key'] for e in entries if e.get('is_mission')}
             set_count = 0
 
             for obj in result['objects']:
                 if obj.class_name != 'QuestSaveData':
                     continue
                 for f in obj.fields:
-                    if not f.list_elements:
+                    if f.name not in ('_questStateList', '_missionStateList') or not f.list_elements:
                         continue
+                    target_keys = target_quests if f.name == '_questStateList' else target_missions
                     for elem in f.list_elements:
                         if not elem.child_fields:
                             continue
@@ -13340,8 +13784,11 @@ QCheckBox::indicator {{
                         state_offset = -1
                         state_size = 4
                         for cf in elem.child_fields:
-                            if cf.name in ('_key', '_questKey') and cf.present:
-                                quest_key = _struct.unpack_from('<I', raw, cf.start_offset)[0]
+                            if cf.name in ('_key', '_questKey') and cf.present and quest_key is None:
+                                ksz = cf.end_offset - cf.start_offset
+                                fmt_k = {4: '<I', 2: '<H'}.get(ksz)
+                                if fmt_k:
+                                    quest_key = _struct.unpack_from(fmt_k, raw, cf.start_offset)[0]
                             elif cf.name == '_state' and cf.present:
                                 state_offset = cf.start_offset
                                 state_size = cf.end_offset - cf.start_offset
@@ -13355,7 +13802,7 @@ QCheckBox::indicator {{
                             set_count += 1
                             target_keys.discard(quest_key)
 
-            not_found = len(target_keys)
+            not_found = len(target_quests) + len(target_missions)
 
             self._dirty = True
             msg = f"Set {set_count} quests to Available"
@@ -34864,8 +35311,27 @@ QCheckBox::indicator {{
             blob[offset:offset + len(old_bytes)] = old_bytes
 
         self._scan_and_populate()
+        self._qe_resync_states()
         self._dirty = bool(self._undo_stack)
         self._update_status(f"Undone: {entry.description}")
+
+    def _qe_resync_states(self) -> None:
+        """Read the quest/mission/stage states the Quest Editor shows again from
+        the save (after an undo of same-size byte patches)."""
+        if not getattr(self, '_qe_entries', None) or not self._save_data:
+            return
+        blob = self._save_data.decompressed_blob
+        fmt = {1: '<B', 2: '<H', 4: '<I'}
+        for e in self._qe_entries:
+            off, sz = e.get('state_offset', -1), e.get('state_size', 4)
+            if off is not None and off >= 0 and sz in fmt and off + sz <= len(blob):
+                e['state'] = struct.unpack_from(fmt[sz], blob, off)[0]
+                self._qe_refresh_entry_state(e)
+        if self._qe_deep_data:
+            for st in self._qe_deep_data.stage_map.values():
+                if st.state_offset and st.state_offset < len(blob):
+                    st.state = blob[st.state_offset]
+        self._qe_filter()
 
 
     _GUIDES = {

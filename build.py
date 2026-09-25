@@ -149,6 +149,7 @@ def main() -> int:
             "community_knowledge_keys.json",
             "quest_names.json",
             "quest_database.json",
+            "quest_groups.json",
             "mission_names.json",
             "quest_stage_map.json",
             "stage_names.json",
