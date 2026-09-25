@@ -856,6 +856,14 @@ class MainWindow(SelfTestMixin, QMainWindow):
             log.warning("MercPets tab load failed: %s", e)
 
         try:
+            from gui.tabs.presets import PresetsTab
+            self._presets_tab = PresetsTab(config=self._config)
+            self._presets_tab.status_message.connect(self._update_status)
+            self._mods_tabs.addTab(self._presets_tab, "Presets")
+        except Exception as e:
+            log.warning("Presets tab load failed: %s", e)
+
+        try:
             from gui.tabs.load_manager import LoadManagerTab
             self._load_manager_tab = LoadManagerTab(config=self._config)
             self._load_manager_tab.status_message.connect(self._update_status)
@@ -2993,6 +3001,8 @@ QCheckBox {{
             self._field_edit_tab_obj.set_game_path(path)
         if hasattr(self, '_bagspace_tab'):
             self._bagspace_tab.set_game_path(path)
+        if hasattr(self, '_presets_tab'):
+            self._presets_tab.set_game_path(path)
         if hasattr(self, '_skill_tree_tab'):      # was missing: kept the old path
             self._skill_tree_tab.set_game_path(path)
         if hasattr(self, '_load_manager_tab'):
