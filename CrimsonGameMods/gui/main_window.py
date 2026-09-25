@@ -962,7 +962,23 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._se_area_widgets = ()
         self._real_tabs.insertTab(1, host, "Save Editor")
         self._real_tabs.currentChanged.connect(self._on_top_tab_changed_se)
-        QTimer.singleShot(250, self._load_save_editor)
+        # main.py builds the Save Editor before the window is shown (behind the
+        # splash screen). Building it after show froze the visible window for
+        # a few seconds - it looked ready but took no clicks. This timer is
+        # only the fallback when the window is created some other way.
+        self._se_load_started = False
+        QTimer.singleShot(250, self.finish_startup_loading)
+
+    def finish_startup_loading(self) -> None:
+        """Build the embedded Save Editor once (the slow part of startup)."""
+        if self._se_load_started:
+            return
+        self._se_load_started = True
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            self._load_save_editor()
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def _on_top_tab_changed_se(self, index: int) -> None:
         if self._se_window is None:

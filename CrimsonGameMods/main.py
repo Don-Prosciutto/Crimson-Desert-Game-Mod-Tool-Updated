@@ -202,6 +202,13 @@ def main() -> None:
 
     _splash("Building main window...")
     window = MainWindow()
+    # The slow part of startup runs here, behind the splash screen, so the
+    # window appears only when it can take clicks.
+    _splash("Loading the Save Editor...")
+    try:
+        window.finish_startup_loading()
+    except Exception as e:  # noqa: BLE001 - the window must still open
+        print(f"[startup] Save Editor load failed: {e}")
     _splash_close()
     window.show()
 
