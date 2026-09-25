@@ -464,7 +464,7 @@ class MercPetsTab(QWidget):
 
             try:
                 from shared_state import record_overlay
-                record_overlay(game_path, overlay_group, "MercPets",
+                record_overlay(gp, overlay_group, "MercPets",
                                ["mercenarypetinfo.pabgb", "mercenarypetinfo.pabgh"])
             except Exception:
                 pass
@@ -614,6 +614,13 @@ class MercPetsTab(QWidget):
                 skipped += 1
                 continue
             field = intent.get('field', '')
+            # The export writes the 2.03 table names (default_limit_*, ...);
+            # map them back to the record attributes. Before, only the old
+            # names were accepted, so the tool's own exports were skipped.
+            back = {'default_limit_summon_count': 'default_summon_count',
+                    'default_limit_hire_count': 'default_hire_count',
+                    'max_limit_hire_count': 'max_hire_count'}
+            field = back.get(field, field)
             if intent.get('op') == 'set' and field in self._DIFF_FIELDS:
                 setattr(target, field, intent['new'])
                 applied += 1

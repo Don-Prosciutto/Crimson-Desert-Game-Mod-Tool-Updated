@@ -281,10 +281,9 @@ class MainWindow(SelfTestMixin, QMainWindow):
             self._base_point_size = 10.0
         self._zoom_factor = float(self._config.get("ui_zoom", 1.0))
         self._zoom_factor = max(0.5, min(2.0, self._zoom_factor))
-        QShortcut(QKeySequence("Ctrl+="), self).activated.connect(self._zoom_in)
+        # Ctrl+= / Ctrl+- / Ctrl+0 are the View menu's shortcuts. Registering
+        # them here a second time made Qt treat them as ambiguous: neither fired.
         QShortcut(QKeySequence("Ctrl++"), self).activated.connect(self._zoom_in)
-        QShortcut(QKeySequence("Ctrl+-"), self).activated.connect(self._zoom_out)
-        QShortcut(QKeySequence("Ctrl+0"), self).activated.connect(self._zoom_reset)
         if abs(self._zoom_factor - 1.0) > 0.001:
             QTimer.singleShot(0, self._apply_zoom)
 
@@ -2155,6 +2154,13 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
         file_menu.addSeparator()
 
+        # Settings (language import/export, name packs) could only be opened
+        # from the old Save Browser panel, which the All-in-One hides.
+        settings_act = QAction("Settings...", self)
+        settings_act.triggered.connect(self._open_settings)
+        file_menu.addAction(settings_act)
+        file_menu.addSeparator()
+
         exit_act = QAction("Exit", self)
         exit_act.setShortcut(QKeySequence("Alt+F4"))
         exit_act.triggered.connect(self.close)
@@ -2987,6 +2993,8 @@ QCheckBox {{
             self._field_edit_tab_obj.set_game_path(path)
         if hasattr(self, '_bagspace_tab'):
             self._bagspace_tab.set_game_path(path)
+        if hasattr(self, '_skill_tree_tab'):      # was missing: kept the old path
+            self._skill_tree_tab.set_game_path(path)
         if hasattr(self, '_load_manager_tab'):
             self._load_manager_tab.set_game_path(path)
         if hasattr(self, '_game_browser_tab'):

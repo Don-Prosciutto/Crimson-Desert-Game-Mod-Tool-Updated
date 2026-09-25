@@ -1206,10 +1206,8 @@ class SpawnTab(QWidget):
         mult_camp_btn.clicked.connect(self._spawn_multiply_all)
         row2.addWidget(mult_camp_btn)
 
-        mult_minop_btn = QPushButton(tr("x Camp Min"))
-        mult_minop_btn.setToolTip(tr("Multiply only camp MinOp (min enemies always present, cap 255)"))
-        mult_minop_btn.clicked.connect(self._spawn_multiply_all_minop)
-        row2.addWidget(mult_minop_btn)
+        # "x Camp Min" removed (2.03.02): MinOp is not mapped in the 2.03 data,
+        # the button did nothing.
 
         mult_rate_btn = QPushButton(tr("x World Rates"))
         mult_rate_btn.setToolTip(tr("Multiply open-world spawn rates (50 verified offsets from parse tree)"))
@@ -1298,7 +1296,6 @@ class SpawnTab(QWidget):
             "         or use 'Apply to Game' then restart to see changes.\n\n"
             "QUICK ACTIONS:\n"
             "  x Camp MaxOp — Max enemies per camp (cap: 255)\n"
-            "  x Camp MinOp — Min enemies always present\n"
             "  x Sub-Slots — Per-slot counts in camp schedules\n"
             "  x Open-World Rates — ALL spawn rates: enemies, wildlife,\n"
             "    fish, birds, town NPCs (965 values across 126 regions)\n"
@@ -1629,6 +1626,10 @@ class SpawnTab(QWidget):
         if src not in ('terrain', 'fnode_ops', 'rate'):
             return
 
+        cell = self._spawn_table.item(row, col)
+        if not cell:
+            return
+
         if src == 'rate' and col == 5:
             try:
                 new_val = float(cell.text())
@@ -1643,10 +1644,6 @@ class SpawnTab(QWidget):
             el['rate_value'] = new_val
             self._spawn_modified = True
             self._spawn_update_changes()
-            return
-
-        cell = self._spawn_table.item(row, col)
-        if not cell:
             return
 
         if src == 'fnode_ops' and col == 5:
@@ -1761,7 +1758,11 @@ class SpawnTab(QWidget):
                 item0 = self._spawn_table.item(idx.row(), 0)
                 if not item0:
                     continue
-                el = item0.data(Qt.UserRole)
+                # the cell holds the position in _spawn_filtered, not the row
+                fidx = item0.data(Qt.UserRole)
+                if fidx is None or fidx >= len(getattr(self, '_spawn_filtered', [])):
+                    continue
+                el = self._spawn_filtered[fidx]
                 if not el or el.get('source') != 'terrain':
                     continue
                 spline = el.get('spline_ref')
@@ -1937,12 +1938,6 @@ class SpawnTab(QWidget):
         self._spawn_update_changes()
         self._spawn_status.setText(f"Halved {count} sub-slot time values")
 
-    def _spawn_multiply_all_minop(self):
-        if not self._spawn_elements:
-            QMessageBox.information(self, tr("SpawnEdit"), tr("Load spawn data first."))
-            return
-
-        self._spawn_status.setText("MinOp not mapped in current game data")
 
     def _spawn_increase_all_smart(self):
         if not self._spawn_data:

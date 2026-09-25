@@ -176,6 +176,24 @@ def resolve_overlay_group(game_path: str, requested: int, tab_name: str,
     return free_overlay_number(game_path)
 
 
+def fitting_index(stem: str, body: bytes, pabgh: bytes, vanilla_len: int) -> bytes:
+    """The .pabgh to ship with this (possibly changed) table body.
+
+    The index stores each record's byte offset; the game relies on it. When
+    records changed size the offsets are rebuilt (pabgh_index). If the
+    index layout is not the usual one, the original index is only used when
+    the body kept its size; otherwise RuntimeError, nothing is written."""
+    from pabgh_index import rebuild_index
+    new = rebuild_index(stem, body, pabgh)
+    if new is not None:
+        return new
+    if len(body) == vanilla_len:
+        return bytes(pabgh)
+    raise RuntimeError(
+        f"{stem}: some records changed size and the index (.pabgh) of this table "
+        f"cannot be rebuilt. Nothing was written. Use Export Field JSON instead.")
+
+
 def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
                         new_pabgb: bytes, new_pabgh: bytes,
                         overlay_group: str, tab_label: str,
@@ -202,93 +220,12 @@ def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
     vanilla_pabgh = bytes(dmm_parser.extract_file(
         game_path, '0008', INTERNAL_DIR, f'{pabgb_stem}.pabgh'))
 
-    existing_pabgb = None
-    existing_source = None
-    for name in sorted(os.listdir(game_path)):
-        d = os.path.join(game_path, name)
-        if not os.path.isdir(d) or not name.isdigit() or len(name) != 4:
-            continue
-        if name == overlay_group:
-            continue
-        paz = os.path.join(d, '0.paz')
-        pamt = os.path.join(d, '0.pamt')
-        if not os.path.isfile(paz) or not os.path.isfile(pamt):
-            continue
-        try:
-            pamt_data = dmm_parser.parse_pamt_bytes(open(pamt, 'rb').read())
-            for directory in pamt_data.get('directories', []):
-                for f in directory.get('files', []):
-                    if f['name'].lower() in (f'{pabgb_stem}.pabgb'.lower(),
-                                             archive_name(f'{pabgb_stem}.pabgb').lower()):
-                        paz_bytes = open(paz, 'rb').read()
-                        existing_pabgb = paz_bytes[f['chunk_offset']:f['chunk_offset'] + f['compressed_size']]
-                        existing_source = name
-        except Exception:
-            continue
-
+    # (A merge step used to sit here: it read the table raw - still
+    # compressed - out of every numbered folder, including the game's own
+    # 0008, and deleted the folder it merged from. It could not work on 2.03
+    # data and is gone; the table is written as given.)
     merged = new_pabgb
-    if existing_pabgb and existing_source:
-        try:
-            van_items = dmm_parser.parse_table(table_name, vanilla_pabgb, vanilla_pabgh)
-            ext_items = dmm_parser.parse_table(table_name, bytes(existing_pabgb), new_pabgh)
-            new_items = dmm_parser.parse_table(table_name, new_pabgb, new_pabgh)
-
-            van_by_key = {it['key']: it for it in van_items}
-            ext_by_key = {it['key']: it for it in ext_items}
-
-            import copy
-            merged_items = copy.deepcopy(new_items)
-            merged_by_key = {it['key']: it for it in merged_items}
-
-            prior_edits = 0
-            for key, ext_it in ext_by_key.items():
-                van_it = van_by_key.get(key, {})
-                merged_it = merged_by_key.get(key)
-                if not merged_it:
-                    continue
-                for field, ext_val in ext_it.items():
-                    if field in ('key', 'string_key', 'is_blocked'):
-                        continue
-                    van_val = van_it.get(field)
-                    new_val = merged_it.get(field)
-                    if ext_val != van_val and new_val == van_val:
-                        merged_it[field] = ext_val
-                        prior_edits += 1
-
-            if prior_edits > 0:
-                merged = bytes(dmm_parser.serialize_table(table_name, merged_items))
-                log.info("Merged %s: %d prior edits from %s/ preserved into %s/",
-                         pabgb_stem, prior_edits, existing_source, overlay_group)
-
-                old_dir = os.path.join(game_path, existing_source)
-                old_pamt_path = os.path.join(old_dir, '0.pamt')
-                if os.path.isfile(old_pamt_path):
-                    try:
-                        old_pamt = dmm_parser.parse_pamt_bytes(open(old_pamt_path, 'rb').read())
-                        old_files = []
-                        for d in old_pamt.get('directories', []):
-                            old_files.extend(f['name'] for f in d.get('files', []))
-                        has_only_this = all(pabgb_stem in fn for fn in old_files)
-                        if has_only_this:
-                            safe_rmtree(old_dir)
-                            papgt_path_clean = os.path.join(game_path, "meta", "0.papgt")
-                            if os.path.isfile(papgt_path_clean):
-                                pg = crimson_rs.parse_papgt_file(papgt_path_clean)
-                                pg["entries"] = [e for e in pg["entries"]
-                                                 if e.get("group_name") != existing_source]
-                                crimson_rs.write_papgt_file(pg, papgt_path_clean)
-                            log.info("Cleaned up old %s/ overlay (merged into %s/)",
-                                     existing_source, overlay_group)
-                    except Exception as ce:
-                        log.warning("Could not clean up old overlay %s/: %s", existing_source, ce)
-
-                from PySide6.QtWidgets import QMessageBox
-                QMessageBox.information(parent, "Overlay Merge",
-                    f"Found existing {pabgb_stem} edits in {existing_source}/.\n"
-                    f"Merged {prior_edits} prior field edits into {overlay_group}/.\n"
-                    f"Old {existing_source}/ overlay cleaned up.")
-        except Exception as e:
-            log.warning("Merge failed for %s, using new data only: %s", pabgb_stem, e)
+    new_pabgh = fitting_index(pabgb_stem, merged, new_pabgh, len(vanilla_pabgb))
 
     with tempfile.TemporaryDirectory() as tmp:
         build_dir = os.path.join(tmp, overlay_group)
@@ -311,7 +248,9 @@ def deploy_merged_pabgb(game_path: str, table_name: str, pabgb_stem: str,
         papgt = crimson_rs.parse_papgt_file(papgt_path)
         papgt["entries"] = [e for e in papgt["entries"]
                             if e.get("group_name") != overlay_group]
-        crimson_rs.add_papgt_entry(papgt, overlay_group, pamt_checksum, 0, 16383)
+        # add_papgt_entry returns a NEW dict. The old code dropped it, so the
+        # overlay was written but never registered and the game ignored it.
+        papgt = crimson_rs.add_papgt_entry(papgt, overlay_group, pamt_checksum, 0, 16383)
         crimson_rs.write_papgt_file(papgt, papgt_path)
 
     log.info("Deployed %s to %s/ (%d bytes)", pabgb_stem, overlay_group, len(merged))

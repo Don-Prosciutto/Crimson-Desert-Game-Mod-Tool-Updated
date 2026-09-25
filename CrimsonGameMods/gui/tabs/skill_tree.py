@@ -1099,7 +1099,7 @@ class SkillTreeTab(QWidget):
                 mi.setForeground(Qt.GlobalColor.yellow)
         self._skill_table_updating = False
         self._lbl_skill_status.setText(
-            f"{e['name']}: {'cooltime' if col == 2 else 'max_level'} = {val}")
+            f"{e.get('name', e.get('string_key', '?'))}: {'cooltime' if col == 2 else 'max_level'} = {val}")
 
     def _is_skill_entry_modified(self, idx: int) -> bool:
         """Check if skill entry at idx differs from vanilla."""
@@ -1133,6 +1133,13 @@ class SkillTreeTab(QWidget):
         """Count how many skill entries are modified."""
         if not self._skill_loaded:
             return 0
+        if getattr(self, '_skill_dmm_loaded', False):
+            # dmm_parser records: compare the dicts. The old byte serializer
+            # used below raised KeyError 'name' on them, so Apply to Game
+            # crashed whenever a stamina or cooldown value was changed.
+            van = self._skill_vanilla_entries
+            return sum(1 for i, e in enumerate(self._skill_entries)
+                       if i >= len(van) or e != van[i])
         import skillinfo_parser as sip
         count = 0
         for i, e in enumerate(self._skill_entries):
@@ -1498,7 +1505,7 @@ def _diff_skill_entry(vanilla: dict, modified: dict) -> list[dict]:
     # Fields to never export
     SKIP = {'key', 'string_key', 'is_blocked',
             'name_len', 'name_bytes', 'name', '_raw', '_pad_01',
-            '_buffLevelCount', 'max_level', 'dev_skill_name', 'dev_skill_desc',
+            '_buffLevelCount', 'dev_skill_name', 'dev_skill_desc',   # max_level is exported now
             'video_path_hash', 'buff_sustain_flag', 'skill_group_key_list',
             '_buff_data_raw', '_buff_raw_fallback', 'raw_bytes',
             '_cooltime', 'field_12',

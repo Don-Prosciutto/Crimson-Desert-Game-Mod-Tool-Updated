@@ -724,40 +724,37 @@ class BagSpaceTab(QWidget):
             QMessageBox.warning(self, "Export", "Set the game install path first.")
             return
 
+        # Baseline and field names from dmm_parser. The old export took the
+        # baseline from the old byte parser and wrote the field names
+        # default_slots / max_slots, which DMM does not know
+        # (the table fields are default_slot_count / max_slot_count).
         try:
             import crimson_rs
             van_data = bytes(crimson_rs.extract_file(
                 game_path, '0008', INTERNAL_DIR, 'inventory.pabgb'))
             van_pabgh = bytes(crimson_rs.extract_file(
                 game_path, '0008', INTERNAL_DIR, 'inventory.pabgh'))
-            parser = self._load_parser()
-            vanilla_records = parser.parse_inventory_pabgb(van_data, van_pabgh)
+            vanilla_items = crimson_rs.parse_table('inventory', van_data, van_pabgh)
         except Exception as e:
             QMessageBox.critical(self, "Export", f"Failed to load vanilla baseline:\n{e}")
             return
+        if self._dmm_items is None:
+            QMessageBox.warning(self, "Export",
+                "The inventory table was not read with dmm_parser - nothing to export.")
+            return
 
-        van_by_name = {r['name']: r for r in vanilla_records if 'default_slots' in r}
-
+        van_by_key = {it.get('key'): it for it in vanilla_items}
         intents = []
-        for rec in self._records:
-            if 'default_slots' not in rec:
-                continue
-            name = rec['name']
-            van = van_by_name.get(name)
+        for it in self._dmm_items:
+            van = van_by_key.get(it.get('key'))
             if not van:
                 continue
-            if rec['default_slots'] != van['default_slots']:
-                intents.append({
-                    'entry': name, 'key': rec.get('key', 0),
-                    'field': 'default_slots', 'op': 'set',
-                    'new': rec['default_slots'],
-                })
-            if rec['max_slots'] != van['max_slots']:
-                intents.append({
-                    'entry': name, 'key': rec.get('key', 0),
-                    'field': 'max_slots', 'op': 'set',
-                    'new': rec['max_slots'],
-                })
+            for field in ('default_slot_count', 'max_slot_count'):
+                if it.get(field) is not None and it.get(field) != van.get(field):
+                    intents.append({
+                        'entry': it.get('string_key', ''), 'key': it.get('key', 0),
+                        'field': field, 'op': 'set', 'new': int(it[field]),
+                    })
 
         if not intents:
             QMessageBox.information(self, "Export", "No changes to export.")
@@ -805,27 +802,36 @@ class BagSpaceTab(QWidget):
             QMessageBox.warning(self, "Import", "Not a valid Format 3 Field JSON file.")
             return
 
-        rec_by_name = {r['name']: r for r in self._records if 'default_slots' in r}
+        if self._dmm_items is None:
+            QMessageBox.warning(self, "Import",
+                "The inventory table was not read with dmm_parser - cannot import.")
+            return
+        # Works on the dmm items (the old code wrote bytes at offsets that only
+        # the old parser's records have - KeyError for every dmm record).
+        field_map = {'default_slot_count': 'default_slot_count', 'default_slots': 'default_slot_count',
+                     'max_slot_count': 'max_slot_count', 'max_slots': 'max_slot_count'}
+        by_name = {it.get('string_key'): it for it in self._dmm_items}
+        by_key = {it.get('key'): it for it in self._dmm_items}
         applied = skipped = 0
         for intent in doc['intents']:
-            target = rec_by_name.get(intent.get('entry'))
-            if not target:
+            target = by_name.get(intent.get('entry')) or by_key.get(intent.get('key'))
+            field = field_map.get(intent.get('field', ''))
+            if not target or not field or intent.get('op') != 'set':
                 skipped += 1
                 continue
-            field = intent.get('field', '')
-            if intent.get('op') != 'set' or field not in ('default_slots', 'max_slots'):
+            try:
+                target[field] = max(0, min(int(intent['new']), 65535))
+            except (TypeError, ValueError):
                 skipped += 1
                 continue
-            val = int(intent['new'])
-            offset_key = 'default_offset' if field == 'default_slots' else 'max_offset'
-            struct.pack_into("<H", self._inventory_data, int(target[offset_key]), val)
             applied += 1
 
         if applied:
-            self._records = self._load_parser().parse_inventory_pabgb(
-                bytes(self._inventory_data), self._inventory_pabgh)
+            new_pabgb = self._serialize_dmm(self._dmm_items)
+            if new_pabgb:
+                self._inventory_data = bytearray(new_pabgb)
+            self._parse_and_show("import")
             self._dirty = True
-            self._refresh_table()
 
         self._status.setText(f"Imported {applied} intents, {skipped} skipped.")
         QMessageBox.information(self, "Import Field JSON",

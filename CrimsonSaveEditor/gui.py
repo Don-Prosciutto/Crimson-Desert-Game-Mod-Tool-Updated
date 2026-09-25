@@ -2292,6 +2292,7 @@ class ApplyPackDialog(QDialog):
         apply_btn.setToolTip("Apply only the items with checkmarks. Unchecked items are skipped.")
         apply_btn.clicked.connect(self._on_apply)
         btn_row.addWidget(apply_btn)
+        self._ok_btn = apply_btn   # "Pick Donor from Item Stack" enables it; it crashed without
 
         cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(self.reject)
@@ -2389,6 +2390,11 @@ class ApplyPackDialog(QDialog):
         self._map_table.setItem(row, 4, w)
         self._map_table.setItem(row, 5, QTableWidgetItem(str(donor.item_key)))
 
+    _EQUIP_CATEGORIES = ("Equipment", "Weapon", "Armor", "Shield", "Accessory")
+
+    def _is_equipment_key(self, item_key: int) -> bool:
+        return self._name_db.get_category(item_key) in self._EQUIP_CATEGORIES
+
     def _auto_pick(self) -> None:
         read_only = self._read_only
         used_offsets = set()
@@ -2407,9 +2413,10 @@ class ApplyPackDialog(QDialog):
             if self._donors[row] is not None:
                 continue
 
-            target_limits = self._item_limits.get(str(pi.item_key), {})
-            target_slot = target_limits.get('slotType', -1)
-            target_is_real_equip = target_slot not in (-1, 65535)
+            # item_limits.json no longer has slotType (it is a flat
+            # key -> socket limit map now), so the old check called every
+            # item "non-equipment". Decide by the item's category instead.
+            target_is_real_equip = self._is_equipment_key(pi.item_key)
 
             available = [
                 it for it in self._items
@@ -2421,9 +2428,7 @@ class ApplyPackDialog(QDialog):
             for it in available:
                 cat = self._name_db.get_category(it.item_key)
 
-                donor_limits = self._item_limits.get(str(it.item_key), {})
-                donor_slot = donor_limits.get('slotType', -1)
-                donor_is_real_equip = donor_slot not in (-1, 65535)
+                donor_is_real_equip = self._is_equipment_key(it.item_key)
 
                 if target_is_real_equip:
                     if donor_is_real_equip:
@@ -6156,11 +6161,8 @@ QCheckBox::indicator {{
 
         # "Template Swap" removed (2.03.02): templates and pointer layout from game 1.0.4.
 
-        self._clean_swap_btn = QPushButton("Clean Swap")
-        self._clean_swap_btn.setToolTip("Swap + zero out gimmick state, charged count, and timestamps. May fix placeholder icons.")
-        self._clean_swap_btn.clicked.connect(self._perform_clean_swap)
-        self._clean_swap_btn.setVisible(self._experimental_mode)
-        btn_row.addWidget(self._clean_swap_btn)
+        # "Clean Swap" removed (2.03.02): its extra fields only exist for pre-1.14
+        # saves, on 2.x it was a normal swap.
         layout.addLayout(btn_row)
 
         self._swap_tab_widget = tab
@@ -7028,16 +7030,12 @@ QCheckBox::indicator {{
         layout.addWidget(self._repurch_table, 1)
 
         bottom = QHBoxLayout()
-        bottom.addWidget(QLabel("New Stack:"))
         self._repurch_stack = QSpinBox()
         self._repurch_stack.setRange(1, 999999999)
         self._repurch_stack.setValue(1)
-        bottom.addWidget(self._repurch_stack)
 
-        set_btn = QPushButton("Set Stack")
-        set_btn.setObjectName("accentBtn")
-        set_btn.clicked.connect(self._set_repurch_stack)
-        bottom.addWidget(set_btn)
+        # "Set Stack" removed from Repurchase (2.03.02): vendor items are never
+        # resolved through the save schema, so it always failed.
 
         # Repurchase "Swap Selected Item" removed (2.03.02): raw +12 / +300 byte key replace, no schema.
 
@@ -11939,7 +11937,7 @@ QCheckBox::indicator {{
 
         if not occurrences:
             lines.append("\nNOT FOUND in save — quest does not exist.")
-            lines.append("Use 'Add Quest to Save as Complete' in Quest Database to insert it.")
+            lines.append("Start it in the game first; then 'Mark Quest Complete' in Quest Database can complete it.")
         else:
             lines.append(f"\nFound {len(occurrences)} occurrence(s):")
             if len(occurrences) > 1:
@@ -12715,36 +12713,21 @@ QCheckBox::indicator {{
                 self._update_status(f"Completed: {name}")
             return
 
+        # (The "PARC Insertion" path that added _completedTime timestamps
+        # called parc_inserter3.complete_mission, which does not exist - it
+        # always failed and fell through to this state-only change. It is not
+        # switched on with the existing insert function: inserting into the
+        # save shifts every later offset, see the Funktionsliste.)
         if needs_expand and not entry.get('has_completed', False):
             reply = QMessageBox.question(
-                self, "Complete (PARC Insertion)",
-                f"'{name}' needs _completedTime/_branchedTime timestamps to be truly completed.\n\n"
-                f"This requires PARC insertion (adds ~16 bytes to the save).\n"
-                f"A backup is recommended before proceeding.\n\n"
-                f"Complete with timestamp insertion?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-            )
+                self, "Mark Completed",
+                f"Set '{name}' to Completed?\n\n"
+                f"This quest has no completion time in the save yet; only its state "
+                f"is changed. Most quests accept that, some may show as completed "
+                f"without a date.",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if reply != QMessageBox.Yes:
                 return
-            try:
-                import parc_inserter3 as pi
-                mission_key = entry.get('key', 0)
-                blob = bytearray(self._save_data.decompressed_blob)
-                ok, new_blob, msg = pi.complete_mission(blob, mission_key)
-                if ok:
-                    self._save_data.decompressed_blob = bytearray(new_blob)
-                    self._dirty = True
-                    self._qe_load()
-                    self._update_status(f"Completed with PARC: {name}")
-                    return
-                else:
-                    QMessageBox.warning(self, "PARC Completion Failed",
-                        f"Timestamp insertion failed:\n{msg}\n\n"
-                        f"Falling back to state-only change.")
-            except Exception as e:
-                import traceback; traceback.print_exc()
-                QMessageBox.warning(self, "PARC Error",
-                    f"Timestamp insertion error: {e}\n\nFalling back to state-only change.")
 
         if self._qe_set_state(entry, 0x1905):
             self._dirty = True
@@ -12920,10 +12903,10 @@ QCheckBox::indicator {{
 
         pack_row = QHBoxLayout()
 
-        add_complete_btn = QPushButton("Add Quest to Save as Complete")
+        add_complete_btn = QPushButton("Mark Quest Complete")
         add_complete_btn.setToolTip(
-            "Insert selected quests into your save as completed.\n"
-            "Uses PARC insertion — for quests NOT already in your save."
+            "Set the selected quests to completed.\n"
+            "Only quests that are already in your save (started in the game)."
         )
         add_complete_btn.clicked.connect(self._qdb_mark_selected_complete)
         pack_row.addWidget(add_complete_btn)
@@ -13216,46 +13199,45 @@ QCheckBox::indicator {{
             target_keys = {e['key'] for e in entries}
             completed = 0
 
+            # The lists are _questStateList (key _questKey) and _missionStateList
+            # (key _key) in QuestSaveData. The old code looked for "_list" in a
+            # MissionSaveData class that does not exist, so it never matched.
+            # The state is written with its own field size (1 byte for missions).
             for obj in result['objects']:
-                if obj.class_name in ('QuestSaveData', 'MissionSaveData'):
-                    for f in obj.fields:
-                        if f.name == '_list' and f.list_elements:
-                            for elem in f.list_elements:
-                                if hasattr(elem, 'child_fields') and elem.child_fields:
-                                    quest_key = None
-                                    state_offset = -1
-                                    for cf in elem.child_fields:
-                                        if cf.name == '_key' and cf.present:
-                                            quest_key = struct.unpack_from('<I', raw, cf.start_offset)[0]
-                                        elif cf.name == '_state' and cf.present:
-                                            state_offset = cf.start_offset
-                                    if quest_key in target_keys and state_offset >= 0:
-                                        current = struct.unpack_from('<I', blob, state_offset)[0]
-                                        if current != 0x1905:
-                                            struct.pack_into('<I', blob, state_offset, 0x1905)
-                                            completed += 1
-                                            target_keys.discard(quest_key)
+                if obj.class_name != 'QuestSaveData':
+                    continue
+                for f in obj.fields:
+                    if f.name not in ('_questStateList', '_missionStateList') or not f.list_elements:
+                        continue
+                    for elem in f.list_elements:
+                        if not getattr(elem, 'child_fields', None):
+                            continue
+                        quest_key = None
+                        state_cf = None
+                        for cf in elem.child_fields:
+                            if cf.name in ('_questKey', '_key') and cf.present and quest_key is None:
+                                ksz = cf.end_offset - cf.start_offset
+                                if ksz == 4:
+                                    quest_key = struct.unpack_from('<I', raw, cf.start_offset)[0]
+                                elif ksz == 2:
+                                    quest_key = struct.unpack_from('<H', raw, cf.start_offset)[0]
+                            elif cf.name == '_state' and cf.present:
+                                state_cf = cf
+                        if quest_key not in target_keys or state_cf is None:
+                            continue
+                        size = state_cf.end_offset - state_cf.start_offset
+                        fmt, done = {1: ('<B', 5), 2: ('<H', 0x1905), 4: ('<I', 0x1905)}.get(size, (None, None))
+                        if fmt is None:
+                            continue
+                        if struct.unpack_from(fmt, blob, state_cf.start_offset)[0] != done:
+                            struct.pack_into(fmt, blob, state_cf.start_offset, done)
+                            completed += 1
+                        target_keys.discard(quest_key)
 
+            # Quests that are not in the save yet are no longer inserted: the
+            # insert used a fixed template and wrote the state with a fixed size.
             inserted = 0
             insert_failed = []
-            if target_keys:
-                try:
-                    from parc_inserter3 import insert_quest_completed
-                    for qk in list(target_keys):
-                        ok_ins, new_blob, msg = insert_quest_completed(bytearray(blob), qk)
-                        if ok_ins:
-                            self._save_data.decompressed_blob = bytearray(new_blob)
-                            blob = self._save_data.decompressed_blob
-                            inserted += 1
-                            target_keys.discard(qk)
-                            log.info("PARC inserted quest %d: %s", qk, msg)
-                        else:
-                            insert_failed.append((qk, msg))
-                            log.warning("PARC insert failed for quest %d: %s", qk, msg)
-                except ImportError:
-                    log.warning("parc_inserter3 not available for quest insertion")
-                except Exception as ie:
-                    log.warning("PARC insert error: %s", ie)
 
             self._dirty = True
             parts = []
@@ -13266,7 +13248,7 @@ QCheckBox::indicator {{
             if insert_failed:
                 parts.append(f"{len(insert_failed)} failed")
             if target_keys:
-                parts.append(f"{len(target_keys)} not insertable")
+                parts.append(f"{len(target_keys)} not in this save yet (start them in the game first)")
             self._qdb_count.setText(f"Completed: {' | '.join(parts)}")
 
             if insert_failed:
@@ -15122,10 +15104,13 @@ QCheckBox::indicator {{
             patches=[(abs_data_start, old_bytes, new_bytes)],
         ))
         self._dirty = True
-        if value == 0xFF:
-            self._debug_fog_status.setText(f"{codelist_count}/{codelist_count} pixels revealed")
-        else:
-            self._debug_fog_status.setText(f"0/{codelist_count} pixels revealed (fogged)")
+        # The label lives on the Debug page, which is not built - the missing
+        # widget crashed Reveal / Re-Fog Map right after writing.
+        if hasattr(self, '_debug_fog_status'):
+            if value == 0xFF:
+                self._debug_fog_status.setText(f"{codelist_count}/{codelist_count} pixels revealed")
+            else:
+                self._debug_fog_status.setText(f"0/{codelist_count} pixels revealed (fogged)")
         self._update_status(f"Map {'revealed' if value == 0xFF else 're-fogged'} ({codelist_count} fog bytes)")
         save_reply = QMessageBox.question(
             self, "Map Modified",
@@ -15364,10 +15349,8 @@ QCheckBox::indicator {{
 
         row1.addStretch()
 
-        save_faction_btn = QPushButton("Save Faction Changes")
-        save_faction_btn.setObjectName("accentBtn")
-        save_faction_btn.clicked.connect(self._save_faction_edits)
-        row1.addWidget(save_faction_btn)
+        # "Save Faction Changes" removed (2.03.02): the offset it writes to is
+        # never set, so it always reported "no changes".
 
         self._faction_count = QLabel("")
         self._faction_count.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
@@ -16000,6 +15983,20 @@ QCheckBox::indicator {{
             return
         self._dirty = True
         self._populate_sublevels()
+
+    def _set_backup_tab_text(self, text: str) -> None:
+        """Rename the Backup tab by looking it up, not by its old index: inside
+        the Game Mods window the tabs are different and index 3 is "Items"."""
+        w = getattr(self, '_backup_tab_widget', None)
+        idx = self._tabs.indexOf(w) if w is not None else -1
+        if idx >= 0:
+            self._tabs.setTabText(idx, text)
+
+    def _mark_modified(self) -> None:
+        """Mark the save as changed. The Stage buttons and Disable Boundaries
+        called this, but it did not exist: they wrote their bytes and then
+        crashed, and the save was not marked as changed."""
+        self._dirty = True
 
     def _faction_field_sizes(self) -> dict:
         """Byte size of each faction XP/level field, by offset (from the schema)."""
@@ -31611,6 +31608,7 @@ QCheckBox::indicator {{
         layout.addLayout(btn_row)
 
         self._backup_tab_index = self._tabs.addTab(tab, tr("tab.backup"))
+        self._backup_tab_widget = tab
 
 
     def _build_status_bar(self) -> None:
@@ -32926,12 +32924,38 @@ QCheckBox::indicator {{
             )
 
 
+    def _game_enchant_limits(self) -> dict:
+        """item key -> highest enchant level, read once from the installed
+        game's iteminfo (group 0008). Empty when the game cannot be read."""
+        game_path = self._config.get("game_install_path", "")
+        cached = getattr(self, "_enchant_limit_cache", None)
+        if cached is not None and cached[0] == game_path:
+            return cached[1]
+        limits = {}
+        try:
+            import crimson_rs
+            d = "gamedata/binary__/client/bin"
+            for it in crimson_rs.parse_iteminfo_from_bytes(
+                    bytes(crimson_rs.extract_file(game_path, "0008", d, "iteminfo.pabgb"))):
+                edl = it.get('enchant_data_list') or []
+                if edl:
+                    limits[int(it['key'])] = max(int(ed.get('level', 0) or 0) for ed in edl)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Enchant limits not available: %s", e)
+        self._enchant_limit_cache = (game_path, limits)
+        return limits
+
     def _get_max_enchant(self, item_key: int) -> int:
         rust_info = self._buff_rust_lookup.get(item_key)
         if rust_info:
             edl = rust_info.get('enchant_data_list', [])
             if edl:
                 return max(ed.get('level', 0) for ed in edl)
+        # From the game itself; the bundled max_enchant_map.json is from an
+        # older game version and is only the last resort.
+        val = self._game_enchant_limits().get(int(item_key))
+        if val is not None:
+            return val
         val = self._max_enchant_map.get(str(item_key))
         if val is not None:
             return val
@@ -32947,7 +32971,10 @@ QCheckBox::indicator {{
 
         new_val = self._equip_enchant.value()
 
-        if self._buff_rust_lookup:
+        # (This check only ran when the ItemBuffs data of the old combined
+        # window was loaded - never, in practice. It now reads the limits from
+        # the game.)
+        if True:
             over_limit = []
             for item in selected:
                 if not item.has_enchant:
@@ -33930,7 +33957,7 @@ QCheckBox::indicator {{
         backup_dir = self._get_backup_dir()
         if not backup_dir or not os.path.isdir(backup_dir):
             self._backup_list.addItem("(No backups found)")
-            self._tabs.setTabText(self._backup_tab_index, "Backup/Restore")
+            self._set_backup_tab_text("Backup/Restore")
             return
 
         backups = []
@@ -33945,7 +33972,7 @@ QCheckBox::indicator {{
 
         if not backups:
             self._backup_list.addItem("(No backups found)")
-            self._tabs.setTabText(self._backup_tab_index, "Backup/Restore")
+            self._set_backup_tab_text("Backup/Restore")
             return
 
         for name, path, mtime, size in backups:
@@ -33959,7 +33986,7 @@ QCheckBox::indicator {{
                 item.setForeground(QBrush(QColor(COLORS["success"])))
             self._backup_list.addItem(item)
 
-        self._tabs.setTabText(self._backup_tab_index, f"Backup/Restore ({len(backups)})")
+        self._set_backup_tab_text(f"Backup/Restore ({len(backups)})")
 
     def _restore_backup(self) -> None:
         current = self._backup_list.currentItem()

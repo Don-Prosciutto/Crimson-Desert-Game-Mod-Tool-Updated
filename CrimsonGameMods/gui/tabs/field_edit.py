@@ -187,7 +187,7 @@ class FieldEditTab(QWidget):
         invincible_mounts_btn = QPushButton(tr("Invincible Mounts"))
         invincible_mounts_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
         invincible_mounts_btn.setToolTip(
-            "Sets four_flags.flag_a (_invincibility=1) on all mount\n"
+            "Sets of_origin_invincibility=1 on all mount\n"
             "characterinfo entries via dmm_parser (vehicle_info != 0\n"
             "or Riding_* string key). Mounts cannot be killed in combat.")
         invincible_mounts_btn.clicked.connect(self._field_edit_invincible_mounts)
@@ -197,7 +197,7 @@ class FieldEditTab(QWidget):
         killall_btn.setStyleSheet(button_css("danger") + " font-weight: bold;")
         killall_btn.setToolTip(
             "Sets _isAttackable=1 and _invincibility=0 on all non-mount NPCs\n"
-            "via dmm_parser field-level edits (four_flags.flag_a/flag_b).\n\n"
+            "(of_origin_is_attackable / of_origin_invincibility).\n\n"
             "Killing quest-essential NPCs may affect quest progression.\n"
             "Fully reversible via Restore.")
         killall_btn.clicked.connect(self._field_edit_make_killable)
@@ -240,35 +240,11 @@ class FieldEditTab(QWidget):
         # with the wrong arguments, the error was swallowed, and the intents
         # were then written as raw bytes at record keys used as offsets.
 
-        # Export buttons — only visible in Advanced/Dev mode (unsupported)
-        export_mod_btn = QPushButton(tr("Export as Mod"))
-        export_mod_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
-        export_mod_btn.setToolTip(
-            "ADVANCED — UNSUPPORTED. Contact mod loader dev for help.\n\n"
-            "Export as raw-pabgb mod for generic mod loaders.")
-        export_mod_btn.clicked.connect(self._field_edit_export_mod)
-        export_mod_btn.setVisible(False)
-        top_row.addWidget(export_mod_btn)
-
-        export_btn = QPushButton(tr("Export as CDUMM Mod"))
-        export_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
-        export_btn.setToolTip(
-            "ADVANCED — UNSUPPORTED. Contact mod loader dev for help.\n\n"
-            "Export as pre-packed PAZ mod for JMM / CDUMM / DMM.")
-        export_btn.clicked.connect(self._field_edit_export)
-        export_btn.setVisible(False)
-        top_row.addWidget(export_btn)
-
-        export_json_btn = QPushButton(tr("Export as JSON"))
-        export_json_btn.setStyleSheet(button_css("primary") + " font-weight: bold;")
-        export_json_btn.setToolTip(
-            "ADVANCED — UNSUPPORTED. Contact mod loader dev for help.\n\n"
-            "Export all changes as a portable JSON patch file.")
-        export_json_btn.clicked.connect(self._field_edit_export_json)
-        export_json_btn.setVisible(False)
-        top_row.addWidget(export_json_btn)
-
-        self._dev_export_btns_field = [export_mod_btn, export_btn, export_json_btn]
+        # "Export as Mod", "Export as CDUMM Mod" and "Export as JSON" removed
+        # (2.03.02): they only wrote the old byte buffers, so every change made
+        # through dmm_parser was missing, and they stamped game version 1.00.03.
+        # Export Field JSON v3 replaces them.
+        self._dev_export_btns_field = []
 
         # Export Mesh Swap as JSON Mod — removed. Redundant with Export as
         # JSON which already bakes mesh swaps via _apply_mesh_swaps() before
@@ -842,6 +818,7 @@ class FieldEditTab(QWidget):
                     '_characterGamePlayDataName': 'skeleton_name',
                     '_appearanceName': 'lookup_22',
                     '_skeletonName': 'lookup_24',
+                    '_skeletonVariationName': 'lookup_25',   # was missing: column showed 0
                 }
                 self._weapon_dmm_map = _WEAPON_DMM
 
@@ -1397,7 +1374,7 @@ class FieldEditTab(QWidget):
                     continue
                 _wdm = getattr(self, '_weapon_dmm_map', {})
                 dmm_f = _wdm.get(field, field)
-                cd_van = next((v for v in self._charinfo_dmm_vanilla if v['key'] == e.get('_key', e.get('key', 0))), None)
+                cd_van = self._ci_vanilla_for(e)
                 if cd_van is None:
                     continue
                 val = cd_van.get(dmm_f, 0)
@@ -1408,7 +1385,7 @@ class FieldEditTab(QWidget):
                     label += f"   ({disp})"
                 item = QListWidgetItem(label)
                 item.setData(Qt.UserRole, val)
-                item.setData(Qt.UserRole + 1, e.get('_key', e.get('key', 0)))
+                item.setData(Qt.UserRole + 1, nm)
                 list_widget.addItem(item)
                 shown += 1
                 if shown >= 800:
@@ -1425,17 +1402,17 @@ class FieldEditTab(QWidget):
                 ok_btn.setEnabled(False)
                 sample_label.setText("(no selection)")
                 return
-            data = it.data(Qt.UserRole)
-            if not data:
+            val = it.data(Qt.UserRole)
+            if val is None:
                 ok_btn.setEnabled(False)
                 return
-            src_e, val = data
+            src_name = it.data(Qt.UserRole + 1) or '?'
             ok_btn.setEnabled(True)
             resolved = self._weapon_resolve_hash(val)
             val_display = f'{resolved} (0x{val:08x})' if resolved else f'0x{val:08x}'
             sample_label.setText(
                 f"Will write {val_display} into {target['name']}.{field} "
-                f"(source: {src_e.get('name', '?')})"
+                f"(source: {src_name})"
             )
         list_widget.currentItemChanged.connect(lambda *_: _on_select())
         list_widget.itemDoubleClicked.connect(lambda *_: ok_btn.click())
@@ -1450,6 +1427,26 @@ class FieldEditTab(QWidget):
             return
         val = it.data(Qt.UserRole)
         self._weapon_write_field(target, field, int(val), 'source')
+
+    def _ci_vanilla_for(self, e: dict):
+        """Vanilla dmm_parser record for an entry of either parser.
+
+        The old byte parser's entry_key is not the dmm_parser key, so the
+        lookups by key found nothing (empty picker, 0 siblings). Match by
+        dmm key when the entry has one, else by name."""
+        van = getattr(self, '_charinfo_dmm_vanilla', None) or []
+        cache = getattr(self, '_ci_van_cache', None)
+        if cache is None or cache[0] is not van:
+            by_key = {v.get('key'): v for v in van}
+            by_name = {v.get('string_key'): v for v in van if v.get('string_key')}
+            cache = (van, by_key, by_name)
+            self._ci_van_cache = cache
+        _, by_key, by_name = cache
+        if e.get('dmm_ref') is not None or '_key' in e:
+            hit = by_key.get(e.get('_key', e.get('key')))
+            if hit is not None:
+                return hit
+        return by_name.get(e.get('name') or e.get('_stringKey'))
 
     def _weapon_write_field(self, target: dict, field: str, value: int,
                             source_label: str) -> None:
@@ -1689,7 +1686,7 @@ class FieldEditTab(QWidget):
             _wdm2 = getattr(self, '_weapon_dmm_map', {})
             for e in all_entries:
                 _df = _wdm2.get(field)
-                _cd_v = next((v for v in self._charinfo_dmm_vanilla if v['key'] == e.get('_key', e.get('key', 0))), None)
+                _cd_v = self._ci_vanilla_for(e)
                 if not _df or _cd_v is None:
                     continue
                 v_ = _cd_v.get(_df, 0)
@@ -1722,7 +1719,7 @@ class FieldEditTab(QWidget):
                 return
             _wdm3 = getattr(self, '_weapon_dmm_map', {})
             _df3 = _wdm3.get(field)
-            _v3 = next((v for v in self._charinfo_dmm_vanilla if v['key'] == src.get('_key')), None)
+            _v3 = self._ci_vanilla_for(src)
             if not _df3 or _v3 is None:
                 return
             val = _v3.get(_df3, 0)
@@ -2459,14 +2456,12 @@ class FieldEditTab(QWidget):
             if it.get('vehicle_info', 0) != 0 or it.get('string_key', '').startswith('Riding_'):
                 skipped_mounts += 1
                 continue
-            ff = it.get('four_flags', {})
-            if not ff:
-                continue
-            if ff.get('flag_b', 1) == 0:
-                ff['flag_b'] = 1
+            # 2.03: the old four_flags block is gone; the flags have names now.
+            if it.get('of_origin_is_attackable') == 0:
+                it['of_origin_is_attackable'] = 1
                 made_attackable += 1
-            if ff.get('flag_a', 0) == 1:
-                ff['flag_a'] = 0
+            if it.get('of_origin_invincibility'):
+                it['of_origin_invincibility'] = 0
                 made_vincible += 1
         if made_attackable == 0 and made_vincible == 0:
             QMessageBox.information(self, tr("Make Killable"), tr("All NPCs are already attackable."))
@@ -2610,10 +2605,9 @@ class FieldEditTab(QWidget):
             # Mount entries: have a vehicle_info reference OR start with Riding_
             if vehicle == 0 and not sk.startswith('Riding_'):
                 continue
-            # four_flags is a nested dict; flag_a = _invincibility
-            four_flags = it.get('four_flags')
-            if isinstance(four_flags, dict) and four_flags.get('flag_a', 0) == 0:
-                four_flags['flag_a'] = 1
+            # 2.03: of_origin_invincibility replaces four_flags.flag_a
+            if 'of_origin_invincibility' in it and not it.get('of_origin_invincibility'):
+                it['of_origin_invincibility'] = 1
                 count += 1
 
         if count == 0:
@@ -2631,17 +2625,10 @@ class FieldEditTab(QWidget):
             log.warning("invincible_mounts: re-serialize failed: %s", e)
 
         self._field_edit_modified = True
-
-        # Refresh mount table display
-        from characterinfo_full_parser import parse_all_entries as ci_parse_all
-        try:
-            self._charinfo_mount_entries = [
-                e for e in ci_parse_all(bytes(self._charinfo_data), self._charinfo_schema)
-                if e.get('_vehicleInfo', 0) != 0 or (e.get('name', '') or '').startswith('Riding_')
-            ]
-            self._mount_populate()
-        except Exception:
-            pass
+        self._charinfo_dmm_dirty = True
+        # (The mount table used to be refilled here from the old parser; those
+        # rows lost their link to the dmm items, so later edits in the table
+        # were dropped. The flag is not shown in the table, nothing to refresh.)
 
         log.info("invincible_mounts: patched=%d via dmm_items", count)
         self._field_edit_status.setText(f"Made {count} mounts invincible")
@@ -3243,8 +3230,10 @@ class FieldEditTab(QWidget):
                     "visual mesh.\n\n"
                     "Scale overrides work for any mount regardless.")
         rideable_cb.toggled.connect(_on_rideable_toggled)
-        mount_row.addWidget(rideable_cb)
-        mount_row.addWidget(QLabel("Rider Height:"))
+        # "Make Rideable" is not shown any more (2.03.02): it needs a reference
+        # skeleton file that is not shipped, and the .pab bone layout it
+        # writes is from an older game version. The widgets stay (unchecked)
+        # so saved swap lists still load.
         rider_y_spin = QDoubleSpinBox()
         rider_y_spin.setRange(0.0, 20.0)
         rider_y_spin.setSingleStep(0.5)
@@ -3255,7 +3244,8 @@ class FieldEditTab(QWidget):
             "Y offset for rider seat position (relative to Spine1 bone).\n"
             "Higher = rider sits higher above the mount's body.\n"
             "Golden Star: ~8.0, Wyvern: ~4.0, Wolf: ~2.0")
-        mount_row.addWidget(rider_y_spin)
+        rideable_cb.setVisible(False)
+        rider_y_spin.setVisible(False)
         mount_row.addStretch()
         dlg_layout.addLayout(mount_row)
 
@@ -3920,8 +3910,8 @@ class FieldEditTab(QWidget):
                     except Exception:
                         log.exception("mount overlay: scale failed for src=%d", sk)
 
-                # ── Rider bone injection ──
-                if sw.get('rideable'):
+                # ── Rider bone injection ── (switched off, see the mesh swap dialog)
+                if False and sw.get('rideable'):
                     rider_y = float(sw.get('rider_y', 8.0) or 8.0)
                     # Find the skeleton .pab path from the prefabdata
                     skel_path = self._find_skeleton_path(game_path, entry, catalog)
@@ -4039,61 +4029,6 @@ class FieldEditTab(QWidget):
             log.exception("_find_skeleton_path failed")
         return None
 
-    def _write_modified_files(self, mod_dir: str) -> None:
-        written: list[str] = []
-        if (self._field_edit_data and self._field_edit_original
-                and bytes(self._field_edit_data) != self._field_edit_original):
-            with open(os.path.join(mod_dir, "fieldinfo.pabgb"), "wb") as f:
-                f.write(self._field_edit_data)
-            written.append(f"fieldinfo.pabgb ({len(self._field_edit_data)}B)")
-        if (self._vehicle_data and self._vehicle_original
-                and bytes(self._vehicle_data) != self._vehicle_original):
-            with open(os.path.join(mod_dir, "vehicleinfo.pabgb"), "wb") as f:
-                f.write(self._vehicle_data)
-            written.append(f"vehicleinfo.pabgb ({len(self._vehicle_data)}B)")
-        if (self._gptrigger_data and self._gptrigger_original
-                and bytes(self._gptrigger_data) != self._gptrigger_original):
-            with open(os.path.join(mod_dir, "gameplaytrigger.pabgb"), "wb") as f:
-                f.write(self._gptrigger_data)
-            written.append(f"gameplaytrigger.pabgb ({len(self._gptrigger_data)}B)")
-        if (self._regioninfo_data and self._regioninfo_original
-                and bytes(self._regioninfo_data) != self._regioninfo_original):
-            with open(os.path.join(mod_dir, "regioninfo.pabgb"), "wb") as f:
-                f.write(self._regioninfo_data)
-            written.append(f"regioninfo.pabgb ({len(self._regioninfo_data)}B)")
-        if (self._charinfo_data and self._charinfo_original
-                and bytes(self._charinfo_data) != self._charinfo_original):
-            with open(os.path.join(mod_dir, "characterinfo.pabgb"), "wb") as f:
-                f.write(self._charinfo_data)
-            diff_bytes = sum(1 for a, b in zip(self._charinfo_data, self._charinfo_original)
-                             if a != b)
-            written.append(f"characterinfo.pabgb ({len(self._charinfo_data)}B, "
-                           f"{diff_bytes} bytes diff)")
-        if (self._wantedinfo_data and self._wantedinfo_original
-                and bytes(self._wantedinfo_data) != self._wantedinfo_original):
-            with open(os.path.join(mod_dir, "wantedinfo.pabgb"), "wb") as f:
-                f.write(self._wantedinfo_data)
-            written.append(f"wantedinfo.pabgb ({len(self._wantedinfo_data)}B)")
-        if (self._allygroup_data is not None and self._allygroup_original is not None
-                and bytes(self._allygroup_data) != self._allygroup_original):
-            with open(os.path.join(mod_dir, "allygroupinfo.pabgb"), "wb") as f:
-                f.write(self._allygroup_data)
-            written.append(f"allygroupinfo.pabgb ({len(self._allygroup_data)}B)")
-        if (self._relationinfo_data is not None and self._relationinfo_original is not None
-                and bytes(self._relationinfo_data) != self._relationinfo_original):
-            with open(os.path.join(mod_dir, "relationinfo.pabgb"), "wb") as f:
-                f.write(self._relationinfo_data)
-            written.append(f"relationinfo.pabgb ({len(self._relationinfo_data)}B)")
-        if (self._factionrelgrp_data is not None and self._factionrelgrp_original is not None
-                and bytes(self._factionrelgrp_data) != self._factionrelgrp_original):
-            with open(os.path.join(mod_dir, "factionrelationgroup.pabgb"), "wb") as f:
-                f.write(self._factionrelgrp_data)
-            written.append(f"factionrelationgroup.pabgb ({len(self._factionrelgrp_data)}B)")
-        if written:
-            log.info("FieldEdit wrote %d file(s) to mod_dir: %s",
-                     len(written), ", ".join(written))
-        else:
-            log.warning("FieldEdit _write_modified_files: no diffs — no files written")
 
     def _ally_relation_dirty(self) -> bool:
         ag_dirty = (self._allygroup_data is not None
@@ -4258,10 +4193,21 @@ class FieldEditTab(QWidget):
                         f"Group {base_group + i:04d} belongs to the game itself. FieldEdit "
                         f"writes one group per changed table ({base_group:04d} and up) - "
                         f"pick a higher overlay number, e.g. 0072.")
+            # Work out every table's index before writing any: the game reads
+            # records by the offsets in the .pabgh, so a table whose records
+            # changed size (e.g. Wipe Ally Lists) needs new offsets. Before,
+            # the game's original index was always shipped.
+            from gui.utils import fitting_index
+            _indexes = {}
+            for stem, pabgb_data in dirty_tables:
+                _gh = bytes(crimson_rs.extract_file(
+                    game_path, "0008", INTERNAL_DIR, f"{stem}.pabgh"))
+                _vlen = len(bytes(crimson_rs.extract_file(
+                    game_path, "0008", INTERNAL_DIR, f"{stem}.pabgb")))
+                _indexes[stem] = fitting_index(stem, pabgb_data, _gh, _vlen)
             for i, (stem, pabgb_data) in enumerate(dirty_tables):
                 grp = f"{base_group + i:04d}"
-                pabgh_data = bytes(crimson_rs.extract_file(
-                    game_path, "0008", INTERNAL_DIR, f"{stem}.pabgh"))
+                pabgh_data = _indexes[stem]
 
                 with tempfile.TemporaryDirectory() as tmp_dir:
                     group_dir = os.path.join(tmp_dir, grp)
@@ -4309,300 +4255,6 @@ class FieldEditTab(QWidget):
             log.exception("FieldEdit apply failed")
             self._field_edit_status.setText(f"Apply failed: {e}")
             QMessageBox.critical(self, tr("Apply Failed"), str(e))
-
-    def _field_edit_export_mod(self):
-        mesh_queue = self._mesh_swap_queue or []
-        ally_dirty = self._ally_relation_dirty()
-        if (not self._field_edit_data and not ally_dirty
-                and not self._field_edit_modified and not mesh_queue):
-            QMessageBox.information(self, tr("Export Field JSON v3"), tr("No modifications to export."))
-            return
-        self._field_edit_apply_mesh_swaps()
-
-        name, ok = QInputDialog.getText(self, tr("Export Field JSON v3"),
-                                        tr("Mod name:"), text="FieldEdit Mod")
-        if not ok or not name.strip():
-            return
-        name = name.strip()
-
-        exe_dir = os.path.dirname(os.path.abspath(sys.argv[0] or "."))
-        default_dir = os.path.join(exe_dir, "packs")
-        os.makedirs(default_dir, exist_ok=True)
-        folder_name = "".join(c if (c.isalnum() or c in "-_ ") else "_" for c in name)
-        out_path = os.path.join(default_dir, folder_name)
-
-        try:
-            if os.path.isdir(out_path):
-                shutil.rmtree(out_path)
-            os.makedirs(out_path, exist_ok=True)
-            files_dir = os.path.join(out_path, "files", "gamedata", "binary__", "client", "bin")
-            os.makedirs(files_dir, exist_ok=True)
-            self._write_modified_files(files_dir)
-
-            modinfo = {
-                "id": name.lower().replace(" ", "_"),
-                "name": name,
-                "version": "1.0.0",
-                "game_version": "1.00.03",
-                "author": "CrimsonSaveEditor",
-                "description": f"FieldEdit mod: {name}",
-            }
-            with open(os.path.join(out_path, "modinfo.json"), "w", encoding="utf-8") as f:
-                json.dump(modinfo, f, indent=2)
-
-            written = sorted(os.listdir(files_dir))
-            self._field_edit_status.setText(
-                f"Exported mod to packs/{folder_name}/ ({len(written)} file(s))")
-            QMessageBox.information(self, tr("Mod Exported"),
-                f"Mod exported to:\n{out_path}\n\n"
-                f"Contents:\n"
-                f"  files/gamedata/binary__/client/bin/\n"
-                + "".join(f"    {fn}\n" for fn in written)
-                + f"  modinfo.json\n\n"
-                f"To install: copy '{folder_name}' into your mod loader's\n"
-                f"mods/ directory (CD JSON Mod Manager, DMM, or CDUMM).")
-        except Exception as e:
-            log.exception("FieldEdit raw-mod export failed")
-            self._field_edit_status.setText(f"Export failed: {e}")
-            QMessageBox.critical(self, tr("Export Failed"), str(e))
-
-    def _field_edit_export(self):
-        mesh_queue = self._mesh_swap_queue or []
-        ally_dirty = self._ally_relation_dirty()
-        if (not self._field_edit_data and not ally_dirty
-                and not self._field_edit_modified and not mesh_queue):
-            QMessageBox.information(self, tr("FieldEdit"), tr("No modifications to export."))
-            return
-        self._field_edit_apply_mesh_swaps()
-
-        name, ok = QInputDialog.getText(self, tr("Export Field Mod"),
-                                        tr("Mod name:"), text="Mount Everywhere")
-        if not ok or not name.strip():
-            return
-        name = name.strip()
-
-        exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        default_dir = os.path.join(exe_dir, "packs")
-        os.makedirs(default_dir, exist_ok=True)
-        folder_name = "".join(c if (c.isalnum() or c in "-_ ") else "_" for c in name)
-        save_dir = QFileDialog.getExistingDirectory(
-            self, f"Choose folder for '{folder_name}' mod", default_dir)
-        if not save_dir:
-            return
-        out_path = os.path.join(save_dir, folder_name)
-
-        self._field_edit_status.setText(tr("Packing..."))
-        QApplication.processEvents()
-
-        try:
-            import crimson_rs.pack_mod
-            game_path = self._config.get("game_install_path", "")
-            if os.path.isdir(out_path):
-                shutil.rmtree(out_path)
-            os.makedirs(out_path, exist_ok=True)
-
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                mod_dir = os.path.join(tmp_dir, "gamedata", "binary__", "client", "bin")
-                os.makedirs(mod_dir, exist_ok=True)
-                self._write_modified_files(mod_dir)
-
-                pack_out = os.path.join(tmp_dir, "output")
-                os.makedirs(pack_out, exist_ok=True)
-                mod_group = "0036"
-                crimson_rs.pack_mod.pack_mod(
-                    game_dir=game_path,
-                    mod_folder=tmp_dir,
-                    output_dir=pack_out,
-                    group_name=mod_group,
-                )
-                paz_dst = os.path.join(out_path, mod_group)
-                os.makedirs(paz_dst, exist_ok=True)
-                shutil.copy2(os.path.join(pack_out, mod_group, "0.paz"),
-                             os.path.join(paz_dst, "0.paz"))
-                shutil.copy2(os.path.join(pack_out, mod_group, "0.pamt"),
-                             os.path.join(paz_dst, "0.pamt"))
-                meta_dst = os.path.join(out_path, "meta")
-                os.makedirs(meta_dst, exist_ok=True)
-                shutil.copy2(os.path.join(pack_out, "meta", "0.papgt"),
-                             os.path.join(meta_dst, "0.papgt"))
-
-            modinfo = {
-                "id": name.lower().replace(" ", "_"),
-                "name": name,
-                "version": "1.0.0",
-                "game_version": "1.00.03",
-                "author": "CrimsonSaveEditor",
-                "description": f"FieldInfo mod: {name}",
-            }
-            with open(os.path.join(out_path, "modinfo.json"), "w", encoding="utf-8") as f:
-                json.dump(modinfo, f, indent=2)
-
-            self._field_edit_status.setText(f"Exported to {folder_name}/{mod_group}/")
-            QMessageBox.information(self, tr("Exported"),
-                f"Mod exported to:\n{out_path}\n\n"
-                f"Contents:\n"
-                f"  {mod_group}/0.paz + {mod_group}/0.pamt\n"
-                f"  meta/0.papgt\n"
-                f"  modinfo.json\n\n"
-                f"JMM / CDUMM should show this as 'compiled'.")
-        except Exception as e:
-            log.exception("FieldEdit export failed")
-            self._field_edit_status.setText(f"Export failed: {e}")
-            QMessageBox.critical(self, tr("Export Failed"), str(e))
-
-    def _field_edit_export_json(self):
-        self._field_edit_apply_mesh_swaps()
-        mesh_queue = self._mesh_swap_queue or []
-        if not self._field_edit_modified and not mesh_queue:
-            QMessageBox.information(self, tr("Export JSON"), tr("No modifications to export."))
-            return
-
-        name, ok = QInputDialog.getText(self, tr("Export JSON Mod"),
-                                        tr("Mod name:"), text="Mount Everywhere")
-        if not ok or not name.strip():
-            return
-        name = name.strip()
-
-        def _diff_bytes(data, original, label_fn=None):
-            changes = []
-            i = 0
-            while i < len(data):
-                if data[i] != original[i]:
-                    start = i
-                    while i < len(data) and data[i] != original[i]:
-                        i += 1
-                    label = label_fn(start, i - start) if label_fn else f"offset_{start}"
-                    changes.append({
-                        "offset": start,
-                        "label": label,
-                        "original": bytes(original[start:i]).hex().upper(),
-                        "patched": bytes(data[start:i]).hex().upper(),
-                    })
-                else:
-                    i += 1
-            return changes
-
-        patches = []
-
-        if self._field_edit_data and self._field_edit_original:
-            def _fi_label(off, _n):
-                for e in self._field_edit_entries:
-                    if e.get('can_call_vehicle_offset') == off:
-                        return f"{e.get('name', 'Zone_' + str(e['key']))}: _canCallVehicle ({e.get('can_call_vehicle', '?')})"
-                    if e.get('always_call_vehicle_dev_offset') == off:
-                        return f"{e.get('name', 'Zone_' + str(e['key']))}: _alwaysCallVehicle_dev ({e.get('always_call_vehicle_dev', '?')})"
-                return f"fieldinfo offset {off}"
-            ch = _diff_bytes(self._field_edit_data, self._field_edit_original, _fi_label)
-            if ch:
-                patches.append({"game_file": "gamedata/fieldinfo.pabgb", "changes": ch})
-
-        if self._vehicle_data and self._vehicle_original:
-            def _vi_label(off, _n):
-                for e in self._vehicle_entries:
-                    if e.get('mount_call_type_offset') == off:
-                        return f"{e['name']}: _mountCallType ({e.get('mount_call_type', '?')})"
-                    if e.get('can_call_safe_zone_offset') == off:
-                        return f"{e['name']}: _canCallSafeZone ({e.get('can_call_safe_zone', '?')})"
-                    ao = e.get('altitude_cap_offset', -1)
-                    if ao <= off < ao + 4:
-                        return f"{e['name']}: _altitudeCap"
-                return f"vehicleinfo offset {off}"
-            ch = _diff_bytes(self._vehicle_data, self._vehicle_original, _vi_label)
-            if ch:
-                patches.append({"game_file": "gamedata/vehicleinfo.pabgb", "changes": ch})
-
-        if self._gptrigger_data and self._gptrigger_original:
-            def _gt_label(off, _n):
-                for e in self._gptrigger_entries:
-                    if e.get('safe_zone_type_offset') == off:
-                        return f"{e['name']}: _safeZoneType ({e.get('safe_zone_type', '?')})"
-                return f"gameplaytrigger offset {off}"
-            ch = _diff_bytes(self._gptrigger_data, self._gptrigger_original, _gt_label)
-            if ch:
-                patches.append({"game_file": "gamedata/gameplaytrigger.pabgb", "changes": ch})
-
-        if self._regioninfo_entries and hasattr(self, '_regioninfo_dmm_items') and self._regioninfo_dmm_items:
-            import dmm_parser as _dmp_ri_exp
-            cur_ri = _dmp_ri_exp.serialize_table('region_info', self._regioninfo_dmm_items)
-            van_ri = _dmp_ri_exp.serialize_table('region_info', self._regioninfo_dmm_vanilla)
-            if cur_ri != van_ri:
-                def _ri_label(off, _n):
-                    return f"regioninfo offset {off}"
-                ch = _diff_bytes(cur_ri, van_ri, _ri_label)
-                if ch:
-                    patches.append({"game_file": "gamedata/regioninfo.pabgb", "changes": ch})
-
-        if self._charinfo_data and self._charinfo_original:
-            ci_field_map = {}
-            from characterinfo_full_parser import parse_all_entries as _ci_all
-            _all_ci = _ci_all(bytes(self._charinfo_data), self._charinfo_schema)
-            for e in _all_ci:
-                dur_off = e.get('_callMercenarySpawnDuration_offset', -1)
-                cool_off = e.get('_callMercenaryCoolTime_offset', -1)
-                att_off = e.get('_isAttackable_offset', -1)
-                inv_off = e.get('_invincibility_offset', -1)
-                nm = e.get('name', '?')
-                if dur_off >= 0:
-                    ci_field_map[dur_off] = f"{nm}: _callMercenarySpawnDuration"
-                if cool_off >= 0:
-                    ci_field_map[cool_off] = f"{nm}: _callMercenaryCoolTime"
-                if att_off >= 0:
-                    ci_field_map[att_off] = f"{nm}: _isAttackable"
-                if inv_off >= 0:
-                    ci_field_map[inv_off] = f"{nm}: _invincibility"
-            def _ci_label(off, _n):
-                for foff, lbl in ci_field_map.items():
-                    if foff <= off < foff + 8:
-                        return lbl
-                return f"characterinfo offset {off}"
-            ch = _diff_bytes(self._charinfo_data, self._charinfo_original, _ci_label)
-            if ch:
-                patches.append({"game_file": "gamedata/characterinfo.pabgb", "changes": ch})
-
-        if self._wantedinfo_data and self._wantedinfo_original:
-            from wantedinfo_parser import parse_all_entries as wi_parse, FACTION_NAMES, CRIME_TIERS
-            wi_entries = wi_parse(bytes(self._wantedinfo_data), self._wantedinfo_schema)
-            wi_field_map = {}
-            for e in wi_entries:
-                faction = FACTION_NAMES.get(e['_faction'], f"Faction_{e['_faction']}")
-                tier = CRIME_TIERS.get(e['_crimeTier'], f"Tier_{e['_crimeTier']}")
-                off = e.get('_isBlocked_offset', -1)
-                if off >= 0:
-                    wi_field_map[off] = f"{faction}_{tier}: _isBlocked"
-                price_off = e.get('_increasePrice_offset', -1)
-                if price_off >= 0:
-                    for b in range(8):
-                        wi_field_map[price_off + b] = f"{faction}_{tier}: _increasePrice"
-            def _wi_label(off, _n):
-                return wi_field_map.get(off, f"wantedinfo offset {off}")
-            ch = _diff_bytes(self._wantedinfo_data, self._wantedinfo_original, _wi_label)
-            if ch:
-                patches.append({"game_file": "gamedata/wantedinfo.pabgb", "changes": ch})
-
-        if not patches:
-            QMessageBox.information(self, tr("Export JSON"), tr("No byte-level changes detected."))
-            return
-
-        total_changes = sum(len(p['changes']) for p in patches)
-        export = {
-            "name": name,
-            "version": "1.0.0",
-            "author": "CrimsonSaveEditor",
-            "description": f"{name} — {total_changes} changes across {len(patches)} game files.",
-            "patches": patches,
-        }
-
-        default_name = "".join(c if (c.isalnum() or c in "-_ ") else "_" for c in name) + ".json"
-        path, _ = QFileDialog.getSaveFileName(
-            self, tr("Export JSON Mod"), default_name, "JSON Files (*.json)")
-        if not path:
-            return
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(export, f, indent=2, ensure_ascii=False)
-
-        self._field_edit_status.setText(f"Exported {total_changes} changes to {os.path.basename(path)}")
-        QMessageBox.information(self, tr("Exported"),
-            f"Saved {total_changes} changes across {len(patches)} files to:\n{path}")
 
 
     def _field_edit_export_field_json_v3(self) -> None:

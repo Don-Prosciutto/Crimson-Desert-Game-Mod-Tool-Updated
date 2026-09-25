@@ -575,7 +575,10 @@ class ItemBuffsTab(QWidget):
                 self._staged_charinfo_files = {}
             def remove_buff():
                 if confirm_remove("staged buffinfo changes"): return
-                self._buffinfo_dmm_items = []
+                # None (not []): _buff_load_buffinfo reloads on None; with []
+                # No Fall Damage stopped working until the app was restarted.
+                self._buffinfo_dmm_items = None
+                self._buffinfo_dmm_vanilla = None
             # def remove_kliff():
             #     if confirm_remove("Kliff Gun Fix"): return
             #     self._staged_kliff_runtime = False
@@ -617,12 +620,8 @@ class ItemBuffsTab(QWidget):
 
             more_menu.addSeparator()
             
-            act_verify = more_menu.addAction("Verify Applied Overlay...")
-            act_verify.setToolTip(
-                "Diagnostics: extract your current overlay and report how many "
-                "items actually have each mutation applied. Use after Apply to "
-                "Game to confirm the overlay matches expectations.")
-            act_verify.triggered.connect(self._buff_verify_applied_overlay)
+            # "Verify Applied Overlay" removed (2.03.02): always crashed, and its
+            # checks were written for Universal Proficiency v2.
 
             act_restore = more_menu.addAction("Restore Original (remove overlay)")
             act_restore.setToolTip(
@@ -1094,12 +1093,8 @@ class ItemBuffsTab(QWidget):
 
             more_menu.addSeparator()
 
-            act_verify = more_menu.addAction("Verify Applied Overlay...")
-            act_verify.setToolTip(
-                "Diagnostics: extract your current overlay and report how many "
-                "items actually have each mutation applied. Use after Apply to "
-                "Game to confirm the overlay matches expectations.")
-            act_verify.triggered.connect(self._buff_verify_applied_overlay)
+            # "Verify Applied Overlay" removed (2.03.02): always crashed, and its
+            # checks were written for Universal Proficiency v2.
 
             more_btn.setMenu(more_menu)
             bottom_bar.addWidget(more_btn)
@@ -6773,22 +6768,8 @@ class ItemBuffsTab(QWidget):
                     _patch_docking_fields(rust_info[gf])
         
         
-        if preset.get('drop_default_data') is not None:
-            ddd = preset['drop_default_data']
-            existing = rust_info.get('drop_default_data')
-            for dd in ('drop_enchant_level','add_socket_material_item_list',
-                       'socket_item_list','socket_valid_count','use_socket'):
-                if ddd.get(dd) is not None:
-                    existing[dd] = ddd[dd]
-            # rust_info['drop_default_data'] = existing
-
-        if 'cooltime' in preset:
-            _v = preset['cooltime']
-            rust_info['cooltime'] = {'a': _v, 'b': _v, 'c': _v} if not isinstance(_v, dict) else _v
-        if 'max_charged_useable_count' in preset:
-            _v = preset['max_charged_useable_count']
-            rust_info['max_charged_useable_count'] = {'a': _v, 'b': _v, 'c': _v} if not isinstance(_v, dict) else _v
-
+        # (A first copy of this block crashed on items without drop data -
+        # "5 Sockets" / "Max Refine" on such items raised TypeError.)
         if preset.get('drop_default_data') is not None:
             ddd = preset['drop_default_data']
             existing_ddd = rust_info.get('drop_default_data')
@@ -10509,190 +10490,6 @@ class ItemBuffsTab(QWidget):
             "")
 
 
-    def _buff_verify_applied_overlay(self) -> None:
-        """Diagnostic: compare current overlay vs vanilla, report per-mutation counts.
-
-        Answers "what actually made it into 0058/0.paz?" vs "what should have
-        been there?". Useful when a user reports features aren't working in-
-        game and we need to know whether it's a serialize/overlay issue or a
-        game-side issue.
-        """
-        if not self._buff_ensure_patcher():
-            return
-
-        game_path = self._buff_patcher.game_path
-        buff_dir = f"{self._buff_overlay_spin.value():04d}"
-        overlay_paz = os.path.join(game_path, buff_dir, "0.paz")
-        overlay_pamt = os.path.join(game_path, buff_dir, "0.pamt")
-        if not (os.path.isfile(overlay_paz) and os.path.isfile(overlay_pamt)):
-            QMessageBox.warning(self, "Verify Overlay",
-                f"No overlay found at {buff_dir}/.\n"
-                "")
-            return
-
-        self._buff_status_label.setText("Verifying overlay...")
-        QApplication.processEvents()
-
-        try:
-            import crimson_rs
-        except ImportError:
-            QMessageBox.critical(self, "Verify Overlay",
-                "crimson_rs not available.")
-            return
-
-        INTERNAL = "gamedata/binarystaticinfo__/bin"
-        PLAYER_TRIBES = self._PLAYER_TRIBE_HASHES
-        STACK_TARGET, CHARGES_TARGET, DURA_TARGET = 999999, 99, 65535
-
-        # Pull vanilla + overlay iteminfo.
-        try:
-            van_bytes = bytes(crimson_rs.extract_file(
-                game_path, '0008', INTERNAL, 'iteminfo.pabgb'))
-            mod_bytes = bytes(crimson_rs.extract_file(
-                game_path, buff_dir, INTERNAL, 'iteminfo.pabgb'))
-        except Exception as e:
-            QMessageBox.critical(self, "Verify Overlay",
-                f"Failed to extract iteminfo:\n{e}")
-            return
-
-        van_items = list(self._buff_parse_to_lookup(van_bytes).values())
-        mod_items = list(self._buff_parse_to_lookup(mod_bytes).values())
-        mod_by_key = {int(it['key']): it for it in mod_items}
-
-        # Initialise counters for each mutation type.
-        stacks_hit = stacks_expected = 0
-        charges_hit = charges_expected = 0
-        dura_hit = dura_expected = 0
-        cd_hit = cd_expected = 0
-        dye_hit = dye_expected = 0
-        sock_hit = sock_expected = 0
-        up_hit = up_expected = 0
-
-        for v in van_items:
-            m = mod_by_key.get(v['key'])
-            if not m:
-                continue
-
-            # QoL
-            if (_safe_iv(v.get('max_stack_count', 0))) > 1 and v['max_stack_count'] != STACK_TARGET:
-                stacks_expected += 1
-                if _safe_iv(m.get('max_stack_count', 0)) == STACK_TARGET:
-                    stacks_hit += 1
-            if (_safe_iv(_safe_iv(v.get('item_charge_type', 0))) == 0
-                    and (_safe_iv(v.get('max_charged_useable_count', 0))) > 0
-                    and v['max_charged_useable_count'] != CHARGES_TARGET):
-                charges_expected += 1
-                if _safe_iv(m.get('max_charged_useable_count', 0)) == CHARGES_TARGET:
-                    charges_hit += 1
-            if (_safe_iv(v.get('max_endurance', 0))) > 0 and v['max_endurance'] != DURA_TARGET:
-                dura_expected += 1
-                if _safe_iv(m.get('max_endurance', 0)) == DURA_TARGET:
-                    dura_hit += 1
-            if (_safe_iv(v.get('cooltime', 0))) > 1000:  # > 1s
-                cd_expected += 1
-                if _safe_iv(m.get('cooltime', 0)) == 1000:  # set to 1s
-                    cd_hit += 1
-
-            # Dyeable
-            if v.get('equip_type_info') and not v.get('is_dyeable'):
-                dye_expected += 1
-                if m.get('is_dyeable'):
-                    dye_hit += 1
-
-            # Sockets
-            vddd = v.get('drop_default_data')
-            if vddd and vddd.get('use_socket') and vddd.get('add_socket_material_item_list'):
-                vlen = len(vddd['add_socket_material_item_list'])
-                if 1 <= vlen < 5:
-                    sock_expected += 1
-                    mddd = m.get('drop_default_data') or {}
-                    mlist = mddd.get('add_socket_material_item_list') or []
-                    if len(mlist) == 5 and mddd.get('socket_valid_count') == 5:
-                        sock_hit += 1
-
-            # UP v2 tribe_gender (per-PD)
-            if v.get('equip_type_info'):
-                v_pdl = v.get('prefab_data_list') or []
-                m_pdl = m.get('prefab_data_list') or []
-                for i, vpd in enumerate(v_pdl):
-                    vtg = vpd.get('tribe_gender_list') or []
-                    if not vtg:
-                        continue
-                    to_add = sorted(PLAYER_TRIBES - set(vtg))
-                    if not to_add:
-                        continue
-                    up_expected += 1
-                    if i < len(m_pdl):
-                        mtg = m_pdl[i].get('tribe_gender_list') or []
-                        if all(t in mtg for t in to_add):
-                            up_hit += 1
-
-        # Check companion files presence in the overlay.
-        has_equipslot_pabgb = False
-        has_equipslot_pabgh = False
-        has_skill_pabgb = False
-        has_skill_pabgh = False
-        try:
-            has_equipslot_pabgb = bool(crimson_rs.extract_file(
-                game_path, buff_dir, INTERNAL, 'equipslotinfo.pabgb'))
-        except Exception:
-            pass
-        try:
-            has_equipslot_pabgh = bool(crimson_rs.extract_file(
-                game_path, buff_dir, INTERNAL, 'equipslotinfo.pabgh'))
-        except Exception:
-            pass
-        try:
-            has_skill_pabgb = bool(crimson_rs.extract_file(
-                game_path, buff_dir, INTERNAL, 'skill.pabgb'))
-        except Exception:
-            pass
-        try:
-            has_skill_pabgh = bool(crimson_rs.extract_file(
-                game_path, buff_dir, INTERNAL, 'skill.pabgh'))
-        except Exception:
-            pass
-
-        self._buff_status_label.setText(
-            f"Verify done: overlay {buff_dir}/ inspected.")
-
-        def row(name, hit, exp):
-            pct = (100 * hit / exp) if exp else 0
-            status = "OK" if (exp == 0 or hit == exp) else (
-                "PART" if hit > 0 else "MISS")
-            return f"  [{status}]  {name:<28}  {hit:>5}/{exp:<5}  ({pct:>5.1f}%)"
-
-        msg = (
-            f"Overlay {buff_dir}/0.paz \u2014 verification vs vanilla\n\n"
-            f"Iteminfo mutations (how many items had each applied):\n"
-            f"{row('QoL Max Stack (999999)', stacks_hit, stacks_expected)}\n"
-            f"{row('QoL Max Charges (99)', charges_hit, charges_expected)}\n"
-            f"{row('QoL Infinity Durability', dura_hit, dura_expected)}\n"
-            f"{row('QoL No Cooldown (==1)', cd_hit, cd_expected)}\n"
-            f"{row('Make Dyeable', dye_hit, dye_expected)}\n"
-            f"{row('Sockets (all → 5)', sock_hit, sock_expected)}\n"
-            f"{row('UP v2 tribe_gender PDs', up_hit, up_expected)}\n\n"
-            f"Companion files bundled in overlay:\n"
-            f"  equipslotinfo.pabgb:  {'yes' if has_equipslot_pabgb else 'NO'}\n"
-            f"  equipslotinfo.pabgh:  {'yes' if has_equipslot_pabgh else 'NO'}\n"
-            f"  skill.pabgb:          {'yes' if has_skill_pabgb else 'NO (no imbue used)'}\n"
-            f"  skill.pabgh:          {'yes' if has_skill_pabgh else 'NO (no imbue used)'}\n\n"
-            f"Legend:\n"
-            f"  [OK]   \u2014 every expected item got the mutation\n"
-            f"  [PART] \u2014 some items got it but others didn't (investigate)\n"
-            f"  [MISS] \u2014 no items got this mutation (the handler didn't "
-            f"run or its changes were dropped)\n\n"
-            f"Expected=0 rows are also OK \u2014 it means nothing in vanilla "
-            f"needed that mutation.\n\n"
-            f"UP v2 note: items with empty tribe_gender_list are intentionally "
-            f"skipped (empty == 'any character can equip' per game semantics; "
-            f"filling empty lists broke Batz dagger in past tests)."
-        )
-
-        log.info("Verify overlay: %s", msg.replace('\n', ' | '))
-        QMessageBox.information(self, "Verify Applied Overlay", msg)
-
-
     def _apply_max_stacks_all(self) -> None:
         if not getattr(self, '_buff_rust_items', None):
             QMessageBox.warning(self, "Max Stacks", "Extract iteminfo first.")
@@ -11225,6 +11022,20 @@ class ItemBuffsTab(QWidget):
             f"Click 'Export Field JSON v3' to write."
         )
 
+
+    @staticmethod
+    def _set_stat(sd: dict, list_name: str, stat_key: int, value: int):
+        """Set one stat in an enchant level's list (add it if missing). The
+        Quick Edit presets Max DDD / DPV / HP and Custom called this, but it
+        only existed in the Save Editor, so they always crashed."""
+        existing = sd.get(list_name, [])
+        for i, s in enumerate(existing):
+            if s.get('stat') == stat_key:
+                existing[i] = {'stat': stat_key, 'change_mb': value}
+                sd[list_name] = existing
+                return
+        existing.append({'stat': stat_key, 'change_mb': value})
+        sd[list_name] = existing
 
     def _buff_remove_all(self) -> None:
         if self._buff_patcher is None:
@@ -12369,47 +12180,45 @@ class ItemBuffsTab(QWidget):
             QMessageBox.critical(self, "Deploy Failed", str(e))
 
     def _diff_staged_equipslotinfo(self) -> list:
-        """Diff staged equipslotinfo against vanilla for v3 multi-target export."""
-        import base64
+        """Diff staged equipslotinfo against vanilla for v3 multi-target export.
+
+        Reads both with dmm_parser. The old version used equipslotinfo_parser
+        (game 1.10 layout), which fails on 2.03; the error was only logged,
+        so the Universal Proficiency / Enable Everything slot changes were
+        missing from every exported Field JSON."""
         staged = getattr(self, '_staged_equip_files', None)
         if not staged or 'equipslotinfo.pabgb' not in staged:
             return []
         try:
             import crimson_rs
-            import equipslotinfo_parser as esp
-        except Exception as e:
-            log.warning("v3 export: equipslotinfo parser unavailable (%s)", e)
-            return []
-        try:
             gp = (self._buff_game_path.text().strip() if hasattr(self, '_buff_game_path') and self._buff_game_path else '') or self._config.get("game_install_path", "")
             dp = 'gamedata/binarystaticinfo__/bin'
             v_pabgh = bytes(crimson_rs.extract_file(gp, '0008', dp, 'equipslotinfo.pabgh'))
             v_pabgb = bytes(crimson_rs.extract_file(gp, '0008', dp, 'equipslotinfo.pabgb'))
-            vanilla = esp.parse_all(v_pabgh, v_pabgb)
-            mod_pabgb = staged['equipslotinfo.pabgb']
-            mod_pabgh = staged.get('equipslotinfo.pabgh', v_pabgh)
-            modified = esp.parse_all(mod_pabgh, mod_pabgb)
+            vanilla = crimson_rs.parse_table('equipslotinfo', v_pabgb, v_pabgh)
+            mod_pabgb = bytes(staged['equipslotinfo.pabgb'])
+            mod_pabgh = bytes(staged.get('equipslotinfo.pabgh') or v_pabgh)
+            modified = crimson_rs.parse_table('equipslotinfo', mod_pabgb, mod_pabgh)
         except Exception as e:
             log.warning("v3 export: equipslotinfo parse failed (%s)", e)
+            QMessageBox.warning(self, "Export Field JSON",
+                "The equipment slot changes (Universal Proficiency) could not be read "
+                f"and are NOT in the export:\n{e}")
             return []
-        v_by_key = {r.key: r for r in vanilla}
+        v_by_key = {r.get('key'): r for r in vanilla}
         intents = []
         for rec in modified:
-            v_rec = v_by_key.get(rec.key)
+            v_rec = v_by_key.get(rec.get('key'))
             if v_rec is None:
-                intents.append({'entry': '', 'key': rec.key, 'op': 'add_entry',
-                    'data': {'_blob_b64': base64.b64encode(rec.to_bytes()).decode('ascii')}})
                 continue
-            v_entries = v_rec.entries
-            for i, m_entry in enumerate(rec.entries):
+            v_entries = v_rec.get('entries') or []
+            for i, m_entry in enumerate(rec.get('entries') or []):
                 if i >= len(v_entries):
-                    intents.append({'entry': '', 'key': rec.key, 'field': '_blob_b64', 'op': 'set',
-                        'new': base64.b64encode(rec.to_bytes()).decode('ascii')})
                     break
-                if list(v_entries[i].etl_hashes) != list(m_entry.etl_hashes):
-                    intents.append({'entry': '', 'key': rec.key,
+                if list(v_entries[i].get('etl_hashes') or []) != list(m_entry.get('etl_hashes') or []):
+                    intents.append({'entry': rec.get('string_key') or '', 'key': rec.get('key'),
                         'field': f'entries[{i}].etl_hashes', 'op': 'set',
-                        'new': list(m_entry.etl_hashes)})
+                        'new': list(m_entry.get('etl_hashes') or [])})
         return intents
 
     def _diff_staged_characterinfo(self) -> list:
@@ -12902,6 +12711,23 @@ class ItemBuffsTab(QWidget):
                         log.info("Bundling staged %s (%d bytes) into overlay",
                                  fname, len(staged_skill[fname]))
 
+                # buffinfo (No Fall Damage): only reached Field JSON before,
+                # Apply to Game dropped it. Bundle it when it was changed.
+                _bi = getattr(self, '_buffinfo_dmm_items', None)
+                _bv = getattr(self, '_buffinfo_dmm_vanilla', None)
+                if _bi and _bv and _bi != _bv:
+                    import dmm_parser as _dp_bi
+                    _bi_gh = bytes(crimson_rs.extract_file(
+                        game_path, "0008", INTERNAL_DIR, "buffinfo.pabgh"))
+                    _out = _dp_bi.serialize_table('buffinfo', _bi, None, _bi_gh)
+                    _bi_body, _bi_head = (_out if isinstance(_out, tuple) else (_out, _bi_gh))
+                    _bi_body, _bi_head = bytes(_bi_body), bytes(_bi_head)
+                    if len(_dp_bi.parse_table('buffinfo', _bi_body, _bi_head)) != len(_bi):
+                        raise RuntimeError("buffinfo did not read back after the change - not applied.")
+                    builder.add_file(INTERNAL_DIR, "buffinfo.pabgb", _bi_body)
+                    builder.add_file(INTERNAL_DIR, "buffinfo.pabgh", _bi_head)
+                    log.info("Bundling changed buffinfo (%d bytes) into overlay", len(_bi_body))
+
                 # equipslotinfo and characterinfo are NOT bundled into this
                 # overlay — each is deployed to its own separate group
                 # (0059 and 0065 respectively).
@@ -13246,7 +13072,7 @@ class ItemBuffsTab(QWidget):
             fav_action = menu.addAction("Add to Favorites ⭐")
             call_fav = lambda: self._add_to_favorites(item)
 
-        add_action = menu.addAction("Add to Equipment Set...")
+        # "Add to Equipment Set" removed (2.03.02): crashed, old byte stat scanner.
 
         # "Find similar" submenu — shows category/equip_type/item_type peers.
         similar_menu = None
@@ -13280,8 +13106,6 @@ class ItemBuffsTab(QWidget):
         action = menu.exec(self._buff_items_table.viewport().mapToGlobal(pos))
         if action == fav_action:
             call_fav()
-        elif action == add_action:
-            self._set_add_item(item)
         elif rust_info is not None and self._index is not None:
             if action == sim_cat_action:
                 self._show_similar_items(rust_info, mode="category")
@@ -13759,133 +13583,6 @@ class ItemBuffsTab(QWidget):
         if len(results) == 1:
             table.selectRow(0)
             self._buff_item_selected()
-
-
-    def _buff_build_operations(self, item) -> List[StatOperation]:
-        from paz_patcher import _stat_size_class, BUFF_NAMES, BUFF_HASHES
-
-        if self._buff_data is None:
-            return []
-
-        arrays = ItemBuffPatcher.find_stat_arrays(bytes(self._buff_data), item)
-        if not arrays:
-            return []
-
-        all_entries = []
-        for arr in arrays:
-            all_entries.extend(arr.entries)
-
-        preset_idx = self._buff_preset_combo.currentIndex()
-        ops = []
-
-        if preset_idx == 0:
-            for entry in all_entries:
-                val = 15 if entry.size_class == "rate" else 999_999
-                ops.append(StatOperation(
-                    stat_name=entry.name, stat_hash=entry.hash_val,
-                    size_class=entry.size_class, operation="set_value", value=val,
-                ))
-        elif preset_idx in (1, 2, 3, 4, 5):
-            target_classes = {
-                1: ("flat2", "flat1"), 2: ("flat2",), 3: ("flat2",),
-                4: ("flat1",), 5: ("rate",),
-            }[preset_idx]
-            for entry in all_entries:
-                if entry.size_class in target_classes:
-                    val = 15 if entry.size_class == "rate" else 999_999
-                    ops.append(StatOperation(
-                        stat_name=entry.name, stat_hash=entry.hash_val,
-                        size_class=entry.size_class, operation="set_value", value=val,
-                    ))
-        elif preset_idx in (6, 7):
-            target = BUFF_HASHES["Damage Dealt (DDD)"] if preset_idx == 6 else BUFF_HASHES["Defense (DPV)"]
-            target_name = "DDD (Damage)" if preset_idx == 6 else "DPV (Defense)"
-            for entry in all_entries:
-                if entry.size_class == "flat2" and entry.hash_val != target:
-                    ops.append(StatOperation(
-                        stat_name=entry.name, stat_hash=entry.hash_val,
-                        size_class="flat2", operation="swap_hash",
-                        value=entry.value, target_hash=target,
-                    ))
-        else:
-            buff_name = self._buff_type_combo.currentText()
-            buff_hash = BUFF_HASHES.get(buff_name)
-            if buff_hash is None:
-                return []
-            value = self._buff_value_spin.value()
-            target_class = _stat_size_class(buff_hash)
-            for entry in all_entries:
-                if entry.size_class == target_class:
-                    if entry.hash_val == buff_hash:
-                        ops.append(StatOperation(
-                            stat_name=entry.name, stat_hash=entry.hash_val,
-                            size_class=target_class, operation="set_value", value=value,
-                        ))
-                    else:
-                        ops.append(StatOperation(
-                            stat_name=entry.name, stat_hash=entry.hash_val,
-                            size_class=target_class, operation="swap_hash",
-                            value=value, target_hash=buff_hash,
-                        ))
-        return ops
-
-
-    def _set_add_item(self, item) -> None:
-        ops = self._buff_build_operations(item)
-        if not ops:
-            QMessageBox.information(self, "No Operations",
-                                    "Select a preset first, then right-click the item.")
-            return
-
-        display_name = self._name_db.get_name(item.item_key)
-        if display_name.startswith("Unknown"):
-            display_name = item.name
-
-        sets = self._set_mgr.scan_local()
-        choices = [es.name for es in sets] + ["-- Create New Set --"]
-
-        from PySide6.QtWidgets import QInputDialog
-        choice, ok = QInputDialog.getItem(
-            self, "Add to Equipment Set",
-            f"Add '{display_name}' with {len(ops)} operations to:",
-            choices, 0, False,
-        )
-        if not ok:
-            return
-
-        if choice == "-- Create New Set --":
-            name, ok2 = QInputDialog.getText(self, "New Set", "Set name:")
-            if not ok2 or not name.strip():
-                return
-            author, ok3 = QInputDialog.getText(self, "New Set", "Author:")
-            if not ok3:
-                author = ""
-            desc, ok4 = QInputDialog.getText(self, "New Set", "Description:")
-            if not ok4:
-                desc = ""
-            import datetime
-            es = EquipmentSet(
-                name=name.strip(), author=author.strip(),
-                description=desc.strip(),
-                created=datetime.date.today().isoformat(),
-            )
-        else:
-            es = next((s for s in sets if s.name == choice), None)
-            if not es:
-                return
-
-        set_item = SetItem(
-            item_key=item.item_key,
-            item_name=display_name,
-            operations=ops,
-        )
-
-        es.items = [si for si in es.items if si.item_key != item.item_key]
-        es.items.append(set_item)
-
-        self._set_mgr.save_set(es, es.filename if es.filename else "")
-        self._set_refresh_local()
-        self._set_status.setText(f"Added {display_name} to '{es.name}' ({len(ops)} ops)")
 
 
     def _set_preview(self) -> None:

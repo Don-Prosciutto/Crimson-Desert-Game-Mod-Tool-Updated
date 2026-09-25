@@ -1089,69 +1089,30 @@ def _diff_equipslot_to_intents(vanilla_pabgh: bytes, vanilla_pabgb: bytes,
                                 ) -> list[dict]:
     """Diff modded equipslotinfo against vanilla, emit Field JSON v3 intents.
 
-    Each EquipSlotRecord is keyed by class id (1, 4, 6, 7, 201, 203, 211,
-    701, 708, 712, 730, 750, 801 in vanilla 1.04). Per record, walk every
-    EquipInfoData entry and compare every editable field. Most universal-
-    proficiency-style mods only modify `etl_hashes` (the equip_type_info
-    list), but other field changes (category, slot_index, blob, etc.) are
-    captured the same way for completeness.
-
-    Requires DMM 1.3.3+ on the consumer side -- that release added the
-    equipslotinfo.pabgb v3 target. Earlier DMM versions silently ignore
-    these intents (mounted but no effect).
+    Reads both tables with dmm_parser (the old equipslotinfo_parser expects
+    the game 1.10 layout and fails on 2.03). Universal-proficiency-style mods
+    only change `etl_hashes` per slot entry; those are emitted as
+    `entries[i].etl_hashes` set intents.
     """
-    import equipslotinfo_parser as esp
-
-    vanilla = esp.parse_all(vanilla_pabgh, vanilla_pabgb)
-    modded  = esp.parse_all(modded_pabgh, modded_pabgb)
-    v_by_key = {r.key: r for r in vanilla}
-    m_by_key = {r.key: r for r in modded}
-
+    import crimson_rs
+    vanilla = crimson_rs.parse_table('equipslotinfo', bytes(vanilla_pabgb), bytes(vanilla_pabgh))
+    modded = crimson_rs.parse_table('equipslotinfo', bytes(modded_pabgb),
+                                    bytes(modded_pabgh or vanilla_pabgh))
+    v_by_key = {r.get('key'): r for r in vanilla}
     intents: list[dict] = []
-    for key in sorted(set(v_by_key) | set(m_by_key)):
-        v = v_by_key.get(key)
-        m = m_by_key.get(key)
-        # Skip records present in only one set -- record add/remove not
-        # supported by Field JSON v3 spec yet (would need add_entry op).
-        if not v or not m:
+    for rec in modded:
+        v_rec = v_by_key.get(rec.get('key'))
+        if v_rec is None:
             continue
-        # Skip records where entries[] grew/shrank -- spec is set-only,
-        # no append/remove. Such mods need to ship as folder overlays.
-        if len(v.entries) != len(m.entries):
-            continue
-
-        for i, (ve, me) in enumerate(zip(v.entries, m.entries)):
-            # etl_hashes -- the unlock vector (universal proficiency etc.)
-            if list(ve.etl_hashes) != list(me.etl_hashes):
-                intents.append({
-                    'entry': '', 'key': int(key),
-                    'field': f'entries[{i}].etl_hashes',
-                    'op': 'set',
-                    'new': [int(h) for h in me.etl_hashes],
-                })
-            # Scalar fields -- only emitted when value changed so we don't
-            # bloat the export with no-op intents.
-            for fname in ('category_a', 'category_b', 'name_hash',
-                          'slot_index', 'field_u64', 'name_hash_2',
-                          'complex_u8', 'complex_u64'):
-                vv = getattr(ve, fname)
-                mv = getattr(me, fname)
-                if vv != mv:
-                    intents.append({
-                        'entry': '', 'key': int(key),
-                        'field': f'entries[{i}].{fname}',
-                        'op': 'set',
-                        'new': int(mv),
-                    })
-            # fields_u32 -- fixed [u32; 4] array
-            if list(ve.fields_u32) != list(me.fields_u32):
-                intents.append({
-                    'entry': '', 'key': int(key),
-                    'field': f'entries[{i}].fields_u32',
-                    'op': 'set',
-                    'new': [int(x) for x in me.fields_u32],
-                })
-
+        v_entries = v_rec.get('entries') or []
+        for i, m_entry in enumerate(rec.get('entries') or []):
+            if i >= len(v_entries):
+                break
+            new_list = list(m_entry.get('etl_hashes') or [])
+            if list(v_entries[i].get('etl_hashes') or []) != new_list:
+                intents.append({'entry': rec.get('string_key') or '', 'key': rec.get('key'),
+                                'field': f'entries[{i}].etl_hashes', 'op': 'set',
+                                'new': new_list})
     return intents
 
 
@@ -1914,21 +1875,12 @@ class StackerTab(QWidget):
         # At Pull time: if the dict has UP v2 tribe edits AND staged
         # equipslotinfo is missing, re-run the expansion here from the
         # Stacker's game path. Best-effort — logged but not fatal.
+        # (UP v2 re-staging removed: it used the 1.10 equipslotinfo parser,
+        # which fails on 2.03, and UP v3 in ItemBuffs replaces UP v2.)
         if feats.get('up_v2_tribe_unioned') and (
-                'equipslotinfo.pabgb' not in staged_equip_snap
-                or 'equipslotinfo.pabgh' not in staged_equip_snap):
-            try:
-                generated = self._regenerate_equipslotinfo_for_up_v2()
-                if generated:
-                    staged_equip_snap.update(generated)
-                    self._log_line(
-                        f"  ℹ UP v2 tribe edits detected without equipslotinfo "
-                        f"bundle — re-staged inline ({len(generated)} files).")
-            except Exception as e:
-                self._log_line(
-                    f"  ⚠ UP v2 tribe edits detected but equipslotinfo stage "
-                    f"failed: {e}. Fix game path and click Extract + "
-                    f"UP v2 in ItemBuffs, then re-Pull.")
+                'equipslotinfo.pabgb' not in staged_equip_snap):
+            self._log_line("  ⚠ Old UP v2 tribe edits without equipslotinfo - run "
+                           "Universal Proficiency (v3) in ItemBuffs again, then re-Pull.")
 
         # Build a readable summary for the Sources table so the user can
         # verify Pull captured what they expect.
@@ -2085,74 +2037,6 @@ class StackerTab(QWidget):
                 "Make changes in ItemBuffs, FieldEdit, SpawnEdit, etc. first,\n"
                 "then click Pull All Edits.")
 
-    # ------------------------------------------------------------
-    def _regenerate_equipslotinfo_for_up_v2(self) -> dict:
-        """Re-run the equipslotinfo expansion logic from
-        _eb_universal_proficiency_v2 in-process, using the Stacker's
-        game path. Returns {filename: bytes} for the two equipslotinfo
-        files, or empty dict on failure.
-
-        Called from _pull_from_itembuffs when UP v2 tribe edits were
-        detected in the dict but the staged files dict is empty —
-        meaning ItemBuffs's equipslotinfo serializer silently failed.
-        """
-        game = self._game_edit.text().strip() if hasattr(self, "_game_edit") else ""
-        if not game or not os.path.isdir(game):
-            return {}
-        try:
-            import crimson_rs
-            import equipslotinfo_parser as esp
-        except Exception:
-            return {}
-
-        try:
-            pabgh = bytes(crimson_rs.extract_file(
-                game, "0008", INTERNAL_DIR, "equipslotinfo.pabgh"))
-            pabgb = bytes(crimson_rs.extract_file(
-                game, "0008", INTERNAL_DIR, "equipslotinfo.pabgb"))
-        except Exception:
-            return {}
-
-        try:
-            records = esp.parse_all(pabgh, pabgb)
-        except Exception:
-            return {}
-
-        # Kliff/Damiane/Oongka player char keys — same constants as the
-        # buffs tab (_PLAYER_CHAR_KEYS = {1, 4, 6}).
-        player_keys = {1, 4, 6}
-        pool: dict = {}
-        for rec in records:
-            if rec.key not in player_keys:
-                continue
-            for e in rec.entries:
-                key = (e.category_a, e.category_b)
-                pool.setdefault(key, set()).update(e.etl_hashes)
-
-        added = 0
-        for rec in records:
-            if rec.key not in player_keys:
-                continue
-            for e in rec.entries:
-                have = set(e.etl_hashes)
-                extra = sorted(pool.get((e.category_a, e.category_b), set()) - have)
-                if extra:
-                    e.etl_hashes.extend(extra)
-                    added += len(extra)
-
-        if added == 0:
-            # Already unioned — nothing to bundle (would re-serialize vanilla).
-            return {}
-
-        try:
-            new_pabgh, new_pabgb = esp.serialize_all(records)
-        except Exception:
-            return {}
-
-        return {
-            "equipslotinfo.pabgh": bytes(new_pabgh),
-            "equipslotinfo.pabgb": bytes(new_pabgb),
-        }
 
     # ------------------------------------------------------------
     def _pull_from_dmm(self):
@@ -3135,123 +3019,29 @@ class StackerTab(QWidget):
 
     # ------------------------------------------------------------
     def _apply_bucket_c(self, merged_bytes: bytes, ok_mods: list) -> bytes:
-        """Apply post-serialize byte patches from itembuffs_edits sources.
+        """Post-serialize byte patches from itembuffs_edits sources - switched off.
 
-        Order (matches buffs_v319.py:9845-9879):
-          1. VFX changes — _apply_vfx_changes on the ItemBuffsTab instance,
-             with our captured state swapped in temporarily so the method
-             reads from our snapshot instead of current ItemBuffs state.
-          2. Cooldown patches — iterate cd_patches per source; use
-             ItemBuffsTab._cd_detect to find the offset in the merged
-             bytes (detection has to run against the merged bytes, not
-             the snapshot bytes, because merge may have shifted layout).
-          3. Transmog swaps — same temp-state-swap pattern as VFX.
-
-        Multi-source conflicts: per-item last-writer-wins. A cooldown
-        patch from itembuffs source #1 gets overwritten if source #2
-        also patches the same item_key's cooldown — logged once.
+        All three were byte patches on the merged iteminfo and none of them
+        fits 2.03: the VFX lab module is gone (always a no-op), the cooldown
+        detector looks for the old byte layout in seconds (2.03 stores ms in
+        a dict), and the transmog step re-serialized ItemBuffs' own item list
+        over the whole merge, throwing every other source away.
+        The merged data is returned unchanged; the log says what was skipped.
         """
-        bt = self._buffs_tab
         itembuffs_sources = [m for m in ok_mods if m.kind == "itembuffs_edits"]
-        if not itembuffs_sources:
-            return merged_bytes
-
-        data = bytearray(merged_bytes)
-
-        # --- VFX changes (size, vfx swaps, anim swaps, attach changes) ---
-        any_vfx = False
-        # Collapse across sources: later source overrides earlier on same item.
-        # Since _apply_vfx_changes just iterates lists and writes bytes, we
-        # concatenate all sources' lists and let last-writer-wins happen
-        # naturally via sequential writes.
-        if bt is not None and hasattr(bt, "_apply_vfx_changes"):
-            combined_size: list = []
-            combined_swaps: list = []
-            combined_anim: list = []
-            combined_attach: list = []
-            for m in itembuffs_sources:
-                combined_size += m.vfx_size_changes
-                combined_swaps += m.vfx_swaps
-                combined_anim += m.vfx_anim_swaps
-                combined_attach += m.vfx_attach_changes
-            if combined_size or combined_swaps or combined_anim or combined_attach:
-                # Swap ItemBuffs state temporarily so _apply_vfx_changes
-                # reads from our merged lists. Also force
-                # _experimental_mode=True for the duration of the call —
-                # _apply_vfx_changes silently returns False if experimental
-                # mode is off (buffs_v319.py:3209). If the user pulled VFX
-                # changes, we want them applied regardless of the tab's
-                # current experimental-mode state.
-                orig = (
-                    getattr(bt, "_vfx_size_changes", None),
-                    getattr(bt, "_vfx_swaps", None),
-                    getattr(bt, "_vfx_anim_swaps", None),
-                    getattr(bt, "_vfx_attach_changes", None),
-                    getattr(bt, "_experimental_mode", False),
-                )
-                try:
-                    bt._vfx_size_changes = combined_size
-                    bt._vfx_swaps = combined_swaps
-                    bt._vfx_anim_swaps = combined_anim
-                    bt._vfx_attach_changes = combined_attach
-                    bt._experimental_mode = True
-                    if bt._apply_vfx_changes(data):
-                        any_vfx = True
-                        self._log_line(
-                            f"  VFX: {len(combined_size)} size, "
-                            f"{len(combined_swaps)} vfx/trails, "
-                            f"{len(combined_anim)} anims, "
-                            f"{len(combined_attach)} attach")
-                finally:
-                    (bt._vfx_size_changes, bt._vfx_swaps,
-                     bt._vfx_anim_swaps, bt._vfx_attach_changes,
-                     bt._experimental_mode) = orig
-
-        # --- Cooldown byte patches ---
-        # cd_patches dict: { item_key: (original_off, original_val, new_val) }
-        # We coalesce across sources keyed by item_key — last source wins.
-        all_cd: dict = {}
-        cd_losers: list[tuple] = []
+        skipped = []
         for m in itembuffs_sources:
-            for key, patch in m.cd_patches.items():
-                if key in all_cd and all_cd[key] != patch:
-                    cd_losers.append((key, all_cd[key], patch, m.name))
-                all_cd[key] = patch
-
-        if all_cd and bt is not None and hasattr(bt, "_cd_detect"):
-            cd_hit = 0
-            for item_key, patch in all_cd.items():
-                new_val = patch[2] if isinstance(patch, (tuple, list)) and len(patch) >= 3 else None
-                if new_val is None:
-                    continue
-                try:
-                    cd_off, _ = bt._cd_detect(item_key, bytes(data))
-                except Exception:
-                    cd_off = None
-                if cd_off is not None:
-                    data[cd_off:cd_off + 4] = struct.pack("<I", new_val)
-                    cd_hit += 1
-            self._log_line(f"  Cooldown patches: {cd_hit}/{len(all_cd)} applied")
-            for key, old, new, winner in cd_losers:
-                self._log_line(f"    [CONFLICT] item_key={key}: {winner} overrode earlier cooldown patch")
-
-        # --- Transmog swaps ---
-        if bt is not None and hasattr(bt, "_apply_transmog_swaps"):
-            combined_transmog: list = []
-            for m in itembuffs_sources:
-                combined_transmog += m.transmog_swaps
-            if combined_transmog:
-                orig_transmog = getattr(bt, "_transmog_swaps", None)
-                try:
-                    bt._transmog_swaps = combined_transmog
-                    applied = bt._apply_transmog_swaps(data)
-                    self._log_line(
-                        f"  Transmog: {applied} byte patches for "
-                        f"{len(combined_transmog)} swap(s)")
-                finally:
-                    bt._transmog_swaps = orig_transmog
-
-        return bytes(data)
+            if getattr(m, "transmog_swaps", None):
+                skipped.append(f"{len(m.transmog_swaps)} transmog swap(s) from {m.name}")
+            if getattr(m, "cd_patches", None):
+                skipped.append(f"{len(m.cd_patches)} cooldown byte patch(es) from {m.name}")
+            if any(getattr(m, a, None) for a in ("vfx_size_changes", "vfx_swaps",
+                                                  "vfx_anim_swaps", "vfx_attach_changes")):
+                skipped.append(f"VFX changes from {m.name}")
+        for what in skipped:
+            self._log_line(f"  ⚠ Skipped {what}: not supported by the Stacker on game 2.03 - "
+                           f"use Export Field JSON (v3) in ItemBuffs for these.")
+        return merged_bytes
 
     def _collect_bucket_d(self, ok_mods: list) -> dict:
         """Gather staged sibling files from all sources.
