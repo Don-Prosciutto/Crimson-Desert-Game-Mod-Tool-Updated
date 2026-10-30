@@ -11096,10 +11096,16 @@ QCheckBox::indicator {{
             'Locked': COLORS['text_dim'],
         }
 
+        _pos = {id(e): i for i, e in enumerate(self._qe_entries)}
         for row, entry in enumerate(filtered):
             key_w = QTableWidgetItem()
             key_w.setData(Qt.DisplayRole, entry['key'])
             key_w.setData(Qt.UserRole, entry)
+            # Qt hands back a COPY of a dict stored as item data, so writes
+            # through it never reached self._qe_entries (the byte was written,
+            # the list kept showing the old state). The position finds the
+            # real entry - see _qe_entry_of.
+            key_w.setData(Qt.UserRole + 5, _pos.get(id(entry), -1))
             table.setItem(row, 0, key_w)
 
             display = entry.get('display', entry['name'])
@@ -11599,12 +11605,20 @@ QCheckBox::indicator {{
             f"Save with Ctrl+S.")
         self._qe_filter()
 
+    def _qe_entry_of(self, item):
+        """The real entry in self._qe_entries behind a table cell (not Qt's copy)."""
+        if item is None:
+            return None
+        i = item.data(Qt.UserRole + 5)
+        if isinstance(i, int) and 0 <= i < len(self._qe_entries or ()):
+            return self._qe_entries[i]
+        return item.data(Qt.UserRole)
+
     def _qe_get_selected_entry(self):
         rows = self._qe_table.selectionModel().selectedRows()
         if not rows:
             return None
-        w = self._qe_table.item(rows[0].row(), 0)
-        return w.data(Qt.UserRole) if w else None
+        return self._qe_entry_of(self._qe_table.item(rows[0].row(), 0))
 
     def _qe_set_state(self, entry: dict, new_state: int) -> bool:
         if not self._save_data or entry.get('state_offset', -1) < 0:
@@ -11664,7 +11678,7 @@ QCheckBox::indicator {{
         key_item = self._qe_table.item(rows[0].row(), 0)
         if not key_item:
             return
-        entry = key_item.data(Qt.UserRole)
+        entry = self._qe_entry_of(key_item)
         if not entry:
             return
 
@@ -13066,7 +13080,7 @@ QCheckBox::indicator {{
         for r in sorted(rows):
             item = self._qe_table.item(r, 0)
             if item:
-                entry = item.data(Qt.UserRole)
+                entry = self._qe_entry_of(item)
                 if entry:
                     entries.append(entry)
         return entries
@@ -13353,7 +13367,7 @@ QCheckBox::indicator {{
         for row in range(count):
             w = self._qe_table.item(row, 0)
             if w:
-                entry = w.data(Qt.UserRole)
+                entry = self._qe_entry_of(w)
                 if entry and self._qe_set_state(entry, 0x1905):
                     completed += 1
         self._dirty = True
