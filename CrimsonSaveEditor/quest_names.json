@@ -5,9 +5,114 @@
     "display": "Stage collection automatically extracted from Level"
   },
   {
-    "key": 1000414,
-    "name": "LevelSequencerSpawn",
-    "display": "LevelSequencerSpawn"
+    "key": 1000668,
+    "name": "ReBlockading_Node_Her_PervinFort_Reconstruction",
+    "display": "ReBlockading_Node_Her_PervinFort_Reconstruction"
+  },
+  {
+    "key": 1000596,
+    "name": "ReBlockading_Node_Her_FortWarspike_Reconstruction",
+    "display": "ReBlockading_Node_Her_FortWarspike_Reconstruction"
+  },
+  {
+    "key": 1000661,
+    "name": "ReBlockading_Node_Her_FortAnvil_Reconstruction",
+    "display": "ReBlockading_Node_Her_FortAnvil_Reconstruction"
+  },
+  {
+    "key": 1000675,
+    "name": "ReBlockading_Node_Her_KarinQuarry_Reconstruction",
+    "display": "ReBlockading_Node_Her_KarinQuarry_Reconstruction"
+  },
+  {
+    "key": 1000691,
+    "name": "ReBlockading_Node_Her_SouthQuarry_Reconstruction",
+    "display": "ReBlockading_Node_Her_SouthQuarry_Reconstruction"
+  },
+  {
+    "key": 1000693,
+    "name": "ReBlockading_Node_Her_FortHellwood_Reconstruction",
+    "display": "ReBlockading_Node_Her_FortHellwood_Reconstruction"
+  },
+  {
+    "key": 1000695,
+    "name": "ReBlockading_Node_Her_RootFort_Reconstruction",
+    "display": "ReBlockading_Node_Her_RootFort_Reconstruction"
+  },
+  {
+    "key": 1000696,
+    "name": "ReBlockading_Node_Kwe_FortAskelund_Reconstruction",
+    "display": "ReBlockading_Node_Kwe_FortAskelund_Reconstruction"
+  },
+  {
+    "key": 1000680,
+    "name": "ReBlockading_Node_Kwe_VatnhollFortress_Reconstruction",
+    "display": "ReBlockading_Node_Kwe_VatnhollFortress_Reconstruction"
+  },
+  {
+    "key": 1000681,
+    "name": "ReBlockading_Node_Kwe_SteinnfellFortress_Reconstruction",
+    "display": "ReBlockading_Node_Kwe_SteinnfellFortress_Reconstruction"
+  },
+  {
+    "key": 1000697,
+    "name": "ReBlockading_Node_Del_MarniMechFactory_Reconstruction",
+    "display": "ReBlockading_Node_Del_MarniMechFactory_Reconstruction"
+  },
+  {
+    "key": 1000698,
+    "name": "ReBlockading_Node_Del_ValvegardWallFort_Reconstruction",
+    "display": "ReBlockading_Node_Del_ValvegardWallFort_Reconstruction"
+  },
+  {
+    "key": 1000699,
+    "name": "ReBlockading_Node_Del_MarniAirLab_Reconstruction",
+    "display": "ReBlockading_Node_Del_MarniAirLab_Reconstruction"
+  },
+  {
+    "key": 1000705,
+    "name": "ReBlockading_Node_Neut_MarnisOutpost_Reconstruction",
+    "display": "ReBlockading_Node_Neut_MarnisOutpost_Reconstruction"
+  },
+  {
+    "key": 1000706,
+    "name": "ReBlockading_Node_Del_MarniLab_Reconstruction",
+    "display": "ReBlockading_Node_Del_MarniLab_Reconstruction"
+  },
+  {
+    "key": 1000708,
+    "name": "ReBlockading_Node_Dem_BloodsteelCamp_Reconstruction",
+    "display": "ReBlockading_Node_Dem_BloodsteelCamp_Reconstruction"
+  },
+  {
+    "key": 1000683,
+    "name": "ReBlockading_Node_Dem_Flame_Knights_Reconstruction",
+    "display": "ReBlockading_Node_Dem_Flame_Knights_Reconstruction"
+  },
+  {
+    "key": 1000688,
+    "name": "ReBlockading_Node_Dem_ScorchrockCastle_Reconstruction",
+    "display": "ReBlockading_Node_Dem_ScorchrockCastle_Reconstruction"
+  },
+  {
+    "key": 1000712,
+    "name": "ReBlockading_Node_Crim_RedMountainFort_Reconstruction",
+    "display": "ReBlockading_Node_Crim_RedMountainFort_Reconstruction"
+  },
+  {
+    "key": 1000713,
+    "name": "ReBlockading_Node_Crim_FortManub_Reconstruction",
+    "display": "ReBlockading_Node_Crim_FortManub_Reconstruction"
+  },
+  {
+    "key": 1000715,
+    "name": "ReBlockading_Node_Crim_IsvatuFortress_Reconstruction",
+    "display": "ReBlockading_Node_Crim_IsvatuFortress_Reconstruction"
+  },
+  {
+    "key": 1001201,
+    "name": "CastleGrant_Node_Dem_Flame_Knights_0001_Phase00_00",
+    "display": "CastleGrant_Node_Dem_Flame_Knights_0001_Phase00_00"
   },
   {
     "key": 1000770,
@@ -270,6 +375,16 @@
     "display": "LevelSequencerSpawn_AllSchedule_m12_m05"
   },
   {
+    "key": 1000871,
+    "name": "LevelSequencerSpawn_Faction_03_m06",
+    "display": "LevelSequencerSpawn_Faction_03_m06"
+  },
+  {
+    "key": 1000875,
+    "name": "LevelSequencerSpawn_Faction_03_m07",
+    "display": "LevelSequencerSpawn_Faction_03_m07"
+  },
+  {
     "key": 1001129,
     "name": "LevelSequencerSpawn_Faction_m03_m04",
     "display": "LevelSequencerSpawn_Faction_m03_m04"
@@ -338,6 +453,11 @@
     "key": 1001136,
     "name": "LevelSequencerSpawn_Faction_m05_m06",
     "display": "LevelSequencerSpawn_Faction_m05_m06"
+  },
+  {
+    "key": 1000551,
+    "name": "LevelSequencerSpawn_Faction_m06_00",
+    "display": "LevelSequencerSpawn_Faction_m06_00"
   },
   {
     "key": 1001073,
@@ -448,6 +568,11 @@
     "key": 1001142,
     "name": "LevelSequencerSpawn_Faction_m09_m01",
     "display": "LevelSequencerSpawn_Faction_m09_m01"
+  },
+  {
+    "key": 1000381,
+    "name": "LevelSequencerSpawn_Faction_m09_m02",
+    "display": "LevelSequencerSpawn_Faction_m09_m02"
   },
   {
     "key": 1000091,
@@ -600,6 +725,21 @@
     "display": "LevelSequencerSpawn_Faction_m12_m06"
   },
   {
+    "key": 1000877,
+    "name": "LevelSequencerSpawn_Faction_m12_m14",
+    "display": "LevelSequencerSpawn_Faction_m12_m14"
+  },
+  {
+    "key": 1000879,
+    "name": "LevelSequencerSpawn_Faction_m12_m15",
+    "display": "LevelSequencerSpawn_Faction_m12_m15"
+  },
+  {
+    "key": 1000882,
+    "name": "LevelSequencerSpawn_Faction_m12_m16",
+    "display": "LevelSequencerSpawn_Faction_m12_m16"
+  },
+  {
     "key": 1001163,
     "name": "LevelSequencerSpawn_Faction_m13_m01",
     "display": "LevelSequencerSpawn_Faction_m13_m01"
@@ -610,6 +750,21 @@
     "display": "LevelSequencerSpawn_Faction_m13_m04"
   },
   {
+    "key": 1000801,
+    "name": "LevelSequencerSpawn_WildAnimal_m02_m06",
+    "display": "LevelSequencerSpawn_WildAnimal_m02_m06"
+  },
+  {
+    "key": 1000790,
+    "name": "LevelSequencerSpawn_WildAnimal_m02_m08",
+    "display": "LevelSequencerSpawn_WildAnimal_m02_m08"
+  },
+  {
+    "key": 1000793,
+    "name": "LevelSequencerSpawn_WildAnimal_m03_m02",
+    "display": "LevelSequencerSpawn_WildAnimal_m03_m02"
+  },
+  {
     "key": 1000010,
     "name": "LevelSequencerSpawn_WildAnimal_m03_m05",
     "display": "LevelSequencerSpawn_WildAnimal_m03_m05"
@@ -618,6 +773,16 @@
     "key": 1001164,
     "name": "LevelSequencerSpawn_WildAnimal_m03_m06",
     "display": "LevelSequencerSpawn_WildAnimal_m03_m06"
+  },
+  {
+    "key": 1000798,
+    "name": "LevelSequencerSpawn_WildAnimal_m03_m08",
+    "display": "LevelSequencerSpawn_WildAnimal_m03_m08"
+  },
+  {
+    "key": 1001130,
+    "name": "LevelSequencerSpawn_WildAnimal_m03_m10",
+    "display": "LevelSequencerSpawn_WildAnimal_m03_m10"
   },
   {
     "key": 1000368,
@@ -650,6 +815,11 @@
     "display": "LevelSequencerSpawn_WildAnimal_m04_m02"
   },
   {
+    "key": 1000799,
+    "name": "LevelSequencerSpawn_WildAnimal_m04_m04",
+    "display": "LevelSequencerSpawn_WildAnimal_m04_m04"
+  },
+  {
     "key": 1001165,
     "name": "LevelSequencerSpawn_WildAnimal_m04_m05",
     "display": "LevelSequencerSpawn_WildAnimal_m04_m05"
@@ -658,6 +828,11 @@
     "key": 1001166,
     "name": "LevelSequencerSpawn_WildAnimal_m04_m06",
     "display": "LevelSequencerSpawn_WildAnimal_m04_m06"
+  },
+  {
+    "key": 1000769,
+    "name": "LevelSequencerSpawn_WildAnimal_m04_m07",
+    "display": "LevelSequencerSpawn_WildAnimal_m04_m07"
   },
   {
     "key": 1000070,
@@ -710,6 +885,11 @@
     "display": "LevelSequencerSpawn_WildAnimal_m05_m06"
   },
   {
+    "key": 1000771,
+    "name": "LevelSequencerSpawn_WildAnimal_m05_m07",
+    "display": "LevelSequencerSpawn_WildAnimal_m05_m07"
+  },
+  {
     "key": 1000787,
     "name": "LevelSequencerSpawn_WildAnimal_m06_00",
     "display": "LevelSequencerSpawn_WildAnimal_m06_00"
@@ -750,6 +930,16 @@
     "display": "LevelSequencerSpawn_WildAnimal_m06_m06"
   },
   {
+    "key": 1000773,
+    "name": "LevelSequencerSpawn_WildAnimal_m06_m07",
+    "display": "LevelSequencerSpawn_WildAnimal_m06_m07"
+  },
+  {
+    "key": 1000802,
+    "name": "LevelSequencerSpawn_WildAnimal_m06_m08",
+    "display": "LevelSequencerSpawn_WildAnimal_m06_m08"
+  },
+  {
     "key": 1000808,
     "name": "LevelSequencerSpawn_WildAnimal_m07_00",
     "display": "LevelSequencerSpawn_WildAnimal_m07_00"
@@ -785,9 +975,19 @@
     "display": "LevelSequencerSpawn_WildAnimal_m07_m06"
   },
   {
-    "key": 1000051,
-    "name": "LevelSequencerSpawn_WildAnimal_m08_00",
-    "display": "LevelSequencerSpawn_WildAnimal_m08_00"
+    "key": 1000780,
+    "name": "LevelSequencerSpawn_WildAnimal_m07_m07",
+    "display": "LevelSequencerSpawn_WildAnimal_m07_m07"
+  },
+  {
+    "key": 1000785,
+    "name": "LevelSequencerSpawn_WildAnimal_m07_m08",
+    "display": "LevelSequencerSpawn_WildAnimal_m07_m08"
+  },
+  {
+    "key": 1000809,
+    "name": "LevelSequencerSpawn_WildAnimal_m07_m09",
+    "display": "LevelSequencerSpawn_WildAnimal_m07_m09"
   },
   {
     "key": 1000663,
@@ -823,6 +1023,16 @@
     "key": 1000392,
     "name": "LevelSequencerSpawn_WildAnimal_m08_m07",
     "display": "LevelSequencerSpawn_WildAnimal_m08_m07"
+  },
+  {
+    "key": 1000811,
+    "name": "LevelSequencerSpawn_WildAnimal_m08_m08",
+    "display": "LevelSequencerSpawn_WildAnimal_m08_m08"
+  },
+  {
+    "key": 1000820,
+    "name": "LevelSequencerSpawn_WildAnimal_m08_m09",
+    "display": "LevelSequencerSpawn_WildAnimal_m08_m09"
   },
   {
     "key": 1000247,
@@ -908,6 +1118,11 @@
     "key": 1001042,
     "name": "LevelSequencerSpawn_WildAnimal_m10_m07",
     "display": "LevelSequencerSpawn_WildAnimal_m10_m07"
+  },
+  {
+    "key": 1000788,
+    "name": "LevelSequencerSpawn_WildAnimal_m10_m08",
+    "display": "LevelSequencerSpawn_WildAnimal_m10_m08"
   },
   {
     "key": 1001193,
@@ -1025,6 +1240,251 @@
     "display": "LevelSequencerSpawn_WildAnimal_m13_m06"
   },
   {
+    "key": 1001208,
+    "name": "Island_SatyrosIsland_build_0001_Phase02_00_SequencerSpawn",
+    "display": "Island_SatyrosIsland_build_0001_Phase02_00_SequencerSpawn"
+  },
+  {
+    "key": 1001251,
+    "name": "Island_SamoraIsland_build_0001_Phase02_00_SequencerSpawn",
+    "display": "Island_SamoraIsland_build_0001_Phase02_00_SequencerSpawn"
+  },
+  {
+    "key": 1001217,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_00_m03",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_00_m03"
+  },
+  {
+    "key": 1001218,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_00_m12",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_00_m12"
+  },
+  {
+    "key": 1001241,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_02_m15",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_02_m15"
+  },
+  {
+    "key": 1001253,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_02_m16",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_02_m16"
+  },
+  {
+    "key": 1001242,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_03_m14",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_03_m14"
+  },
+  {
+    "key": 1001243,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_03_m15",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_03_m15"
+  },
+  {
+    "key": 1001254,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_03_m16",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_03_m16"
+  },
+  {
+    "key": 1001244,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_04_m14",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_04_m14"
+  },
+  {
+    "key": 1001245,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_04_m15",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_04_m15"
+  },
+  {
+    "key": 1001219,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m01_m12",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m01_m12"
+  },
+  {
+    "key": 1001220,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m01_m13",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m01_m13"
+  },
+  {
+    "key": 1001255,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m02_m02",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m02_m02"
+  },
+  {
+    "key": 1001256,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m02_m06",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m02_m06"
+  },
+  {
+    "key": 1001257,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m02_m08",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m02_m08"
+  },
+  {
+    "key": 1001258,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m02",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m02"
+  },
+  {
+    "key": 1001259,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m03",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m03"
+  },
+  {
+    "key": 1001260,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m05",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m05"
+  },
+  {
+    "key": 1001261,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m06",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m06"
+  },
+  {
+    "key": 1001262,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m08",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m08"
+  },
+  {
+    "key": 1001263,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m10",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m10"
+  },
+  {
+    "key": 1001222,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m16",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m03_m16"
+  },
+  {
+    "key": 1001264,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m04",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m04"
+  },
+  {
+    "key": 1001265,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m07",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m07"
+  },
+  {
+    "key": 1001225,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m08",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m08"
+  },
+  {
+    "key": 1001232,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m09",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m09"
+  },
+  {
+    "key": 1001233,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m13",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m13"
+  },
+  {
+    "key": 1001234,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m14",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m14"
+  },
+  {
+    "key": 1001235,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m16",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m04_m16"
+  },
+  {
+    "key": 1001266,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m05_m06",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m05_m06"
+  },
+  {
+    "key": 1001267,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m05_m07",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m05_m07"
+  },
+  {
+    "key": 1001268,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m06_m07",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m06_m07"
+  },
+  {
+    "key": 1001269,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m06_m08",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m06_m08"
+  },
+  {
+    "key": 1001270,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m07_m07",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m07_m07"
+  },
+  {
+    "key": 1001271,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m07_m08",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m07_m08"
+  },
+  {
+    "key": 1001272,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m07_m09",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m07_m09"
+  },
+  {
+    "key": 1001273,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m06",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m06"
+  },
+  {
+    "key": 1001274,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m07",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m07"
+  },
+  {
+    "key": 1001275,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m08",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m08"
+  },
+  {
+    "key": 1001276,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m09",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m09"
+  },
+  {
+    "key": 1001277,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m15",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m08_m15"
+  },
+  {
+    "key": 1001236,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m09_m16",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m09_m16"
+  },
+  {
+    "key": 1001278,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m10_m07",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m10_m07"
+  },
+  {
+    "key": 1001279,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m10_m08",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m10_m08"
+  },
+  {
+    "key": 1001237,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m10_m12",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m10_m12"
+  },
+  {
+    "key": 1001238,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m12_m15",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m12_m15"
+  },
+  {
+    "key": 1001239,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m12_m16",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m12_m16"
+  },
+  {
+    "key": 1001240,
+    "name": "LevelSequencerSpawn_DLC01_WildAnimal_m13_m16",
+    "display": "LevelSequencerSpawn_DLC01_WildAnimal_m13_m16"
+  },
+  {
     "key": 1000017,
     "name": "LevelSequencerSpawn_Deleted",
     "display": "LevelSequencerSpawn_Deleted"
@@ -1072,12 +1532,27 @@
   {
     "key": 1000100,
     "name": "Challenge_LegendAnimal",
-    "display": "Hazy Tales"
+    "display": "Legendary Animals"
   },
   {
     "key": 1001028,
     "name": "Challenge_WildBeasts_Boss_Reward",
     "display": "New Power"
+  },
+  {
+    "key": 1000390,
+    "name": "Challenge_LegendAnimal_II",
+    "display": "Mysterious Animals"
+  },
+  {
+    "key": 1000689,
+    "name": "Challenge_Minigame_II",
+    "display": "Toys"
+  },
+  {
+    "key": 1000717,
+    "name": "Challenge_Pet_I",
+    "display": "Pets"
   },
   {
     "key": 1000063,
@@ -1092,7 +1567,7 @@
   {
     "key": 1000072,
     "name": "Challenge_SealedArtifact_Mastery_Bow",
-    "display": "Goyen's Advice"
+    "display": "Bow"
   },
   {
     "key": 1000126,
@@ -1102,7 +1577,7 @@
   {
     "key": 1000047,
     "name": "Challenge_SealedArtifact_Mastery_TwohandWeapon",
-    "display": "Goyen's Advice"
+    "display": "Two-Handed Weapon"
   },
   {
     "key": 1000095,
@@ -1112,17 +1587,17 @@
   {
     "key": 1000189,
     "name": "Challenge_SealedArtifact_Mastery_Rapier",
-    "display": "Goyen's Advice"
+    "display": "Rapier and Shield"
   },
   {
     "key": 1000621,
     "name": "Challenge_SealedArtifact_Mastery_Gun",
-    "display": "Goyen's Advice"
+    "display": "Gun"
   },
   {
     "key": 1000659,
     "name": "Challenge_SealedArtifact_Mastery_SpecialWeapon",
-    "display": "Goyen's Advice"
+    "display": "Special Equipment"
   },
   {
     "key": 1000035,
@@ -1167,7 +1642,7 @@
   {
     "key": 1000704,
     "name": "Challenge_SealedArtifact_ChallengeAndChange",
-    "display": "Alustin's Trials"
+    "display": "Challenges and Changes"
   },
   {
     "key": 1000121,
@@ -1252,7 +1727,7 @@
   {
     "key": 1000164,
     "name": "Contents_MiniGame_Seotda",
-    "display": "Contents_MiniGame_Seotda"
+    "display": "Duo"
   },
   {
     "key": 1000203,
@@ -1262,7 +1737,7 @@
   {
     "key": 1000320,
     "name": "Contents_MiniGame_Seotda_I",
-    "display": "Contents_MiniGame_Seotda_I"
+    "display": "Duo"
   },
   {
     "key": 1000357,
@@ -1277,17 +1752,17 @@
   {
     "key": 1000728,
     "name": "Contents_WeatherChange_Sunny",
-    "display": "Contents_WeatherChange_Sunny"
+    "display": "Clear Weather"
   },
   {
     "key": 1000730,
     "name": "Contents_WeatherChange_Precipitation",
-    "display": "Contents_WeatherChange_Precipitation"
+    "display": "Rainfall Weather Spawn Stage"
   },
   {
     "key": 1000744,
     "name": "Contents_WeatherChange_WindSpeed",
-    "display": "Contents_WeatherChange_WindSpeed"
+    "display": "Windy Weather Spawn Stage"
   },
   {
     "key": 1000745,
@@ -1297,7 +1772,7 @@
   {
     "key": 1000733,
     "name": "Contents_WeatherChange_Cloud",
-    "display": "Contents_WeatherChange_Cloud"
+    "display": "Cloud Weather Spawn Stage"
   },
   {
     "key": 1000106,
@@ -1323,6 +1798,21 @@
     "key": 1001215,
     "name": "Contents_Police_BlockRoad",
     "display": "Guard Blocking the Path"
+  },
+  {
+    "key": 1000981,
+    "name": "Contents_Ocean_FishingSpot",
+    "display": "Ocean Fishing Spot"
+  },
+  {
+    "key": 1000983,
+    "name": "Contents_Ocean_Deco",
+    "display": "Ocean Cutscene"
+  },
+  {
+    "key": 1000991,
+    "name": "Contents_Ocean_Monster",
+    "display": "Ocean Enemy"
   },
   {
     "key": 1000795,
@@ -1550,6 +2040,11 @@
     "display": "Sovereign Wastes"
   },
   {
+    "key": 1000424,
+    "name": "Quest_Node_Crim_Urdavah_Normal",
+    "display": "Urdavah"
+  },
+  {
     "key": 1000384,
     "name": "Quest_Faction_Urdavah_Academic_Normal",
     "display": "Urdavah Research Institute"
@@ -1732,12 +2227,12 @@
   {
     "key": 1000389,
     "name": "Quest_Node_Del_BenusThiefCamp_Block",
-    "display": "The Fort of the Moutain Pass"
+    "display": "The Fort of the Mountain Pass"
   },
   {
     "key": 1000055,
     "name": "Quest_Node_Del_MarniMansion_HyperSpace",
-    "display": "Research Journal"
+    "display": "Eternal Corridor"
   },
   {
     "key": 1000407,
@@ -1747,7 +2242,7 @@
   {
     "key": 1000385,
     "name": "Quest_Faction_DelesyiaInstitute_Normal",
-    "display": "The Institute of Delesyia"
+    "display": "Institute of Delesyia"
   },
   {
     "key": 1000090,
@@ -2042,12 +2537,12 @@
   {
     "key": 1000677,
     "name": "Quest_Node_Dem_DemenissCastle_MerchantStory",
-    "display": "Tales of Demenissian Merchants"
+    "display": "Tales of the Demenissian Merchants"
   },
   {
     "key": 1000643,
     "name": "Quest_Node_Dem_DemenissCastle_CitizenStory",
-    "display": "Kliff"
+    "display": "Tales of the Demenissian Residents"
   },
   {
     "key": 1000205,
@@ -2147,7 +2642,7 @@
   {
     "key": 1000013,
     "name": "Quest_Node_Dem_Flame_Knights_Normal",
-    "display": "Flame Knights Castle After Liberation"
+    "display": "Flame Knights' Castle After Liberation"
   },
   {
     "key": 1001019,
@@ -2320,6 +2815,11 @@
     "display": "The Hellhounds"
   },
   {
+    "key": 1000457,
+    "name": "Quest_Faction_Hellhounds_Normal",
+    "display": "Fort Hellwood Normal"
+  },
+  {
     "key": 1000279,
     "name": "Quest_Faction_Bleed_Ruffians_Block",
     "display": "On the Speartip Once Again"
@@ -2462,7 +2962,7 @@
   {
     "key": 1000722,
     "name": "Quest_Node_Her_GreymaneCamp_FriendStory",
-    "display": "Yann"
+    "display": "Tales of the Greymanes"
   },
   {
     "key": 1000064,
@@ -2547,7 +3047,7 @@
   {
     "key": 1000211,
     "name": "Quest_Node_Her_HernandCastle_CucuIcemoorCastleRuins",
-    "display": "Survival Reward"
+    "display": "Invention of the Workshop"
   },
   {
     "key": 1000178,
@@ -2562,7 +3062,7 @@
   {
     "key": 1000592,
     "name": "Quest_Node_Her_HernandCastle_CitizenStory",
-    "display": "Kliff"
+    "display": "Tales of the Hernandian Residents"
   },
   {
     "key": 1000332,
@@ -2700,14 +3200,14 @@
     "display": "The Nemesis' Demise"
   },
   {
-    "key": 1000131,
-    "name": "Quest_Silver_Armor_Her_Beacon",
-    "display": "For Whom the Bell Tolls"
-  },
-  {
     "key": 1000092,
     "name": "Quest_Node_Her_BloomwoodRanch_HorseRace_Normal",
     "display": "Hooves Through the Wind"
+  },
+  {
+    "key": 1000131,
+    "name": "Quest_Silver_Armor_Her_Beacon",
+    "display": "For Whom the Bell Tolls"
   },
   {
     "key": 1000980,
@@ -2717,7 +3217,7 @@
   {
     "key": 1000065,
     "name": "Quest_Faction_PororinVillage_Bell_All",
-    "display": "Toll of Pywel"
+    "display": "Bell Tolling in Pywel"
   },
   {
     "key": 1000073,
@@ -2770,6 +3270,11 @@
     "display": "What the Stars left Behind"
   },
   {
+    "key": 1000329,
+    "name": "Quest_Node_Her_ScholarStoneInstitute_AnamorphicSword",
+    "display": "Where Starlight Converges"
+  },
+  {
     "key": 1000081,
     "name": "Quest_Node_Her_SeniaVillage_Block",
     "display": "Where Land Meets Sky"
@@ -2820,6 +3325,11 @@
     "display": "Vellua All"
   },
   {
+    "key": 1000978,
+    "name": "Quest_Node_Her_VelluaVillage_PirateShip",
+    "display": "The Singing Catfish in Vellua"
+  },
+  {
     "key": 1001066,
     "name": "Quest_Node_Her_VelluaVillage_Block",
     "display": "Beyond the Silent Waves"
@@ -2840,6 +3350,11 @@
     "display": "Ashclaw Keep"
   },
   {
+    "key": 1000361,
+    "name": "Quest_Node_Kwe_AshclawKeep_Normal",
+    "display": "Ashclaw Keep"
+  },
+  {
     "key": 1000990,
     "name": "Quest_Node_Kwe_VatnhollFortress_Block",
     "display": "Dark Shadow Engulfing the Fort"
@@ -2855,14 +3370,29 @@
     "display": "Steinnfell Fortress"
   },
   {
+    "key": 1000458,
+    "name": "Quest_Node_Kwe_FortAskelund_Normal",
+    "display": "Fort Askelund Normal"
+  },
+  {
     "key": 1000731,
     "name": "Quest_Node_Kwe_BeighenVillage_Normal",
     "display": "Beighen"
   },
   {
+    "key": 1000376,
+    "name": "Quest_Node_Kwe_BeighenVillage_Pailune_Block",
+    "display": "Pailune Beighen Occupied"
+  },
+  {
     "key": 1000748,
     "name": "Quest_Node_Kwe_BeighenCandlery_Normal",
     "display": "Beighen Candlery"
+  },
+  {
+    "key": 1000377,
+    "name": "Quest_Node_Kwe_BeighenCandlery_Pailune_Block",
+    "display": "Pailune Beighen Candlery Occupied"
   },
   {
     "key": 1000749,
@@ -2948,6 +3478,11 @@
     "key": 1001044,
     "name": "Quest_Node_Kwe_WildhuntCamp_Normal",
     "display": "Beast Hunters' Camp Liberation"
+  },
+  {
+    "key": 1000425,
+    "name": "Quest_Node_OdeckVillage_Normal",
+    "display": "Odeck"
   },
   {
     "key": 1001050,
@@ -3043,6 +3578,11 @@
     "key": 1000993,
     "name": "Quest_Node_Kwe_SkoghornVillage_All",
     "display": "Skoghorn Faction"
+  },
+  {
+    "key": 1000426,
+    "name": "Quest_Node_Kwe_SkoghornVillage_Normal",
+    "display": "Skoghorn"
   },
   {
     "key": 1000617,
@@ -3262,27 +3802,782 @@
   {
     "key": 1000422,
     "name": "Quest_Node_WatchTower_Her",
-    "display": "Defeat enemies around the watchtower"
+    "display": "Defeat enemies around the Watchtower Zone"
   },
   {
     "key": 1000104,
     "name": "Quest_Node_WatchTower_Her_Normal",
-    "display": "North Hernand Watchtower Liberation"
+    "display": "North Hernand Watchtower Zone Liberation"
   },
   {
     "key": 1000150,
     "name": "Quest_Node_Her_SnowMountain_WatchTower_Normal",
-    "display": "Everfrost Watchtower Liberation"
+    "display": "Everfrost Watchtower Zone Liberation"
   },
   {
     "key": 1000423,
     "name": "Quest_Node_WatchTower_Del",
-    "display": "Defeat enemies around the watchtower"
+    "display": "Defeat enemies around the Watchtower Zone"
   },
   {
     "key": 1000087,
     "name": "Quest_Node_Del_Watchtower_II_Normal",
-    "display": "Drywind Valley Watchtower Liberation"
+    "display": "Drywind Valley Watchtower Zone Liberation"
+  },
+  {
+    "key": 1000427,
+    "name": "Quest_Node_Her_PervinFort_Reoccupation",
+    "display": "Re-Blockade - Fort Perwin"
+  },
+  {
+    "key": 1000466,
+    "name": "Quest_Node_Her_PervinFort_Invasion",
+    "display": "Engagement - Fort Perwin"
+  },
+  {
+    "key": 1000587,
+    "name": "Quest_Node_Her_PervinFort_Reconstruction",
+    "display": "Reconstruct - Fort Perwin"
+  },
+  {
+    "key": 1000428,
+    "name": "Quest_Node_Her_FortWarspike_Reoccupation",
+    "display": "Re-blockaded - Fort Warspike"
+  },
+  {
+    "key": 1000467,
+    "name": "Quest_Node_Her_FortWarspike_Invasion",
+    "display": "Engagement - Fort Warspike"
+  },
+  {
+    "key": 1000598,
+    "name": "Quest_Node_Her_FortWarspike_Reconstruction",
+    "display": "Reconstruct - Fort Warspike"
+  },
+  {
+    "key": 1000429,
+    "name": "Quest_Node_Her_FortAnvil_Reoccupation",
+    "display": "Re-Blockade - Fort Anvil"
+  },
+  {
+    "key": 1000468,
+    "name": "Quest_Node_Her_FortAnvil_Invasion",
+    "display": "Engagement - Fort Anvil"
+  },
+  {
+    "key": 1000599,
+    "name": "Quest_Node_Her_FortAnvil_Reconstruction",
+    "display": "Reconstruct - Fort Anvil"
+  },
+  {
+    "key": 1000430,
+    "name": "Quest_Node_Her_KarinQuarry_Reoccupation",
+    "display": "Re-Blockade - Karin Quarry"
+  },
+  {
+    "key": 1000469,
+    "name": "Quest_Node_Her_KarinQuarry_Invasion",
+    "display": "Engagement - Karin Quarry"
+  },
+  {
+    "key": 1000601,
+    "name": "Quest_Node_Her_KarinQuarry_Reconstruction",
+    "display": "Reconstruct - Karin Quarry"
+  },
+  {
+    "key": 1000432,
+    "name": "Quest_Node_Her_SouthQuarry_Reoccupation",
+    "display": "Re-Blockade - Southern Quarry"
+  },
+  {
+    "key": 1000471,
+    "name": "Quest_Node_Her_SouthQuarry_Invasion",
+    "display": "Engagement - Southern Quarry"
+  },
+  {
+    "key": 1000605,
+    "name": "Quest_Node_Her_SouthQuarry_Reconstruction",
+    "display": "Reconstruct - Southern Quarry"
+  },
+  {
+    "key": 1000440,
+    "name": "Quest_Node_Her_FortHellwood_Reoccupation",
+    "display": "Re-blockaded - Fort Hellwood"
+  },
+  {
+    "key": 1000552,
+    "name": "Quest_Node_Her_FortHellwood_Invasion",
+    "display": "Engagement - Fort Hellwood"
+  },
+  {
+    "key": 1000607,
+    "name": "Quest_Node_Her_FortHellwood_Reconstruction",
+    "display": "Reconstruct - Fort Hellwood"
+  },
+  {
+    "key": 1000431,
+    "name": "Quest_Node_Her_RootFort_Reoccupation",
+    "display": "Re-blockaded - Roothold"
+  },
+  {
+    "key": 1000472,
+    "name": "Quest_Node_Her_RootFort_Invasion",
+    "display": "Engagement - Roothold"
+  },
+  {
+    "key": 1000611,
+    "name": "Quest_Node_Her_RootFort_Reconstruction",
+    "display": "Reconstruct - Roothold"
+  },
+  {
+    "key": 1000441,
+    "name": "Quest_Node_Her_DragonKillCastle_Reoccupation",
+    "display": "Re-Blockade - Drakesfall Castle"
+  },
+  {
+    "key": 1000473,
+    "name": "Quest_Node_Her_DragonKillCastle_Invasion",
+    "display": "Engagement - Drakesfall Castle"
+  },
+  {
+    "key": 1000618,
+    "name": "Quest_Node_Her_DragonKillCastle_Reconstruction",
+    "display": "Reconstruct - Drakesfall Castle"
+  },
+  {
+    "key": 1000434,
+    "name": "Quest_Node_Kwe_FortAskelund_Reoccupation",
+    "display": "Re-Blockade - Fort Askelund"
+  },
+  {
+    "key": 1000474,
+    "name": "Quest_Node_Kwe_FortAskelund_Invasion",
+    "display": "Engagement - Fort Askelund"
+  },
+  {
+    "key": 1000632,
+    "name": "Quest_Node_Kwe_FortAskelund_Reconstruction",
+    "display": "Reconstruct - Fort Askelund"
+  },
+  {
+    "key": 1000435,
+    "name": "Quest_Node_Kwe_VatnhollFortress_Reoccupation",
+    "display": "Re-Blockade - Vat'nholl Fortress"
+  },
+  {
+    "key": 1000475,
+    "name": "Quest_Node_Kwe_VatnhollFortress_Invasion",
+    "display": "Engagement - Vat'nholl Fortress"
+  },
+  {
+    "key": 1000633,
+    "name": "Quest_Node_Kwe_VatnhollFortress_Reconstruction",
+    "display": "Reconstruct - Vat'nholl Fortress"
+  },
+  {
+    "key": 1000436,
+    "name": "Quest_Node_Kwe_SteinnfellFortress_Reoccupation",
+    "display": "Re-Blockade - Steinnfell Fortress"
+  },
+  {
+    "key": 1000476,
+    "name": "Quest_Node_Kwe_SteinnfellFortress_Invasion",
+    "display": "Engagement - Steinnfell Fortress"
+  },
+  {
+    "key": 1000634,
+    "name": "Quest_Node_Kwe_SteinnfellFortress_Reconstruction",
+    "display": "Reconstruct - Steinnfell Fortress"
+  },
+  {
+    "key": 1000442,
+    "name": "Quest_Node_Dem_BloodsteelCamp_Reoccupation",
+    "display": "Re-Blockade - Bloodsteel Camp"
+  },
+  {
+    "key": 1000477,
+    "name": "Quest_Node_Dem_BloodsteelCamp_Invasion",
+    "display": "Engagement - Bloodsteel Camp"
+  },
+  {
+    "key": 1000636,
+    "name": "Quest_Node_Dem_BloodsteelCamp_Reconstruction",
+    "display": "Reconstruct - Bloodsteel Camp"
+  },
+  {
+    "key": 1000443,
+    "name": "Quest_Node_Dem_Flame_Knights_Reoccupation",
+    "display": "Re-Blockade - Flame Knights' Castle"
+  },
+  {
+    "key": 1000478,
+    "name": "Quest_Node_Dem_Flame_Knights_Invasion",
+    "display": "Engagement - Flame Knights' Castle"
+  },
+  {
+    "key": 1000637,
+    "name": "Quest_Node_Dem_Flame_Knights_Reconstruction",
+    "display": "Reconstruct - Flame Knights' Castle"
+  },
+  {
+    "key": 1000444,
+    "name": "Quest_Node_Dem_ScorchrockCastle_Reoccupation",
+    "display": "Re-Blockade - Scorchrock Castle"
+  },
+  {
+    "key": 1000479,
+    "name": "Quest_Node_Dem_ScorchrockCastle_Invasion",
+    "display": "Engagement - Scorchrock Castle"
+  },
+  {
+    "key": 1000638,
+    "name": "Quest_Node_Dem_ScorchrockCastle_Reconstruction",
+    "display": "Reconstruct - Scorchrock Castle"
+  },
+  {
+    "key": 1000445,
+    "name": "Quest_Node_Dem_BurnhandQuarry_Reoccupation",
+    "display": "Re-blockaded - Burnhand Quarry"
+  },
+  {
+    "key": 1000655,
+    "name": "Quest_Node_Dem_BurnhandQuarry_Invasion",
+    "display": "Engagement - Burnhand Quarry"
+  },
+  {
+    "key": 1000640,
+    "name": "Quest_Node_Dem_BurnhandQuarry_Reconstruction",
+    "display": "Reconstruct - Burnhand Quarry"
+  },
+  {
+    "key": 1000446,
+    "name": "Quest_Node_Del_MarniMechFactory_Reoccupation",
+    "display": "Re-blockaded - Marni Mechworks"
+  },
+  {
+    "key": 1000644,
+    "name": "Quest_Node_Del_MarniMechFactory_Reconstruction",
+    "display": "Reconstruct - Marni Mechworks"
+  },
+  {
+    "key": 1000447,
+    "name": "Quest_Node_Del_ValvegardWallFort_Reoccupation",
+    "display": "Re-blockaded - Valvegard Garrison"
+  },
+  {
+    "key": 1000645,
+    "name": "Quest_Node_Del_ValvegardWallFort_Reconstruction",
+    "display": "Reconstruct - Valvegard Garrison"
+  },
+  {
+    "key": 1000448,
+    "name": "Quest_Node_Del_MarniAirLab_Reoccupation",
+    "display": "Re-blockaded - Aeronautical Research Base"
+  },
+  {
+    "key": 1000646,
+    "name": "Quest_Node_Del_MarniAirLab_Reconstruction",
+    "display": "Reconstruct - Aeronautical Research Base"
+  },
+  {
+    "key": 1000449,
+    "name": "Quest_Node_Neut_MarnisOutpost_Reoccupation",
+    "display": "Re-blockaded - Marni's Outpost"
+  },
+  {
+    "key": 1000648,
+    "name": "Quest_Node_Neut_MarnisOutpost_Reconstruction",
+    "display": "Reconstruct - Marni's Outpost"
+  },
+  {
+    "key": 1000450,
+    "name": "Quest_Node_Del_MarniLab_Reoccupation",
+    "display": "Re-blockaded - Marni's Laboratorium"
+  },
+  {
+    "key": 1000651,
+    "name": "Quest_Node_Del_MarniLab_Reconstruction",
+    "display": "Reconstruct - Marni's Laboratorium"
+  },
+  {
+    "key": 1000451,
+    "name": "Quest_Node_Del_WindCliffFort_Reoccupation",
+    "display": "Re-Blockade - Fort Windridge"
+  },
+  {
+    "key": 1000658,
+    "name": "Quest_Node_Del_WindCliffFort_Invasion",
+    "display": "Engagement - Fort Windridge"
+  },
+  {
+    "key": 1000654,
+    "name": "Quest_Node_Del_WindCliffFort_Reconstruction",
+    "display": "Reconstruct - Fort Windridge"
+  },
+  {
+    "key": 1000437,
+    "name": "Quest_Node_Crim_RedMountainFort_Reoccupation",
+    "display": "Re-Blockade - Crimson Mountains Fortress"
+  },
+  {
+    "key": 1000553,
+    "name": "Quest_Node_Crim_RedMountainFort_Invasion",
+    "display": "Engagement - Crimson Mountains Fortress"
+  },
+  {
+    "key": 1000622,
+    "name": "Quest_Node_Crim_RedMountainFort_Reconstruction",
+    "display": "Reconstruct - Crimson Mountains Fortress"
+  },
+  {
+    "key": 1000438,
+    "name": "Quest_Node_Crim_FortManub_Reoccupation",
+    "display": "Re-Blockade - Fort Manub"
+  },
+  {
+    "key": 1000555,
+    "name": "Quest_Node_Crim_FortManub_Invasion",
+    "display": "Engagement - Fort Manub"
+  },
+  {
+    "key": 1000624,
+    "name": "Quest_Node_Crim_FortManub_Reconstruction",
+    "display": "Reconstruct - Fort Manub"
+  },
+  {
+    "key": 1000439,
+    "name": "Quest_Node_Crim_IsvatuFortress_Reoccupation",
+    "display": "Re-Blockaded - Izvatu Fortress"
+  },
+  {
+    "key": 1000556,
+    "name": "Quest_Node_Crim_IsvatuFortress_Invasion",
+    "display": "Engagement - Izvatu Fortress"
+  },
+  {
+    "key": 1000625,
+    "name": "Quest_Node_Crim_IsvatuFortress_Reconstruction",
+    "display": "Reconstruct - Izvatu Fortress"
+  },
+  {
+    "key": 1000480,
+    "name": "Quest_Node_Her_DrakefallBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Drakesfall Gorge Bandit Camp"
+  },
+  {
+    "key": 1000481,
+    "name": "Quest_Node_Her_ArboriaBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Arboria Forest Bandit Camp"
+  },
+  {
+    "key": 1000482,
+    "name": "Quest_Node_Her_MountainAreaBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Hernandian Mountains Bandit Camp"
+  },
+  {
+    "key": 1000483,
+    "name": "Quest_Node_Her_ShadowforestBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Duskwood Bandit Camp"
+  },
+  {
+    "key": 1000484,
+    "name": "Quest_Node_Her_RoccaHillBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Southern Rocca's Hill Bandit Camp"
+  },
+  {
+    "key": 1000485,
+    "name": "Quest_Node_Her_SunrisePlainBanditCamp_I_Reoccupation",
+    "display": "Re-blockaded - Sunrise Plains Bandit Camp"
+  },
+  {
+    "key": 1000486,
+    "name": "Quest_Node_Her_FoggyWindBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Mistwind Bandit Camp"
+  },
+  {
+    "key": 1000487,
+    "name": "Quest_Node_Her_RiverTerraceBanditCamp_Reoccupation",
+    "display": "Faction Spawn - Southern Riverside Bandit Camp"
+  },
+  {
+    "key": 1000488,
+    "name": "Quest_Node_Her_RiverTerraceBanditCamp_I_Reoccupation",
+    "display": "Faction Spawn - Northern Riverside Bandit Camp"
+  },
+  {
+    "key": 1000489,
+    "name": "Quest_Node_Her_AnvilHillBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Anvil Hill Bandit Camp"
+  },
+  {
+    "key": 1000490,
+    "name": "Quest_Node_Her_RoccaHillBanditCamp_I_Reoccupation",
+    "display": "Re-blockaded - Northern Rocca's Hill Bandit Camp"
+  },
+  {
+    "key": 1000491,
+    "name": "Quest_Node_Her_HowlingHillCamp_Reoccupation",
+    "display": "Re-blockaded - Haunted Hill Bandit Camp"
+  },
+  {
+    "key": 1000492,
+    "name": "Quest_Node_Her_GreenFieldHillyAreaCamp_Reoccupation",
+    "display": "Re-blockaded - Greenfield Highlands Bandit Camp"
+  },
+  {
+    "key": 1000493,
+    "name": "Quest_Node_Her_GreenFieldThiefCamp_Reoccupation",
+    "display": "Re-blockaded - Greenfield Bandit Camp"
+  },
+  {
+    "key": 1000494,
+    "name": "Quest_Node_Her_GreenHillThiefCamp_Reoccupation",
+    "display": "Re-blockaded - Greenhill Bandit Camp"
+  },
+  {
+    "key": 1000495,
+    "name": "Quest_Node_Her_SteelMountainsCamp_Reoccupation",
+    "display": "Re-blockaded - Steel Mountains Bandit Camp"
+  },
+  {
+    "key": 1000496,
+    "name": "Quest_Node_Her_SouthernDeepForestCamp_Reoccupation",
+    "display": "Re-blockaded - Southern Deepwoods Bandit Camp"
+  },
+  {
+    "key": 1000497,
+    "name": "Quest_Node_Her_SunrisePlainBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Sunrise Cliff Bandit Camp"
+  },
+  {
+    "key": 1000498,
+    "name": "Quest_Node_Her_WhiteMountainBanditCamp_Reoccupation",
+    "display": "Re-blockaded - Argent Peaks Bandit Camp"
+  },
+  {
+    "key": 1000499,
+    "name": "Quest_Node_Her_EastGoblinCamp_Reoccupation",
+    "display": "Re-blockaded - Eastern Goblin Bandit Camp"
+  },
+  {
+    "key": 1000557,
+    "name": "Quest_Node_Hernand_Bandit_I_Reoccupation",
+    "display": "Re-blockaded - Hernand Bandits' Outpost"
+  },
+  {
+    "key": 1000500,
+    "name": "Quest_Node_Dem_BanditCamp_I_Reoccupation",
+    "display": "Re-blockaded - Ironwood Forest Bandit Camp"
+  },
+  {
+    "key": 1000501,
+    "name": "Quest_Node_Dem_BanditCamp_II_Reoccupation",
+    "display": "Re-blockaded - Ironwood Basin Bandit Camp"
+  },
+  {
+    "key": 1000502,
+    "name": "Quest_Node_Dem_BanditCamp_III_Reoccupation",
+    "display": "Re-blockaded - Riverside Cliff Bandit Camp"
+  },
+  {
+    "key": 1000503,
+    "name": "Quest_Node_Dem_BanditCamp_IV_Reoccupation",
+    "display": "Re-blockaded - Ironwood Bandit Camp"
+  },
+  {
+    "key": 1000504,
+    "name": "Quest_Node_Dem_SouthendCamp_Reoccupation",
+    "display": "Re-blockaded - Eldertree Research Camp"
+  },
+  {
+    "key": 1000505,
+    "name": "Quest_Node_Dem_CrescentCamp_Reoccupation",
+    "display": "Re-blockaded - Crescent Camp"
+  },
+  {
+    "key": 1000506,
+    "name": "Quest_Node_Del_BanditCamp_I_Reoccupation",
+    "display": "Re-blockaded - Coastal Cliff Bandit Camp"
+  },
+  {
+    "key": 1000511,
+    "name": "Quest_Node_Del_BanditCamp_II_Reoccupation",
+    "display": "Re-blockaded - Benus River Bandit Camp"
+  },
+  {
+    "key": 1000513,
+    "name": "Quest_Node_Del_BanditCamp_III_Reoccupation",
+    "display": "Re-blockaded - Timberdale Bandit Camp"
+  },
+  {
+    "key": 1000583,
+    "name": "Quest_Node_Crim_SeabreezeRuin_Reoccupation",
+    "display": "Re-blockaded - Seawind Ruins"
+  },
+  {
+    "key": 1000514,
+    "name": "Quest_Node_Kwe_BanditCamp_I_Reoccupation",
+    "display": "Re-blockaded - Deepwoods Bandit Camp"
+  },
+  {
+    "key": 1000515,
+    "name": "Quest_Node_Kwe_BanditCamp_II_Reoccupation",
+    "display": "Re-blockaded - Southern Pailune Bandit Camp"
+  },
+  {
+    "key": 1000516,
+    "name": "Quest_Node_Kwe_BanditCamp_III_Reoccupation",
+    "display": "Re-blockaded - Denn River Bandit Camp"
+  },
+  {
+    "key": 1000517,
+    "name": "Quest_Node_Kwe_BanditCamp_IV_Reoccupation",
+    "display": "Re-blockaded - Mountain Bandit Camp"
+  },
+  {
+    "key": 1000518,
+    "name": "Quest_Node_Kwe_BanditCamp_V_Reoccupation",
+    "display": "Re-blockaded - Northern Pailune Bandit Camp"
+  },
+  {
+    "key": 1000519,
+    "name": "Quest_Node_Kwe_BanditCamp_VI_Reoccupation",
+    "display": "Re-blockaded - Black Wall Bandit Camp"
+  },
+  {
+    "key": 1000520,
+    "name": "Quest_Node_Kwe_BanditCamp_VII_Reoccupation",
+    "display": "Re-blockaded - Snowfield Bandit Camp"
+  },
+  {
+    "key": 1000521,
+    "name": "Quest_Node_Kwe_BanditCamp_VIII_Reoccupation",
+    "display": "Re-blockaded - Five-Finger Mountain Bandit Camp"
+  },
+  {
+    "key": 1000522,
+    "name": "Quest_Node_Kwe_BanditCamp_IX_Reoccupation",
+    "display": "Re-blockaded - Wayward Woods Bandit Camp"
+  },
+  {
+    "key": 1000523,
+    "name": "Quest_Node_Kwe_PitfallCamp_Reoccupation",
+    "display": "Re-blockaded - Pitfall Camp"
+  },
+  {
+    "key": 1000524,
+    "name": "Quest_Node_Crim_BanditCamp_I_Reoccupation",
+    "display": "Re-blockaded - Redrock Bandit Camp"
+  },
+  {
+    "key": 1000525,
+    "name": "Quest_Node_Crim_BanditCamp_II_Reoccupation",
+    "display": "Re-blockaded - Izvatu Bandit Camp"
+  },
+  {
+    "key": 1000526,
+    "name": "Quest_Node_Crim_BanditCamp_III_Reoccupation",
+    "display": "Re-blockaded - Rockledge Bandit Camp"
+  },
+  {
+    "key": 1000527,
+    "name": "Quest_Node_Crim_BanditCamp_IV_Reoccupation",
+    "display": "Re-blockaded - Saltshade Bandit Camp"
+  },
+  {
+    "key": 1000528,
+    "name": "Quest_Node_Crim_BanditCamp_VI_Reoccupation",
+    "display": "Re-blockaded - Sandshift Basin Bandit Camp"
+  },
+  {
+    "key": 1000529,
+    "name": "Quest_Node_Crim_BanditCamp_VII_Reoccupation",
+    "display": "Re-blockaded - Rockshade Bandit Camp"
+  },
+  {
+    "key": 1000530,
+    "name": "Quest_Node_Crim_BanditCamp_VIII_Reoccupation",
+    "display": "Re-blockaded - Gloomy Forest Bandit Camp"
+  },
+  {
+    "key": 1000531,
+    "name": "Quest_Node_Crim_BanditCamp_IX_Reoccupation",
+    "display": "Re-blockaded - Wasteshade Bandit Camp"
+  },
+  {
+    "key": 1000532,
+    "name": "Quest_Node_Crim_BanditCamp_X_Reoccupation",
+    "display": "Re-blockaded - Desertshade Bandit Camp"
+  },
+  {
+    "key": 1000533,
+    "name": "Quest_Node_Crim_BanditCamp_XI_Reoccupation",
+    "display": "Re-blockaded - Saltroad Edge Bandit Camp"
+  },
+  {
+    "key": 1000534,
+    "name": "Quest_Node_Crim_BanditCamp_XIV_Reoccupation",
+    "display": "Re-blockaded - Damp Rainforest Bandit Camp"
+  },
+  {
+    "key": 1000535,
+    "name": "Quest_Node_Crim_ArimajahrCamp_Reoccupation",
+    "display": "Re-blockaded - Arima-jahr Camp"
+  },
+  {
+    "key": 1000536,
+    "name": "Quest_Node_Crim_KhafijahrCamp_Reoccupation",
+    "display": "Re-blockaded - Khafi-jahr Camp"
+  },
+  {
+    "key": 1000537,
+    "name": "Quest_Node_Crim_GhadirjahrCamp_Reoccupation",
+    "display": "Re-blockaded - Ghadir-jahr Camp"
+  },
+  {
+    "key": 1000538,
+    "name": "Quest_Node_Crim_QudimjahrCamp_Reoccupation",
+    "display": "Re-blockaded - Qudim-jahr Camp"
+  },
+  {
+    "key": 1000539,
+    "name": "Quest_Node_Crim_YalwijahrCamp_Reoccupation",
+    "display": "Re-blockaded - Yalwi-jahr Camp"
+  },
+  {
+    "key": 1000540,
+    "name": "Quest_Node_Crim_ShiqarjahrCamp_Reoccupation",
+    "display": "Re-blockaded - Shiqar-jahr Camp"
+  },
+  {
+    "key": 1000541,
+    "name": "Quest_Node_Crim_SakhajahrCamp_Reoccupation",
+    "display": "Re-blockaded - Sakha-jahr Camp"
+  },
+  {
+    "key": 1000542,
+    "name": "Quest_Node_Crim_BaisunjahrCamp_Reoccupation",
+    "display": "Re-blockaded - Baisun-jahr Camp"
+  },
+  {
+    "key": 1000543,
+    "name": "Quest_Node_Crim_MustawijahrCamp_Reoccupation",
+    "display": "Re-blockaded - Mustawi-jahr Camp"
+  },
+  {
+    "key": 1000544,
+    "name": "Quest_Node_Crim_AsaharamCamp_Reoccupation",
+    "display": "Re-blockaded - Asaha-ram Camp"
+  },
+  {
+    "key": 1000545,
+    "name": "Quest_Node_Crim_KuhteramCamp_Reoccupation",
+    "display": "Re-blockaded - Kuhte-ram Camp"
+  },
+  {
+    "key": 1000546,
+    "name": "Quest_Node_Crim_HariyahramCamp_Reoccupation",
+    "display": "Re-blockaded - Hariyah-ram Camp"
+  },
+  {
+    "key": 1000547,
+    "name": "Quest_Node_Crim_KharatiramCamp_Reoccupation",
+    "display": "Re-blockaded - Kharati-ram Camp"
+  },
+  {
+    "key": 1000548,
+    "name": "Quest_Node_Crim_MakharamCamp_Reoccupation",
+    "display": "Re-blockaded - Makha-ram Camp"
+  },
+  {
+    "key": 1000549,
+    "name": "Quest_Node_Crim_BanditCamp_XII_Reoccupation",
+    "display": "Re-blockaded - Border Trail Bandit Camp"
+  },
+  {
+    "key": 1000550,
+    "name": "Quest_Node_Crim_BanditCamp_XIII_Reoccupation",
+    "display": "Re-blockaded - Valley of the Moon Bandit Camp"
+  },
+  {
+    "key": 1000558,
+    "name": "Quest_Node_Crim_Ruins_0012_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000559,
+    "name": "Quest_Node_Crim_Ruins_0014_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000560,
+    "name": "Quest_Node_Crim_Ruins_0015_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000561,
+    "name": "Quest_Node_Crim_Ruins_0016_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000562,
+    "name": "Quest_Node_Crim_Ruins_0017_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000571,
+    "name": "Quest_Node_Crim_Ruins_0018_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000572,
+    "name": "Quest_Node_Crim_Ruins_0022_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000573,
+    "name": "Quest_Node_Crim_Ruins_0023_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000574,
+    "name": "Quest_Node_Crim_Ruins_0020_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000575,
+    "name": "Quest_Node_Crim_Ruins_0021_Reoccupation",
+    "display": "Re-blockaded - Desert Ruins"
+  },
+  {
+    "key": 1000576,
+    "name": "Quest_Node_Crim_Ruins_0024_Reoccupation",
+    "display": "Re-blockaded - Jungle Ruins"
+  },
+  {
+    "key": 1000577,
+    "name": "Quest_Node_Crim_Ruins_0025_Reoccupation",
+    "display": "Re-blockaded - Jungle Ruins"
+  },
+  {
+    "key": 1000578,
+    "name": "Quest_Node_Crim_Ruins_0026_Reoccupation",
+    "display": "Re-blockaded - Jungle Ruins"
+  },
+  {
+    "key": 1000581,
+    "name": "Quest_Node_Crim_Ruins_0027_Reoccupation",
+    "display": "Re-blockaded - Jungle Ruins"
+  },
+  {
+    "key": 1000584,
+    "name": "Quest_Node_Crim_SandslumberRuins_Reoccupation",
+    "display": "Re-blockaded - Sandrest Ruins"
+  },
+  {
+    "key": 1000585,
+    "name": "Quest_Node_Crim_StonecrackRuins_Reoccupation",
+    "display": "Re-blockaded - Rockshard Valley Ruins"
   },
   {
     "key": 1000058,
@@ -3332,7 +4627,7 @@
   {
     "key": 1000123,
     "name": "Quest_IntroHernand",
-    "display": "Unknown Space"
+    "display": "The Great Unknown"
   },
   {
     "key": 1000027,
@@ -3357,7 +4652,7 @@
   {
     "key": 10011000,
     "name": "Quest_SplitHorn_Boss_ThiefCave",
-    "display": "Damiane"
+    "display": "Hernand in Chaos"
   },
   {
     "key": 1000267,
@@ -3422,12 +4717,12 @@
   {
     "key": 1000118,
     "name": "Quest_Imp_Banquet_Boss_Battle",
-    "display": "Damiane"
+    "display": "Guest Unbidden"
   },
   {
     "key": 1000724,
     "name": "Quest_Crowman_Boss_Ribentain",
-    "display": "Damiane"
+    "display": "Black and White"
   },
   {
     "key": 1000970,
@@ -3462,12 +4757,12 @@
   {
     "key": 1000056,
     "name": "Quest_Silver_Armor_Boss_BackGroundStage",
-    "display": "Damiane"
+    "display": "Calphade"
   },
   {
     "key": 1000579,
     "name": "Quest_Ludvig_Boss_DawnFog",
-    "display": "Yann"
+    "display": "Morning Mist"
   },
   {
     "key": 1000597,
@@ -3502,7 +4797,7 @@
   {
     "key": 1000725,
     "name": "Quest_BloodCoronation_PlaceOutOfLight",
-    "display": "Kliff"
+    "display": "Demeniss Bound"
   },
   {
     "key": 1000180,
@@ -3517,7 +4812,7 @@
   {
     "key": 1000354,
     "name": "Quest_Goblin_Master_Doo_Trial",
-    "display": "Yann"
+    "display": "The Calling"
   },
   {
     "key": 1000212,
@@ -3545,6 +4840,11 @@
     "display": "Enlightenment"
   },
   {
+    "key": 1000459,
+    "name": "Quest_Goblin_Master_Doo_Blood_Throne",
+    "display": "Bloodstained Throne"
+  },
+  {
     "key": 1000554,
     "name": "Quest_Goblin_Master_BackGroundStage",
     "display": "Stage Always Open for Sage of the Desert"
@@ -3552,7 +4852,7 @@
   {
     "key": 1000767,
     "name": "Quest_MarniDragon_Boss_IronWorks",
-    "display": "Damiane"
+    "display": "Hidden Ace"
   },
   {
     "key": 1000776,
@@ -3577,7 +4877,7 @@
   {
     "key": 1000452,
     "name": "Quest_MarniDragon_Boss_BackGroundStage",
-    "display": "Comrade Found"
+    "display": "Challenger to the Gods"
   },
   {
     "key": 1000139,
@@ -3600,9 +4900,14 @@
     "display": "Journey's End"
   },
   {
+    "key": 1000373,
+    "name": "Quest_Epilogue_Abyss",
+    "display": "???"
+  },
+  {
     "key": 1000359,
     "name": "Quest_Epilogue_BackGroundStage",
-    "display": "Damiane"
+    "display": "Epilogue"
   },
   {
     "key": 1000206,
@@ -3875,6 +5180,11 @@
     "display": "Hernand"
   },
   {
+    "key": 1000720,
+    "name": "Shop_VelluaVillage",
+    "display": "Vellua"
+  },
+  {
     "key": 1000768,
     "name": "Shop_EquinsherSaddlery",
     "display": "Equinsher Saddlery"
@@ -3897,7 +5207,7 @@
   {
     "key": 1000408,
     "name": "Shop_Pororin_Pet",
-    "display": "Pororin Pet Shop"
+    "display": "Pororin"
   },
   {
     "key": 1000778,
@@ -4157,27 +5467,27 @@
   {
     "key": 1000926,
     "name": "Shop_Research_Pororin",
-    "display": "Pororin Research Director"
+    "display": "Pororin"
   },
   {
     "key": 1000927,
     "name": "Shop_Research_Urdavah",
-    "display": "Urdavah Research Director"
+    "display": "Urdavah"
   },
   {
     "key": 1000929,
     "name": "Shop_Research_OrcNeutralZone",
-    "display": "Gorthak Ironworks Research director"
+    "display": "Gorthak Ironworks"
   },
   {
     "key": 1000930,
     "name": "Shop_Research_DelesyiaInstitute",
-    "display": "Delesyian Institute Research Director"
+    "display": "The Delesyian Institute"
   },
   {
     "key": 1000933,
     "name": "Shop_Research_Dewhaven",
-    "display": "Dewhaven Research Director"
+    "display": "Dewhaven"
   },
   {
     "key": 1000934,
@@ -4192,7 +5502,7 @@
   {
     "key": 1000936,
     "name": "Shop_Trade_SilvermoonTroll",
-    "display": "Silvermoon Trade Collective"
+    "display": "Silvermoon Trade Group"
   },
   {
     "key": 1000108,
@@ -4223,6 +5533,26 @@
     "key": 1000420,
     "name": "Shop_Faction_CrimsonDesert",
     "display": "Crimson Desert"
+  },
+  {
+    "key": 1000758,
+    "name": "Shop_Street_Trader_GoldleafGuildhouse",
+    "display": "Goldleaf Merchant Guild"
+  },
+  {
+    "key": 1000754,
+    "name": "Shop_Street_Trader_Silvermoon",
+    "display": "Silvermoon Trade Group"
+  },
+  {
+    "key": 1000757,
+    "name": "Shop_Street_Trader_Redwind",
+    "display": "Redwind Merchant Guild"
+  },
+  {
+    "key": 1000586,
+    "name": "Shop_Street_Trader",
+    "display": "Free Trading"
   },
   {
     "key": 1000275,
@@ -4302,7 +5632,7 @@
   {
     "key": 1000283,
     "name": "Schedule_Unique_Npc",
-    "display": "Kliff"
+    "display": "Unique NPC Schedule"
   },
   {
     "key": 1000167,
@@ -4385,6 +5715,16 @@
     "display": "Restricted Area Stage"
   },
   {
+    "key": 1000372,
+    "name": "Func_GameplayVariable",
+    "display": "GameplayVariable Check Quest"
+  },
+  {
+    "key": 1000829,
+    "name": "Func_GameplayVariable_Enhanced",
+    "display": "GameplayVariable Check Quest"
+  },
+  {
     "key": 1,
     "name": "StartGame",
     "display": "Delesyia"
@@ -4410,6 +5750,11 @@
     "display": "Contents"
   },
   {
+    "key": 1000764,
+    "name": "Contents_BossRush",
+    "display": "Garden of Trials"
+  },
+  {
     "key": 1000107,
     "name": "Func_MiniGame",
     "display": "Minigames"
@@ -4423,6 +5768,11 @@
     "key": 1000120,
     "name": "Func_SpawnStage",
     "display": "Police/Crime Spawn"
+  },
+  {
+    "key": 1000997,
+    "name": "Func_SpawnStage_Ocean",
+    "display": "Ocean Spawn"
   },
   {
     "key": 1000804,
@@ -4488,5 +5838,45 @@
     "key": 1000177,
     "name": "AnimalDocumentary_CD",
     "display": "Crimson Desert Animals Collection"
+  },
+  {
+    "key": 1000716,
+    "name": "Quest_PoliticianStory_Damian",
+    "display": "Quest_PoliticianStory_Damian"
+  },
+  {
+    "key": 1000732,
+    "name": "Quest_EngineerStory_Oongka",
+    "display": "Quest_EngineerStory_Oongka"
+  },
+  {
+    "key": 1000723,
+    "name": "Quest_MapmakerStory_Kliff",
+    "display": "Quest_MapmakerStory_Kliff"
+  },
+  {
+    "key": 1000852,
+    "name": "Quest_OceanStory_Tutorial",
+    "display": "Quest_OceanStory_Tutorial"
+  },
+  {
+    "key": 1000740,
+    "name": "Quest_OceanStory_Remote_Island",
+    "display": "Quest_OceanStory_Remote_Island"
+  },
+  {
+    "key": 1000414,
+    "name": "LevelSequencerSpawn",
+    "display": "LevelSequencerSpawn"
+  },
+  {
+    "key": 1000869,
+    "name": "LevelSequencerSpawn_AllSchedule_03_m06",
+    "display": "LevelSequencerSpawn_AllSchedule_03_m06"
+  },
+  {
+    "key": 1000051,
+    "name": "LevelSequencerSpawn_WildAnimal_m08_00",
+    "display": "LevelSequencerSpawn_WildAnimal_m08_00"
   }
 ]

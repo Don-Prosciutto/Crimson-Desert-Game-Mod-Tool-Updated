@@ -3815,6 +3815,21 @@
   "display": "Iron Eagle"
  },
  {
+  "key": 1004549,
+  "name": "Mission_Legendanimal_Golden_Jewel_Beetle",
+  "display": "Catch the golden jewel beetle"
+ },
+ {
+  "key": 1004550,
+  "name": "Mission_Legendanimal_Golden_Rhinoceros_Beetle",
+  "display": "Catch the golden rhinoceros beetle"
+ },
+ {
+  "key": 1004551,
+  "name": "Mission_Legendanimal_Golden_Butterfly",
+  "display": "Catch the golden butterfly"
+ },
+ {
   "key": 1004406,
   "name": "Mission_Minigame_II_CushionBall_I",
   "display": "The Beauty of Angles"
@@ -7987,7 +8002,7 @@
  {
   "key": 1001230,
   "name": "Mission_Node_Her_DrakefallCastle_WatchtowerArea",
-  "display": "Drakesfall Watchtower"
+  "display": "Drakesfall Watchtower Zone"
  },
  {
   "key": 1000098,
@@ -8328,6 +8343,11 @@
   "key": 1001021,
   "name": "Mission_SpiderCastle_DrugFactory_Normal_Reward",
   "display": "Foundation of Abundance"
+ },
+ {
+  "key": 1005158,
+  "name": "Mission_VelluaVillage_PirateShip",
+  "display": "Mission_VelluaVillage_PirateShip"
  },
  {
   "key": 1000020,
@@ -10982,7 +11002,7 @@
  {
   "key": 1000185,
   "name": "Mission_SplitHorn_Boss_TwinkleManner",
-  "display": "The Dark Veil"
+  "display": "Veil of Darkness"
  },
  {
   "key": 1000187,
@@ -11833,6 +11853,11 @@
   "key": 1004332,
   "name": "Shop_Street_Trader_Mission",
   "display": "Shop_Street_Trader_Mission"
+ },
+ {
+  "key": 1005349,
+  "name": "Contents_GetOut_Region_Start",
+  "display": "Contents_GetOut_Region_Start"
  },
  {
   "key": 1003944,
@@ -16425,6 +16450,21 @@
   "display": "Tame the iron eagle"
  },
  {
+  "key": 1004552,
+  "name": "Mission_Legendanimal_Golden_Jewel_Beetle_0",
+  "display": "Catch the golden jewel beetle"
+ },
+ {
+  "key": 1004553,
+  "name": "Mission_Legendanimal_Golden_Rhinoceros_Beetle_0",
+  "display": "Catch the golden rhinoceros beetle"
+ },
+ {
+  "key": 1004554,
+  "name": "Mission_Legendanimal_Golden_Butterfly_0",
+  "display": "Catch the golden butterfly"
+ },
+ {
   "key": 1004411,
   "name": "Mission_Minigame_II_CushionBall_I_0",
   "display": "Complete level 10 at Orb Roll"
@@ -19462,7 +19502,7 @@
  {
   "key": 1002191,
   "name": "Mission_MuiquunVillage_Block_OwlsoftheMist_SubNode_2",
-  "display": "Defeat the enemies around the watchtower"
+  "display": "Defeat the enemies around the Watchtower Zone"
  },
  {
   "key": 4294966458,
@@ -19912,7 +19952,7 @@
  {
   "key": 4294966364,
   "name": "Mission_Varnia_Arinna_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966363,
@@ -19927,7 +19967,7 @@
  {
   "key": 4294966362,
   "name": "Mission_Varnia_Elowen_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966361,
@@ -19942,7 +19982,7 @@
  {
   "key": 4294966359,
   "name": "Mission_Varnia_Zara_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966358,
@@ -19957,7 +19997,7 @@
  {
   "key": 4294966357,
   "name": "Mission_Varnia_Khalid_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966356,
@@ -19967,7 +20007,7 @@
  {
   "key": 4294966353,
   "name": "Mission_Varnia_Thomas_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966352,
@@ -19982,7 +20022,7 @@
  {
   "key": 4294966350,
   "name": "Mission_Varnia_Beatrice_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966349,
@@ -20007,7 +20047,7 @@
  {
   "key": 4294966340,
   "name": "Mission_Varnia_Thibault_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966339,
@@ -20022,7 +20062,7 @@
  {
   "key": 4294966337,
   "name": "Mission_Varnia_Samir_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966336,
@@ -20037,7 +20077,7 @@
  {
   "key": 4294966333,
   "name": "Mission_Varnia_Sniks_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966332,
@@ -20067,7 +20107,7 @@
  {
   "key": 4294966328,
   "name": "Mission_Varnia_Noor_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966327,
@@ -20082,7 +20122,7 @@
  {
   "key": 4294966323,
   "name": "Mission_Varnia_Esperd_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966322,
@@ -20092,7 +20132,7 @@
  {
   "key": 4294966318,
   "name": "Mission_Varnia_Bruknar_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966317,
@@ -20107,7 +20147,7 @@
  {
   "key": 4294966315,
   "name": "Mission_Varnia_Gwendolyn_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966314,
@@ -20122,7 +20162,7 @@
  {
   "key": 4294966312,
   "name": "Mission_Varnia_Khadin_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966311,
@@ -20137,7 +20177,7 @@
  {
   "key": 4294966309,
   "name": "Mission_Varnia_Khadija_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966308,
@@ -20152,7 +20192,7 @@
  {
   "key": 4294966307,
   "name": "Mission_Varnia_Fatima_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966306,
@@ -20167,7 +20207,7 @@
  {
   "key": 4294966305,
   "name": "Mission_Varnia_Omar_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966304,
@@ -20417,7 +20457,7 @@
  {
   "key": 4294966367,
   "name": "Mission_Varnia_Cormar_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966366,
@@ -20617,7 +20657,7 @@
  {
   "key": 1002134,
   "name": "Mission_Node_Crim_ShadowdeepForest_Block_SubNode_0",
-  "display": "Defeat the enemies around the watchtower"
+  "display": "Defeat the enemies around the Watchtower Zone"
  },
  {
   "key": 1002135,
@@ -21062,7 +21102,7 @@
  {
   "key": 4294966162,
   "name": "Mission_DelesyiaCastle_Maiden_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966161,
@@ -21097,7 +21137,7 @@
  {
   "key": 4294966157,
   "name": "Mission_DelesyiaCastle_Skaldar_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966156,
@@ -21107,7 +21147,7 @@
  {
   "key": 4294966153,
   "name": "Mission_DelesyiaCastle_Randel_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966152,
@@ -21132,7 +21172,7 @@
  {
   "key": 4294966148,
   "name": "Mission_DelesyiaCastle_Doni_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966147,
@@ -21162,7 +21202,7 @@
  {
   "key": 4294966143,
   "name": "Mission_DelesyiaCastle_Martina_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966142,
@@ -21172,7 +21212,7 @@
  {
   "key": 4294966138,
   "name": "Mission_DelesyiaCastle_Nancy_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966137,
@@ -21187,7 +21227,7 @@
  {
   "key": 4294966135,
   "name": "Mission_DelesyiaCastle_Forex_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966134,
@@ -21222,7 +21262,7 @@
  {
   "key": 4294966130,
   "name": "Mission_DelesyiaCastle_Herbert_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966129,
@@ -21237,7 +21277,7 @@
  {
   "key": 4294966127,
   "name": "Mission_DelesyiaCastle_Marin_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966126,
@@ -21252,7 +21292,7 @@
  {
   "key": 4294966125,
   "name": "Mission_DelesyiaCastle_Inn_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966124,
@@ -21267,7 +21307,7 @@
  {
   "key": 4294966122,
   "name": "Mission_DelesyiaCastle_Lior_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966121,
@@ -21282,7 +21322,7 @@
  {
   "key": 4294966118,
   "name": "Mission_DelesyiaCastle_Grundak_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966117,
@@ -21297,7 +21337,7 @@
  {
   "key": 4294966116,
   "name": "Mission_DelesyiaCastle_Merrigrain_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966115,
@@ -21307,7 +21347,7 @@
  {
   "key": 4294966112,
   "name": "Mission_DelesyiaCastle_Rainier_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966111,
@@ -21332,7 +21372,7 @@
  {
   "key": 4294966108,
   "name": "Mission_DelesyiaCastle_Yohan_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966107,
@@ -21347,7 +21387,7 @@
  {
   "key": 4294966105,
   "name": "Mission_DelesyiaCastle_Castiel_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294966104,
@@ -22482,7 +22522,7 @@
  {
   "key": 4294965910,
   "name": "Mission_DemenissCastle_Zarkon_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965909,
@@ -22497,7 +22537,7 @@
  {
   "key": 4294965905,
   "name": "Mission_DemenissCastle_Khorn_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965904,
@@ -22512,7 +22552,7 @@
  {
   "key": 4294965900,
   "name": "Mission_DemenissCastle_Geoffroi_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965899,
@@ -22527,7 +22567,7 @@
  {
   "key": 4294965898,
   "name": "Mission_DemenissCastle_Palga_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965897,
@@ -22542,7 +22582,7 @@
  {
   "key": 4294965892,
   "name": "Mission_DemenissCastle_Linda_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965891,
@@ -22562,7 +22602,7 @@
  {
   "key": 4294965886,
   "name": "Mission_DemenissCastle_Orlonel_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965885,
@@ -22582,7 +22622,7 @@
  {
   "key": 4294965881,
   "name": "Mission_DemenissCastle_Kike_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965880,
@@ -22597,7 +22637,7 @@
  {
   "key": 4294965876,
   "name": "Mission_DemenissCastle_Mariana_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965875,
@@ -22612,7 +22652,7 @@
  {
   "key": 4294965874,
   "name": "Mission_DemenissCastle_Kata_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965873,
@@ -22627,7 +22667,7 @@
  {
   "key": 4294965872,
   "name": "Mission_DemenissCastle_Fiona_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965871,
@@ -22652,7 +22692,7 @@
  {
   "key": 4294965867,
   "name": "Mission_DemenissCastle_Eldmor_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965866,
@@ -22667,7 +22707,7 @@
  {
   "key": 4294965865,
   "name": "Mission_DemenissCastle_Eliza_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965864,
@@ -22697,7 +22737,7 @@
  {
   "key": 4294965860,
   "name": "Mission_DemenissCastle_Flint_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965859,
@@ -22722,7 +22762,7 @@
  {
   "key": 4294965855,
   "name": "Mission_DemenissCastle_GrainHart_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965854,
@@ -22732,7 +22772,7 @@
  {
   "key": 4294965850,
   "name": "Mission_DemenissCastle_Mariel_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965849,
@@ -22747,7 +22787,7 @@
  {
   "key": 4294965848,
   "name": "Mission_DemenissCastle_Trollmag_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965847,
@@ -22762,7 +22802,7 @@
  {
   "key": 4294965845,
   "name": "Mission_DemenissCastle_Gabriel_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965844,
@@ -22777,7 +22817,7 @@
  {
   "key": 4294965842,
   "name": "Mission_DemenissCastle_Bartholomew_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965841,
@@ -22792,7 +22832,7 @@
  {
   "key": 4294965839,
   "name": "Mission_DemenissCastle_Anselm_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965838,
@@ -22807,7 +22847,7 @@
  {
   "key": 4294965836,
   "name": "Mission_DemenissCastle_Benedict_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965835,
@@ -22822,7 +22862,7 @@
  {
   "key": 4294965833,
   "name": "Mission_DemenissCastle_Montpellier_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965832,
@@ -22837,7 +22877,7 @@
  {
   "key": 4294965830,
   "name": "Mission_DemenissCastle_Edmar_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965829,
@@ -22852,7 +22892,7 @@
  {
   "key": 4294965827,
   "name": "Mission_DemenissCastle_Leonar_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965826,
@@ -23612,7 +23652,7 @@
  {
   "key": 4294965691,
   "name": "Mission_Flame_Knights_Block_Ask_6",
-  "display": "Flame Knights Castle Liberation Loading"
+  "display": "Flame Knights' Castle Liberation Loading"
  },
  {
   "key": 1001794,
@@ -24702,7 +24742,7 @@
  {
   "key": 4294965386,
   "name": "Mission_GreymaneCamp_Luke_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965385,
@@ -24767,7 +24807,7 @@
  {
   "key": 4294965360,
   "name": "Mission_GreymaneCamp_Kamu_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965359,
@@ -24802,7 +24842,7 @@
  {
   "key": 4294965355,
   "name": "Mission_GreymaneCamp_Ben_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965354,
@@ -24862,7 +24902,7 @@
  {
   "key": 4294965465,
   "name": "Graymane_GetCampRes_Lv4_0",
-  "display": "Collect camp funds through an internal defense mission at the Azerian Manor"
+  "display": "Collect camp funds through the estate protection mission at the Azerian Manor"
  },
  {
   "key": 4294965464,
@@ -25082,7 +25122,7 @@
  {
   "key": 4294965420,
   "name": "Mission_GreymaneCamp_Carl_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965419,
@@ -25097,7 +25137,7 @@
  {
   "key": 4294965417,
   "name": "Mission_GreymaneCamp_Ronnie_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965416,
@@ -25112,7 +25152,7 @@
  {
   "key": 4294965415,
   "name": "Mission_GreymaneCamp_Russo_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965414,
@@ -25127,7 +25167,7 @@
  {
   "key": 4294965412,
   "name": "Mission_GreymaneCamp_Tranan_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965411,
@@ -25142,7 +25182,7 @@
  {
   "key": 4294965410,
   "name": "Mission_GreymaneCamp_Brice_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965409,
@@ -25167,7 +25207,7 @@
  {
   "key": 4294965405,
   "name": "Mission_GreymaneCamp_Martin_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965404,
@@ -25182,7 +25222,7 @@
  {
   "key": 4294965402,
   "name": "Mission_GreymaneCamp_Ethan_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965401,
@@ -25197,7 +25237,7 @@
  {
   "key": 4294965399,
   "name": "Mission_GreymaneCamp_Alec_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965398,
@@ -25212,7 +25252,7 @@
  {
   "key": 4294965396,
   "name": "Mission_GreymaneCamp_Diederik_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965395,
@@ -25227,7 +25267,7 @@
  {
   "key": 4294965393,
   "name": "Mission_GreymaneCamp_Eric_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965392,
@@ -25242,7 +25282,7 @@
  {
   "key": 4294965390,
   "name": "Mission_GreymaneCamp_Connor_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965389,
@@ -25257,7 +25297,7 @@
  {
   "key": 4294965388,
   "name": "Mission_GreymaneCamp_Oliver_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965387,
@@ -25272,7 +25312,7 @@
  {
   "key": 4294965383,
   "name": "Mission_GreymaneCamp_Ronald_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965382,
@@ -25287,7 +25327,7 @@
  {
   "key": 4294965381,
   "name": "Mission_GreymaneCamp_Brant_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965380,
@@ -25302,7 +25342,7 @@
  {
   "key": 4294965379,
   "name": "Mission_GreymaneCamp_Devan_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965378,
@@ -25317,7 +25357,7 @@
  {
   "key": 4294965377,
   "name": "Mission_GreymaneCamp_Evelyn_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965376,
@@ -25332,7 +25372,7 @@
  {
   "key": 4294965375,
   "name": "Mission_GreymaneCamp_Joan_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965374,
@@ -25347,7 +25387,7 @@
  {
   "key": 4294965373,
   "name": "Mission_GreymaneCamp_Piers_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965372,
@@ -25362,7 +25402,7 @@
  {
   "key": 4294965370,
   "name": "Mission_GreymaneCamp_Niall_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965369,
@@ -25377,7 +25417,7 @@
  {
   "key": 4294965365,
   "name": "Mission_GreymaneCamp_Balder_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965364,
@@ -25392,7 +25432,7 @@
  {
   "key": 4294965362,
   "name": "Mission_GreymaneCamp_Terry_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965361,
@@ -25407,7 +25447,7 @@
  {
   "key": 4294965350,
   "name": "Mission_GreymaneCamp_Luceran_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965349,
@@ -25422,7 +25462,7 @@
  {
   "key": 4294965348,
   "name": "Mission_GreymaneCamp_Duncan_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965347,
@@ -25437,7 +25477,7 @@
  {
   "key": 4294965346,
   "name": "Mission_GreymaneCamp_Mauro_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965345,
@@ -25452,7 +25492,7 @@
  {
   "key": 4294965344,
   "name": "Mission_GreymaneCamp_Lars_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965343,
@@ -25467,7 +25507,7 @@
  {
   "key": 4294965342,
   "name": "Mission_GreymaneCamp_Gerald_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965341,
@@ -25482,7 +25522,7 @@
  {
   "key": 4294965340,
   "name": "Mission_GreymaneCamp_Vernon_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965339,
@@ -25972,7 +26012,7 @@
  {
   "key": 4294965258,
   "name": "Mission_HernandCastle_Rhett_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965257,
@@ -25987,7 +26027,7 @@
  {
   "key": 4294965240,
   "name": "Mission_HernandCastle_Raine_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965239,
@@ -26007,7 +26047,7 @@
  {
   "key": 4294965220,
   "name": "Mission_HernandCastle_Turnuli_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965219,
@@ -26032,7 +26072,7 @@
  {
   "key": 4294965225,
   "name": "Mission_HernandCastle_Anbella_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965224,
@@ -26047,7 +26087,7 @@
  {
   "key": 4294965249,
   "name": "Mission_HernandCastle_Tina_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965248,
@@ -26057,7 +26097,7 @@
  {
   "key": 4294965245,
   "name": "Mission_HernandCastle_Bran_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965244,
@@ -26072,7 +26112,7 @@
  {
   "key": 4294965215,
   "name": "Mission_HernandCastle_Aldun_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965214,
@@ -26087,7 +26127,7 @@
  {
   "key": 4294965205,
   "name": "Mission_HernandCastle_Bruna_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965204,
@@ -26122,7 +26162,7 @@
  {
   "key": 4294965200,
   "name": "Mission_HernandCastle_Grana_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965199,
@@ -26132,7 +26172,7 @@
  {
   "key": 4294965166,
   "name": "Mission_HernandCastle_Ugmum_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965165,
@@ -26152,7 +26192,7 @@
  {
   "key": 4294965252,
   "name": "Mission_HernandCastle_Delkin_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965251,
@@ -26167,7 +26207,7 @@
  {
   "key": 4294965235,
   "name": "Mission_HernandCastle_Dahlia_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965234,
@@ -26182,7 +26222,7 @@
  {
   "key": 4294965185,
   "name": "Mission_HernandCastle_Yjork_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965184,
@@ -26197,7 +26237,7 @@
  {
   "key": 4294965180,
   "name": "Mission_HernandCastle_Berdo_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965179,
@@ -26207,7 +26247,7 @@
  {
   "key": 4294965175,
   "name": "Mission_HernandCastle_Shirg_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965174,
@@ -26217,7 +26257,7 @@
  {
   "key": 4294965152,
   "name": "Mission_HernandCastle_Frox_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965151,
@@ -26242,7 +26282,7 @@
  {
   "key": 4294965147,
   "name": "Mission_HernandCastle_StrongSteed_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965146,
@@ -26442,7 +26482,7 @@
  {
   "key": 4294965144,
   "name": "Mission_HernandCastle_Alfred_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965143,
@@ -26457,7 +26497,7 @@
  {
   "key": 4294965141,
   "name": "Mission_HernandCastle_Theoric_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965140,
@@ -26472,7 +26512,7 @@
  {
   "key": 4294965139,
   "name": "Mission_HernandCastle_Dverick_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965138,
@@ -26612,7 +26652,7 @@
  {
   "key": 4294965210,
   "name": "Mission_HernandCastle_Peregrine_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965209,
@@ -26622,7 +26662,7 @@
  {
   "key": 4294965230,
   "name": "Mission_HernandCastle_Timmyr_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965229,
@@ -26637,7 +26677,7 @@
  {
   "key": 4294965195,
   "name": "Mission_HernandCastle_Harveston_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965194,
@@ -26672,7 +26712,7 @@
  {
   "key": 4294965190,
   "name": "Mission_HernandCastle_Drianna_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965189,
@@ -26702,7 +26742,7 @@
  {
   "key": 4294965171,
   "name": "Mission_HernandCastle_Gloin_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965170,
@@ -26717,7 +26757,7 @@
  {
   "key": 4294965161,
   "name": "Mission_HernandCastle_Matilda_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965160,
@@ -26732,7 +26772,7 @@
  {
   "key": 4294965157,
   "name": "Mission_HernandCastle_Adelina_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965156,
@@ -26742,7 +26782,7 @@
  {
   "key": 4294965155,
   "name": "Mission_HernandCastle_Adelina_2",
-  "display": "Visit the carpentry"
+  "display": "Visit the woodshop"
  },
  {
   "key": 1002233,
@@ -26807,7 +26847,7 @@
  {
   "key": 4294965136,
   "name": "Mission_HernandCastle_Roendel_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294965135,
@@ -27307,7 +27347,7 @@
  {
   "key": 1001939,
   "name": "Mission_Node_Her_DrakefallCastle_WatchtowerArea_0",
-  "display": "Defeat the enemies around the watchtower"
+  "display": "Defeat the enemies around the Watchtower Zone"
  },
  {
   "key": 4294964615,
@@ -28737,7 +28777,7 @@
  {
   "key": 1002281,
   "name": "Mission_RoketBag_Normal_Start_2",
-  "display": "Find Grimnir to craft the equipment"
+  "display": "Find Grimnir and craft the equipment"
  },
  {
   "key": 4294964769,
@@ -28967,7 +29007,7 @@
  {
   "key": 4294964732,
   "name": "Mission_Pailune_RonHardt_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964731,
@@ -28982,7 +29022,7 @@
  {
   "key": 4294964729,
   "name": "Mission_Pailune_Terinand_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964728,
@@ -28997,7 +29037,7 @@
  {
   "key": 4294964726,
   "name": "Mission_Pailune_Gorio_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964725,
@@ -29012,7 +29052,7 @@
  {
   "key": 4294964723,
   "name": "Mission_Pailune_Henri_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964722,
@@ -29032,7 +29072,7 @@
  {
   "key": 4294964719,
   "name": "Mission_Pailune_Aeba_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964718,
@@ -29047,7 +29087,7 @@
  {
   "key": 4294964716,
   "name": "Mission_Pailune_Bargul_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964715,
@@ -29062,7 +29102,7 @@
  {
   "key": 4294964714,
   "name": "Mission_Pailune_Lenard_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964713,
@@ -29092,7 +29132,7 @@
  {
   "key": 4294964709,
   "name": "Mission_Pailune_Baris_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964708,
@@ -29107,7 +29147,7 @@
  {
   "key": 4294964706,
   "name": "Mission_Pailune_Gonthyr_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964705,
@@ -29117,7 +29157,7 @@
  {
   "key": 4294964703,
   "name": "Mission_Pailune_Lora_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964702,
@@ -29132,7 +29172,7 @@
  {
   "key": 4294964701,
   "name": "Mission_Pailune_Aldred_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964700,
@@ -29162,7 +29202,7 @@
  {
   "key": 4294964698,
   "name": "Mission_Pailune_Ratko_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964697,
@@ -29172,7 +29212,7 @@
  {
   "key": 4294964695,
   "name": "Mission_Pailune_Richart_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964694,
@@ -29247,7 +29287,7 @@
  {
   "key": 4294964681,
   "name": "Mission_Pailune_Lauric_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964680,
@@ -29342,7 +29382,7 @@
  {
   "key": 4294964665,
   "name": "Mission_Pailune_WinterWarmth_0",
-  "display": "Talk to the person"
+  "display": "Talk"
  },
  {
   "key": 4294964664,
@@ -31877,7 +31917,7 @@
  {
   "key": 4294964589,
   "name": "Mission_RedLake_Witch_Normal_Meet_0",
-  "display": "Lend a hand to the person shivering in the cold."
+  "display": "Help the person shivering in the cold"
  },
  {
   "key": 4294964588,
@@ -32037,7 +32077,7 @@
  {
   "key": 4294964565,
   "name": "Mission_Crimson_Desert_Witch_Normal_Meet_0",
-  "display": "Give coin to the child"
+  "display": "Give a coin to the child"
  },
  {
   "key": 4294964564,
@@ -32157,7 +32197,7 @@
  {
   "key": 4294964428,
   "name": "Mission_Intro_MainBattle_1",
-  "display": "Rescue the comrade in danger"
+  "display": "Rescue the comrades from danger"
  },
  {
   "key": 4294964427,
@@ -33212,7 +33252,7 @@
  {
   "key": 1004464,
   "name": "Mission_Ludvig_Boss_Backhome_dlc_1",
-  "display": "Talk to your comrades"
+  "display": "Speak with your comrades"
  },
  {
   "key": 4294964399,
@@ -34042,7 +34082,7 @@
  {
   "key": 1004344,
   "name": "Mission_MarniDragon_Boss_Audience_dlc_0",
-  "display": "Talk to your comrades"
+  "display": "Speak with your comrades"
  },
  {
   "key": 1004345,
