@@ -106,6 +106,13 @@ def _check_table(dmm, game_path: str, name: str) -> dict:
         res["records"] = len(items)
     except Exception as e:  # noqa: BLE001
         return {"status": "READ_FAIL", "detail": f"{type(e).__name__}: {e}"[:300], "records": None}
+    # Records the parser could not decode come back as raw bytes. They write back
+    # identical, so the table passes - but those records cannot be edited. Say so
+    # instead of letting it look like everything is editable.
+    blobs = sum(1 for r in items if isinstance(r, dict) and r.get("_blob_fallback"))
+    if blobs:
+        res["partial"] = blobs
+        res["detail"] = f"{blobs} of {len(items)} records only as raw bytes (not editable)"
     try:
         try:
             back = dmm.serialize_table(name, items, None, head)
@@ -242,10 +249,15 @@ def report_text(result: Optional[dict]) -> str:
              f"Checked {result.get('when', '?')} in {result.get('seconds', '?')} s, "
              f"parser build {result.get('parser', '?')}.", ""]
     bad = failed_tables(result)
+    partial = {t: r for t, r in result.get("results", {}).items() if r.get("partial")}
+    note = []
+    if partial:
+        note = ["", "Read only in part (written back identical, but these records cannot be edited):"]
+        note += [f"  {t}: {r['detail']}" for t, r in partial.items()]
     if not bad:
         lines += ["Every table the tool edits was read from the game and written back "
                   "byte for byte identical. Building mods is safe with this game version."]
-        return "\n".join(lines)
+        return "\n".join(lines + note)
     lines += ["These tables are not read or written back correctly by the bundled parser. "
               "Mods built from them could damage the game data, so the pages that edit "
               "them are blocked until the parser is updated. Everything else works.", ""]
@@ -254,4 +266,4 @@ def report_text(result: Optional[dict]) -> str:
     lines += ["", "Blocked pages:"]
     for cls, tabs in blocked_pages(result).items():
         lines.append(f"  {PAGES[cls]['label']}  (uses {', '.join(tabs)})")
-    return "\n".join(lines)
+    return "\n".join(lines + note)
