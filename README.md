@@ -25,6 +25,19 @@ Maintainer of this update: Don_Prosciutto (Discord).
 
 ---
 
+## Game 2.04 (October 2026)
+
+- **Apply to Game is switched off.** Since 2.04 the game signs its pack list
+  (`meta/0.papgt`) and refuses to start when that file or a pack index changes.
+  The tool no longer writes into the game folder; use **Export Field JSON**.
+- Parser updated to dmm-parser upstream `4a57888` (game 2.04.00 – 2.04.03, the
+  Windows binding as shipped upstream). The Game Check reads and writes back all
+  26 tables the tool edits byte for byte; `fieldinfo` is read only as raw records.
+- Save Editor data rebuilt from 2.04 (DLC items, icons, stack sizes, quests),
+  German names optional.
+
+---
+
 ## What changed
 
 Measured against the 134 static tables extracted from a live 2.03.01 install:
