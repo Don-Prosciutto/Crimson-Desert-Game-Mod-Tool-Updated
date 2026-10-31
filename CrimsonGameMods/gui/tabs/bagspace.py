@@ -64,6 +64,15 @@ PABGEDITOR_PARSER = os.path.join(
 )
 
 
+def _installed_game_version(game_path: str) -> str:
+    """Version of the installed game for a mod's modinfo (was a fixed 1.00.03)."""
+    try:
+        from game_version import read_game_version
+        return read_game_version(game_path) or "unknown"
+    except Exception:  # noqa: BLE001
+        return "unknown"
+
+
 def _pack_builder(crimson_rs, group_dir: str):
     compression = getattr(getattr(crimson_rs, "Compression", None), "NONE", 0)
     crypto = getattr(getattr(crimson_rs, "Crypto", None), "NONE", 0)
@@ -116,12 +125,18 @@ class BagSpaceTab(QWidget):
         vanilla_btn.clicked.connect(self._load_vanilla)
         top_row.addWidget(vanilla_btn)
 
-        set_btn = QPushButton("Set Character 240 / 700")
-        set_btn.clicked.connect(lambda: self._set_character_slots(240, 700))
+        # Game 2.04: the character bag starts at 50 and grows to 240. 732 is the
+        # highest size that worked in earlier tests (same ceiling as the storages).
+        set_btn = QPushButton("Set Character 240 / 732")
+        set_btn.setToolTip("Your bag starts with 240 slots (the game's normal maximum)\n"
+                           "and can still be upgraded up to 732.")
+        set_btn.clicked.connect(lambda: self._set_character_slots(240, 732))
         top_row.addWidget(set_btn)
 
-        force_btn = QPushButton("Force Character 700 / 700")
-        force_btn.clicked.connect(lambda: self._set_character_slots(700, 700))
+        force_btn = QPushButton("Force Character 732 / 732")
+        force_btn.setToolTip("Your bag has 732 slots right away - the highest size that\n"
+                             "worked in earlier tests. More is not offered.")
+        force_btn.clicked.connect(lambda: self._set_character_slots(732, 732))
         top_row.addWidget(force_btn)
 
         storages_btn = QPushButton("Enlarge Storages")
@@ -477,7 +492,7 @@ class BagSpaceTab(QWidget):
             f"BagSpace staged {record_name} {field_name}: {value}"
         )
 
-    def _set_character_slots(self, default_slots: int = 240, max_slots: int = 700) -> None:
+    def _set_character_slots(self, default_slots: int = 240, max_slots: int = 732) -> None:
         if self._inventory_data is None:
             self._load_from_game()
             if self._inventory_data is None:
@@ -707,7 +722,8 @@ class BagSpaceTab(QWidget):
         if not parent_dir:
             return
 
-        out_path = os.path.join(parent_dir, "BagSpace_Character_240_700")
+        summary = self._character_summary()
+        out_path = os.path.join(parent_dir, "BagSpace_Character_" + summary.replace("/", "_"))
         try:
             if os.path.isdir(out_path):
                 shutil.rmtree(out_path)
@@ -719,10 +735,10 @@ class BagSpaceTab(QWidget):
                 f.write(pabgh)
 
             modinfo = {
-                "id": "bagspace_character_240_700",
-                "name": "BagSpace Character 240/700",
+                "id": "bagspace_character_" + summary.replace("/", "_"),
+                "name": f"BagSpace Character {summary}",
                 "version": "1.0.0",
-                "game_version": "1.00.03",
+                "game_version": _installed_game_version(self._game_path),
                 "author": "CrimsonGameMods",
                 "description": (
                     "Sets Character inventory slots to "
