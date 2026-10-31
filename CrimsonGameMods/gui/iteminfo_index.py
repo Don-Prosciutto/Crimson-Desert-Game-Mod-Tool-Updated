@@ -160,7 +160,7 @@ class IteminfoIndex:
             it_type = item.get("item_type") or 0
             pool = self.item_type_to_items.get(it_type, [])
         elif mode == "passives":
-            psl = item.get("equip_passive_skill_list", [])
+            psl = (item.get("equip_passive_skill_list") if item.get("equip_passive_skill_list") is not None else [])
             if not psl:
                 return []
             seen: set[int] = set()

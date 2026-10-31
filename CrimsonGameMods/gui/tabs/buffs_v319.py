@@ -3833,13 +3833,13 @@ class ItemBuffsTab(QWidget):
             rust_info = self._buff_rust_lookup.get(item.item_key)
             if rust_info is not None:
                 edl = rust_info.get('enchant_data_list', [])
-                tags = rust_info.get('item_tag_list', [])
+                tags = (rust_info.get('item_tag_list') if rust_info.get('item_tag_list') is not None else [])
                 tip += f"\nEquip type: {rust_info.get('equip_type_info', '?')}"
                 tip += f"\nCategory: {rust_info.get('category_info', '?')}"
                 tip += f"\nTier: {rust_info.get('item_tier', '?')}"
                 tip += f"\nEnchant levels: {len(edl)}"
                 tip += f"\nMax endurance: {rust_info.get('max_endurance', '?')}"
-                tip += f"\nMax sharpness: {rust_info.get('sharpness_data', {}).get('max_sharpness', '?')}"
+                tip += f"\nMax sharpness: {(rust_info.get('sharpness_data') if rust_info.get('sharpness_data') is not None else {}).get('max_sharpness', '?')}"
                 if tags:
                     tip += f"\nTags: {', '.join(f'0x{t:X}' for t in tags[:8])}"
             name_cell.setToolTip(tip)
@@ -4054,7 +4054,7 @@ class ItemBuffsTab(QWidget):
         rust_info = self._buff_rust_lookup.get(item.item_key) if hasattr(self, '_buff_rust_lookup') else None
 
         if rust_info is not None:
-            ddd = rust_info.get('drop_default_data', {})
+            ddd = (rust_info.get('drop_default_data') if rust_info.get('drop_default_data') is not None else {})
             self._eb_drop_enchant_level.setValue(ddd.get('drop_enchant_level', 0))
 
             if ddd.get('use_socket'):
@@ -4088,7 +4088,7 @@ class ItemBuffsTab(QWidget):
 
             edl = rust_info.get('enchant_data_list', [])
 
-            psl = rust_info.get('equip_passive_skill_list', [])
+            psl = (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else [])
             ps_sep = QTableWidgetItem(f"--- Passive Skills ({len(psl)}) ---")
             ps_sep.setForeground(QBrush(QColor("#4FC3F7")))
             ps_sep.setFont(QFont("Consolas", 9, QFont.Bold))
@@ -4329,7 +4329,7 @@ class ItemBuffsTab(QWidget):
                 table.setItem(row, 1, c2)
                 row += 1
 
-            sharp = rust_info.get('sharpness_data', {})
+            sharp = (rust_info.get('sharpness_data') if rust_info.get('sharpness_data') is not None else {})
             max_sharp = sharp.get('max_sharpness', 0)
             if max_sharp > 0:
                 sep2 = QTableWidgetItem(f"--- Sharpness (max {max_sharp}) ---")
@@ -4457,7 +4457,7 @@ class ItemBuffsTab(QWidget):
             QMessageBox.warning(self, "Passive Editor", "Item not found in Rust data.")
             return
 
-        psl = rust_info.get('equip_passive_skill_list', [])
+        psl = (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else [])
 
         new_skill = self._eb_passive_combo.currentData()
         new_level = self._eb_level_spin.value()
@@ -4498,7 +4498,7 @@ class ItemBuffsTab(QWidget):
             rust_info['equip_passive_skill_list'] = psl
 
         self._buff_modified = True
-        total = len(rust_info.get('equip_passive_skill_list', []))
+        total = len((rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else []))
         self._eb_status.setText(f"Added {new_name} Lv{new_level} ({total} passives) — click Export Field JSON v3")
         self._buff_refresh_stats()
 
@@ -4615,7 +4615,7 @@ class ItemBuffsTab(QWidget):
         edit_data = {
             "item_key": rust_info['key'],
             "string_key": rust_info.get('string_key', ''),
-            "equip_passive_skill_list": rust_info.get('equip_passive_skill_list', []),
+            "equip_passive_skill_list": (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else []),
             "gimmick_info": rust_info.get('gimmick_info', 0),
             "cooltime": rust_info.get('cooltime', 0),
             "item_charge_type": rust_info.get('item_charge_type', 0),
@@ -5630,7 +5630,7 @@ class ItemBuffsTab(QWidget):
                     </div>
                 """)
 
-        sharp = rust_info.get('sharpness_data', {})
+        sharp = (rust_info.get('sharpness_data') if rust_info.get('sharpness_data') is not None else {})
         max_sharp = sharp.get('max_sharpness', 0)
         if max_sharp > 0:
             bars = "\u2588" * max_sharp
@@ -5644,7 +5644,7 @@ class ItemBuffsTab(QWidget):
 
         html_parts.append('<hr style="border: 1px solid #3a3a5c; margin: 8px 0;">')
 
-        psl = rust_info.get('equip_passive_skill_list', [])
+        psl = (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else [])
         if psl:
             for ps in psl:
                 sk_name = self._PASSIVE_SKILL_NAMES.get(ps['skill'], f"Skill {ps['skill']}")
@@ -5809,7 +5809,7 @@ class ItemBuffsTab(QWidget):
             act_remove = menu.addAction(f"Remove passive: {name}")
             act_remove_all = menu.addAction("Remove ALL passives")
             act_show_similar = menu.addAction("Show items with this passive")
-            psl = rust_info.get('equip_passive_skill_list', []) or []
+            psl = (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else []) or []
 
             action = menu.exec(table.viewport().mapToGlobal(pos))
             if action == act_copy:
@@ -5965,7 +5965,7 @@ class ItemBuffsTab(QWidget):
                 }
                 match header:
                     case 'passives':
-                        new_buffer['data'] = rust_info.get('equip_passive_skill_list', [])
+                        new_buffer['data'] = (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else [])
                     case 'buffs':
                         edl = rust_info.get('enchant_data_list', [])
                         if edl:
@@ -6016,7 +6016,7 @@ class ItemBuffsTab(QWidget):
         if rust_info is None:
             return
 
-        psl = rust_info.get('equip_passive_skill_list', [])
+        psl = (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else [])
         if not psl:
             QMessageBox.information(self, "Remove Passive", "This item has no passives.")
             return
@@ -6247,7 +6247,7 @@ class ItemBuffsTab(QWidget):
             haystack += ' ' + str(data.get('source_name', '')).lower()
             haystack += ' ' + str(data.get('gimmick_info', ''))
             haystack += ' ' + str(data.get('gimmick_name', '')).lower()
-            for s in data.get('equip_passive_skill_list', []):
+            for s in (data.get('equip_passive_skill_list') if data.get('equip_passive_skill_list') is not None else []):
                 haystack += ' ' + str(s.get('skill', ''))
             if not ft or ft in haystack:
                 self._effect_catalog_combo.addItem(label, idx)
@@ -6287,10 +6287,10 @@ class ItemBuffsTab(QWidget):
 
         display_name = self._name_db.get_name(self._buff_current_item.item_key)
         src_name = effect.get('source_name', '?')
-        skills = effect.get('equip_passive_skill_list', [])
+        skills = (effect.get('equip_passive_skill_list') if effect.get('equip_passive_skill_list') is not None else [])
         skill_str = ', '.join(str(s['skill']) for s in skills)
 
-        cur_passives = rust_info.get('equip_passive_skill_list', []) or []
+        cur_passives = (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else []) or []
         cur_skill_str = ', '.join(str(p['skill']) for p in cur_passives) or '(none)'
 
         reply = QMessageBox.question(
@@ -6310,11 +6310,11 @@ class ItemBuffsTab(QWidget):
         if reply != QMessageBox.Yes:
             return
 
-        existing_passives = list(rust_info.get('equip_passive_skill_list', []) or [])
+        existing_passives = list((rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else []) or [])
         existing_keys = {p['skill'] for p in existing_passives}
         merged = existing_passives[:]
         added_count = 0
-        for p in effect.get('equip_passive_skill_list', []):
+        for p in (effect.get('equip_passive_skill_list') if effect.get('equip_passive_skill_list') is not None else []):
             if p['skill'] not in existing_keys:
                 merged.append(p)
                 existing_keys.add(p['skill'])
@@ -6741,7 +6741,7 @@ class ItemBuffsTab(QWidget):
             if reply != QMessageBox.Yes:
                 return
 
-        existing = list(rust_info.get('equip_passive_skill_list', []) or [])
+        existing = list((rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else []) or [])
         existing_keys = {p['skill'] for p in existing}
         added = 0
         for p in preset.get('passives', []):
@@ -9401,7 +9401,7 @@ class ItemBuffsTab(QWidget):
             return
 
         if preset.get('passives'):
-            existing = rust_info.get('equip_passive_skill_list', [])
+            existing = (rust_info.get('equip_passive_skill_list') if rust_info.get('equip_passive_skill_list') is not None else [])
             for p in preset['passives']:
                 if not any(e['skill'] == p['skill'] for e in existing):
                     existing.append(p)
@@ -9949,7 +9949,7 @@ class ItemBuffsTab(QWidget):
             item_changes = {}
 
             if item.get('equip_passive_skill_list') != vanilla.get('equip_passive_skill_list'):
-                item_changes['equip_passive_skill_list'] = item.get('equip_passive_skill_list', [])
+                item_changes['equip_passive_skill_list'] = (item.get('equip_passive_skill_list') if item.get('equip_passive_skill_list') is not None else [])
 
             for gf in ('gimmick_info', 'cooltime', 'item_charge_type',
                         'max_charged_useable_count', 'docking_child_data',

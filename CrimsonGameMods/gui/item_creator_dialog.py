@@ -552,7 +552,7 @@ class ItemCreatorDialog(QDialog):
     # ── Skills tab ────────────────────────────────────────────────────
 
     def _load_skills(self) -> None:
-        skills = self._working_copy.get('equip_passive_skill_list', [])
+        skills = (self._working_copy.get('equip_passive_skill_list') if self._working_copy.get('equip_passive_skill_list') is not None else [])
         self._skills_table.setRowCount(len(skills))
         for row, s in enumerate(skills):
             sid = s['skill']
@@ -644,12 +644,12 @@ class ItemCreatorDialog(QDialog):
     def _load_gimmick(self) -> None:
         it = self._working_copy
         self._gimmick_spin.setValue(it.get('gimmick_info', 0) or 0)
-        dd = it.get('drop_default_data', {}) or {}
+        dd = (it.get('drop_default_data') if it.get('drop_default_data') is not None else {}) or {}
         sockets = dd.get('add_socket_material_item_list', []) or []
         self._socket_count_spin.setValue(len(sockets))
         self._socket_valid_spin.setValue(dd.get('socket_valid_count', 0) or 0)
         self._drop_enchant_spin.setValue(dd.get('drop_enchant_level', 0) or 0)
-        sharp = it.get('sharpness_data', {}) or {}
+        sharp = (it.get('sharpness_data') if it.get('sharpness_data') is not None else {}) or {}
         self._sharpness_spin.setValue(sharp.get('max_sharpness', 0) or 0)
 
     # ── Raw fields tab ────────────────────────────────────────────────
@@ -719,7 +719,7 @@ class ItemCreatorDialog(QDialog):
                     f'<span style="float:right;color:#4FC3F7;">{v:,.0f}</span></div>'
 
         # Skills
-        skills = self._working_copy.get('equip_passive_skill_list', [])
+        skills = (self._working_copy.get('equip_passive_skill_list') if self._working_copy.get('equip_passive_skill_list') is not None else [])
         if skills:
             html += '<hr style="border:1px solid #3a3a5c;margin:4px 0;">'
             for s in skills:
@@ -767,7 +767,7 @@ class ItemCreatorDialog(QDialog):
             'is_dyeable': edited.get('is_dyeable', 0),
             'is_editable_grime': edited.get('is_editable_grime', 0),
             'enchant_data_list': edited.get('enchant_data_list', []),
-            'equip_passive_skill_list': edited.get('equip_passive_skill_list', []),
+            'equip_passive_skill_list': (edited.get('equip_passive_skill_list') if edited.get('equip_passive_skill_list') is not None else []),
             'gimmick_info': edited.get('gimmick_info', 0),
             'sharpness_max': (edited.get('sharpness_data') or {}).get('max_sharpness', 0),
         }
@@ -854,7 +854,7 @@ class ItemCreatorDialog(QDialog):
             wc_edl[i] = cfg_ed
 
         # Apply skills
-        cfg_skills = config.get('equip_passive_skill_list', [])
+        cfg_skills = (config.get('equip_passive_skill_list') if config.get('equip_passive_skill_list') is not None else [])
         self._working_copy['equip_passive_skill_list'] = cfg_skills
 
         # Reload UI from working copy
