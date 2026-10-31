@@ -40,6 +40,8 @@ OVERLAY_GROUP = "0062"
 # Kuku pot at 732 (max stays 1000); camp storage start 640 - the camp upgrades
 # still add on top, up to the game's 1000. Town warehouse and bank are left
 # out until tested. Only ever raised, never lowered.
+# Game 2.04 (DLC): the ship hold starts at 1 slot and grows to 36 - it starts
+# at its own maximum here, nothing beyond what the game allows.
 STORAGE_PRESET = {
     "CampWareHouse": (640, None),
     "Kuku": (732, 732),
@@ -48,11 +50,13 @@ STORAGE_PRESET = {
     "Housing_Symbol": (732, None),
     "Housing_Collecting": (732, None),
     "Housing_GatheredMaterials": (732, None),
+    "Ship": (36, None),
 }
 STORAGE_LABELS = {
     "CampWareHouse": "camp storage", "Kuku": "Kuku pot", "Housing_Dresser": "dresser",
     "Housing_Refrigerator": "refrigerator", "Housing_Symbol": "symbol storage",
     "Housing_Collecting": "collection storage", "Housing_GatheredMaterials": "gathered materials",
+    "Ship": "ship hold",
 }
 PABGEDITOR_PARSER = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -125,6 +129,7 @@ class BagSpaceTab(QWidget):
             "Camp storage starts at 640 (camp upgrades still add on top, up to 1000).\n"
             "Dresser, refrigerator, symbol, collection and gathered-materials storage\n"
             "and the Kuku pot get 732 slots.\n"
+            "The ship hold (game 2.04) starts at its full 36 slots.\n"
             "Town warehouse and bank are not changed (edit them in the table).\n"
             "Values are only raised, never lowered.")
         storages_btn.clicked.connect(self._enlarge_storages)
@@ -559,7 +564,7 @@ class BagSpaceTab(QWidget):
             "\n".join(lines) +
             "\n\nCamp upgrades still add slots on top of the camp storage, up to its maximum."
             "\nNot changed: character inventory, town warehouse, bank."
-            "\n\nNothing is written yet - afterwards use Export Field JSON or Apply to Game.")
+            "\n\nNothing is written yet - afterwards use Export Field JSON.")
         box.setStyleSheet("QLabel { font-family: Consolas, monospace; }")
         box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         box.setDefaultButton(QMessageBox.Yes)
@@ -583,7 +588,7 @@ class BagSpaceTab(QWidget):
         self._dirty = True
         self._refresh_table()
         self._status.setText("Staged: " + "; ".join(changed) +
-                             ". Now Export Field JSON or Apply to Game.")
+                             ". Now Export Field JSON.")
         self.status_message.emit(f"BagSpace: {len(changed)} storages enlarged (staged)")
 
     def get_staged_files(self) -> dict[str, bytes]:
