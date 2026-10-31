@@ -867,7 +867,20 @@ def main():
     simple_report.setup_logging(APP_VERSION)
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    try:
+        import game_write_guard
+        game_write_guard.install()
+    except Exception as e:  # noqa: BLE001
+        print(f"[game_write_guard] install failed: {e}")
     w = SimpleWindow()
+    try:
+        # The Simple tool only ever writes into the game: both of its write buttons go off.
+        for b in (getattr(w, "_apply_btn", None), getattr(w, "_remove_btn", None)):
+            if b is not None:
+                game_write_guard.switch_off(b)
+        game_write_guard.attach(w)
+    except Exception as e:  # noqa: BLE001
+        print(f"[game_write_guard] attach failed: {e}")
     w.show()
     sys.exit(app.exec())
 

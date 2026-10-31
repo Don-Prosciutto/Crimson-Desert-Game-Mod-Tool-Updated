@@ -5,7 +5,7 @@ a = Analysis(
     pathex=[],
     binaries=[('dmm_parser/dmm_parser.pyd', 'dmm_parser')],
     datas=[('dmm_parser', 'dmm_parser')],
-    hiddenimports=[
+    hiddenimports=['game_write_guard', 
         'lz4', 'lz4.block',
         'dmm_parser', 'dmm_parser.dmm_parser', 'dmm_parser.enums',
         'table_layout', 'simple_engine', 'simple_report', 'game_version', 'paz_patcher', 'paz_parse',

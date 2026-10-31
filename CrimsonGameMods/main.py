@@ -201,6 +201,12 @@ def main() -> None:
     _autodetect_locale_if_unset()
 
     _splash("Building main window...")
+    # Since game 2.04 nothing may be written into the game folder (signed pack list).
+    try:
+        import game_write_guard
+        game_write_guard.install()
+    except Exception as e:  # noqa: BLE001
+        print(f"[game_write_guard] install failed: {e}")
     window = MainWindow()
     # The slow part of startup runs here, behind the splash screen, so the
     # window appears only when it can take clicks.
@@ -210,6 +216,10 @@ def main() -> None:
     except Exception as e:  # noqa: BLE001 - the window must still open
         print(f"[startup] Save Editor load failed: {e}")
     _splash_close()
+    try:
+        game_write_guard.attach(window)
+    except Exception as e:  # noqa: BLE001
+        print(f"[game_write_guard] attach failed: {e}")
     window.show()
 
     try:
