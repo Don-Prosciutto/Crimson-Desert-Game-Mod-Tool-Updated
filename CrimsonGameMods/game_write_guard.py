@@ -94,6 +94,8 @@ def switch_off(btn) -> None:
         return
     btn.setEnabled(False)
     btn.setToolTip(MESSAGE)
+    # Some themes draw accent buttons the same when disabled; make "off" visible.
+    btn.setStyleSheet("color: #8a8a8a; background-color: #3a3a3a; border: 1px solid #4a4a4a;")
     # Pages enable their buttons again after loading data; keep this one off.
     btn.setEnabled = lambda *_a, _b=btn: type(_b).setEnabled(_b, False)
     btn._game_write_off = True
