@@ -84,7 +84,7 @@ class StoreEditorTab(QWidget):
         info = QLabel(
             "Edit vendor inventories — swap items, change purchase limits, "
             "then Export Field JSON v3 and load it in DMM. "
-            "DLC items only show up in shops marked [DLC] or [DLC+]; prices come "
+            "DLC items only show up in shops marked [DLC shop] or [DLC items OK]; prices come "
             "from each item's price in the shop's currency."
         )
         info.setWordWrap(True)
@@ -175,8 +175,8 @@ class StoreEditorTab(QWidget):
         # (dlc/<name>/storeinfo). In a base-game shop they stay an empty slot.
         self._store_dlc_only_cb = QCheckBox("Only shops that can sell DLC items")
         self._store_dlc_only_cb.setToolTip(
-            "[DLC]  shop that only exists with the DLC\n"
-            "[DLC+] base-game shop the DLC ships its own version of\n"
+            "[DLC shop]      shop that only exists with the DLC\n"
+            "[DLC items OK]  base-game shop the DLC ships its own version of\n"
             "Shops without a mark (e.g. the black markets) cannot show DLC items -\n"
             "the game leaves those slots empty.")
         self._store_dlc_only_cb.toggled.connect(
@@ -193,7 +193,7 @@ class StoreEditorTab(QWidget):
         sh.setSectionResizeMode(0, QHeaderView.Interactive)
         self._store_list.setColumnWidth(0, 80)
         sh.setSectionResizeMode(1, QHeaderView.Interactive)
-        self._store_list.setColumnWidth(1, 200)
+        self._store_list.setColumnWidth(1, 280)  # room for "[DLC items OK] "
         sh.setSectionResizeMode(2, QHeaderView.Interactive)
         self._store_list.setColumnWidth(2, 60)
         sh.setSectionResizeMode(3, QHeaderView.Interactive)
@@ -331,7 +331,7 @@ class StoreEditorTab(QWidget):
             log.exception("Unhandled exception")
             self._store_status.setText(f"Failed: {e}")
 
-    # ── DLC shops ──────────────────────────────────────────────────────
+    # ── DLC shops ([DLC shop] / [DLC items OK]) ──────────────────────────────────────────────────────
     # Since game 2.04 the DLC ships its own shop table (dlc/<name>/storeinfo):
     # new shops, and its own version of many base-game shops. Tested in game
     # (01.11.2026): DLC items show only in shops of that table; in a base-game
@@ -489,7 +489,7 @@ class StoreEditorTab(QWidget):
             if not display:
                 display = sname.replace("Store_", "").replace("_", " ")
             origin = getattr(self, '_store_origin', {}).get(int(skey), "base")
-            tag = {"dlc_only": "[DLC] ", "dlc_plus": "[DLC+] "}.get(origin, "")
+            tag = {"dlc_only": "[DLC shop] ", "dlc_plus": "[DLC items OK] "}.get(origin, "")
             name_item = QTableWidgetItem(tag + display)
             name_item.setToolTip(sname + {
                 "dlc_only": "\nOnly exists with the DLC - can sell DLC items.",
@@ -718,7 +718,7 @@ class StoreEditorTab(QWidget):
                 self, "DLC item in a base-game shop",
                 f"{new_name} is a DLC item, and {store.get('string_key', '')} is a "
                 f"base-game shop.\n\nThe game does not show DLC items there - the slot "
-                f"would stay empty with price 0.\n\nPick a shop marked [DLC] or [DLC+] "
+                f"would stay empty with price 0.\n\nPick a shop marked [DLC shop] or [DLC items OK] "
                 f"(tick 'Only shops that can sell DLC items' to list them).")
             return
         currency = int(store.get('exchange_item_info_for_buy', 0) or 0)
