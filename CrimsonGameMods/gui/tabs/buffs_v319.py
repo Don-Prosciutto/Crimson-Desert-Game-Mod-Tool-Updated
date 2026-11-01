@@ -62,7 +62,9 @@ _DOCKING_DEFAULTS = {
     "docking_type": 0,
     "is_summoner_team": 0,
     "is_player_only": 0,
-    "is_npc_only": 0,
+    # Game 2.04: is_npc_only is gone, player_condition / owner_condition are new.
+    "player_condition": 0,
+    "owner_condition": 0,
     "is_sync_break_parent": 0,
     "hit_part": 0,
     "detected_by_npc": 0,
@@ -73,14 +75,20 @@ _DOCKING_DEFAULTS = {
     "inherit_summoner": 0,
     "summon_tag_name_hash": [0, 0, 0, 0],
     "animation_root_bone_name": "",
+    "use_cool_time": 0,          # new in game 2.04
 }
+
+# Fields older game versions had and 2.04 no longer knows. Left in a record they
+# become a Field JSON intent the mod loader cannot apply ("skipped intents").
+_DOCKING_REMOVED = ("unk_docking_108", "is_npc_only")
 
 
 def _patch_docking_fields(dcd):
     """Fill 2.01 docking_child_data keys the serializer requires."""
     if not isinstance(dcd, dict):
         return dcd
-    dcd.pop("unk_docking_108", None)
+    for gone in _DOCKING_REMOVED:
+        dcd.pop(gone, None)
     for key, default in _DOCKING_DEFAULTS.items():
         if key not in dcd:
             dcd[key] = default
@@ -4642,7 +4650,6 @@ class ItemBuffsTab(QWidget):
                 "docking_type": 0,
                 "is_summoner_team": 0,
                 "is_player_only": 0,
-                "is_npc_only": 0,
                 "is_sync_break_parent": 0,
                 "hit_part": 0,
                 "detected_by_npc": 0,
@@ -6409,7 +6416,6 @@ class ItemBuffsTab(QWidget):
                 "docking_type": 0,
                 "is_summoner_team": 0,
                 "is_player_only": 0,
-                "is_npc_only": 0,
                 "is_sync_break_parent": 0,
                 "hit_part": 0,
                 "detected_by_npc": 0,
@@ -6449,7 +6455,6 @@ class ItemBuffsTab(QWidget):
                 "docking_type": 0,
                 "is_summoner_team": 0,
                 "is_player_only": 0,
-                "is_npc_only": 0,
                 "is_sync_break_parent": 0,
                 "hit_part": 0,
                 "detected_by_npc": 0,
@@ -6488,7 +6493,6 @@ class ItemBuffsTab(QWidget):
                 "docking_type": 0,
                 "is_summoner_team": 0,
                 "is_player_only": 0,
-                "is_npc_only": 0,
                 "is_sync_break_parent": 0,
                 "hit_part": 0,
                 "detected_by_npc": 0,
@@ -6529,7 +6533,6 @@ class ItemBuffsTab(QWidget):
                 "docking_type": 0,
                 "is_summoner_team": 0,
                 "is_player_only": 0,
-                "is_npc_only": 0,
                 "is_sync_break_parent": 0,
                 "hit_part": 0,
                 "detected_by_npc": 0,
@@ -9296,7 +9299,6 @@ class ItemBuffsTab(QWidget):
                 "docking_type": 0,
                 "is_summoner_team": 0,
                 "is_player_only": 0,
-                "is_npc_only": 0,
                 "is_sync_break_parent": 0,
                 "hit_part": 0,
                 "detected_by_npc": 0,
@@ -9336,7 +9338,6 @@ class ItemBuffsTab(QWidget):
                 "docking_type": 0,
                 "is_summoner_team": 0,
                 "is_player_only": 0,
-                "is_npc_only": 0,
                 "is_sync_break_parent": 0,
                 "hit_part": 0,
                 "detected_by_npc": 0,

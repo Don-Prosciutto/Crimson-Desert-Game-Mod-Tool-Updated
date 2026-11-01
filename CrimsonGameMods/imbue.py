@@ -209,7 +209,6 @@ def build_docking_child_data(target_item: dict, gimmick_info_key: int) -> Option
         'docking_type': int(canonical.get('canonical_docking_type', 0)),
         'is_summoner_team': 0,
         'is_player_only': int(canonical.get('canonical_is_player_only', 0)),
-        'is_npc_only': 0,
         'is_sync_break_parent': 0,
         'hit_part': 0,
         'detected_by_npc': 0,
