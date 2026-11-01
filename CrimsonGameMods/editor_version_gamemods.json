@@ -1,5 +1,5 @@
 {
-  "version": "2.4.0",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.4.0/CrimsonGameMods.exe",
-  "notes": "Game 2.04.03 (DLC) \u2014 new parser, Apply to Game switched off (signed pack list), DLC items and icons in the Save Editor, German names"
+  "version": "2.4.1",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.4.1/CrimsonGameMods.exe",
+  "notes": "Game 2.04.03 \u2014 fixes: 451 skipped intents in ItemBuffs exports, old item list kept after updating"
 }
