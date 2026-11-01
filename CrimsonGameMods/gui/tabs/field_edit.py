@@ -1167,6 +1167,8 @@ class FieldEditTab(QWidget):
         import copy as _copy
         self._charinfo_dlc_items = []
         self._charinfo_dlc_vanilla = []
+        self._charinfo_dlc_all = []       # every DLC-only character (Mesh Swap)
+        self._charinfo_dlc_names = {}     # key -> English name
         try:
             import dmm_parser as _dmp
             from item_db import _dlc_tables
@@ -1186,6 +1188,10 @@ class FieldEditTab(QWidget):
             except Exception as e:  # noqa: BLE001
                 log.warning("DLC mounts of %s not readable: %s", root, e)
                 continue
+            base_keys = {c.get('key') for c in (self._charinfo_dmm_items or [])}
+            known = {c.get('key') for c in self._charinfo_dlc_all}
+            self._charinfo_dlc_all += [c for c in rows
+                                       if c.get('key') not in base_keys and c.get('key') not in known]
             for cd in rows:
                 k = cd.get('key')
                 vi = cd.get('vehicle_info', 0)
@@ -1195,6 +1201,22 @@ class FieldEditTab(QWidget):
                 seen.add(k)
                 self._charinfo_dlc_items.append(cd)
         self._charinfo_dlc_vanilla = _copy.deepcopy(self._charinfo_dlc_items)
+        # Names: character.dlc_01.paloc, entry (character_key << 32) | 0x30
+        try:
+            for root, d, fname in _dlc_tables(_dmp, game_path, "0020", "character.", ".paloc"):
+                if not d.rstrip('/').endswith('/eng'):
+                    continue
+                b = bytes(_dmp.extract_file(root, "0020", d, fname))
+                if hasattr(_dmp, 'paloc_is_container') and _dmp.paloc_is_container(b):
+                    b = bytes(_dmp.unwrap_paloc_container(b))
+                strings = {int(e['string_key']): e['string_value']
+                           for e in _dmp.parse_paloc_bytes(b) if str(e['string_key']).isdigit()}
+                for c in self._charinfo_dlc_all:
+                    n = strings.get((int(c['key']) << 32) | 0x30)
+                    if n:
+                        self._charinfo_dlc_names[int(c['key'])] = n
+        except Exception as e:  # noqa: BLE001
+            log.warning("DLC character names not loaded: %s", e)
         for cd in self._charinfo_dlc_items:
             sk = cd.get('string_key', '')
             self._charinfo_mount_entries.append({
@@ -2862,6 +2884,26 @@ class FieldEditTab(QWidget):
                 "generate it (6872 characters expected).")
             return
 
+        # Characters only a DLC has (sharks, orca, Leviakan ...), marked [DLC].
+        _known_ck = {int(c.get('character_key', 0)) for c in catalog}
+        for cd in getattr(self, '_charinfo_dlc_all', None) or []:
+            ck = int(cd.get('key', 0))
+            if ck in _known_ck:
+                continue
+            sk = cd.get('string_key', '') or ''
+            if cd.get('vehicle_info', 0) or sk.startswith('Riding_'):
+                cat = 'Mount'
+            elif sk.startswith(('Boss_', 'MiddleBoss_')):
+                cat = 'Boss'
+            elif sk.startswith('Animal_'):
+                cat = 'Animal'
+            else:
+                cat = 'Other'
+            name = getattr(self, '_charinfo_dlc_names', {}).get(ck, '')
+            catalog.append({'character_key': ck, 'internal_name': sk,
+                            'display_name': '[DLC] ' + (name or sk),
+                            'category': cat, '_dlc': True})
+
         # Load the authoritative pet catalog (derived from Ghost Hunter's
         # PetRenamerMod v1.2.0 — 40 named pets/mounts × 216 char_keys).
         pet_keys: dict[int, str] = {}  # char_key -> group ('Horse'/'Dog'/'Cat'/'Special Mount')
@@ -3249,7 +3291,11 @@ class FieldEditTab(QWidget):
         scale_spin.setSingleStep(0.01)
         scale_spin.setDecimals(3)
         scale_spin.setValue(1.0)
-        scale_spin.setToolTip("Character scale (1.0 = default size, <1.0 = shrink, >1.0 = enlarge)")
+        scale_spin.setToolTip(
+            "Size of the swapped model: 1.0 = the normal size of the SOURCE,\n"
+            "0.5 = half of it, 2.0 = twice. Written to character_scale in the\n"
+            "Field JSON. With 'Scale Only' (same target and source) it is the\n"
+            "character's own size.")
         scale_only_btn = QPushButton(tr("Scale Only"))
         export_field_btn = QPushButton(tr("Export Field JSON v3"))
         export_field_btn.setToolTip(
@@ -3270,7 +3316,7 @@ class FieldEditTab(QWidget):
 
         # ── Mount options row: scale + rideable ──
         mount_row = QHBoxLayout()
-        mount_row.addWidget(QLabel("Scale (1.0=default):"))
+        mount_row.addWidget(QLabel("Size (1.0 = source's normal size):"))
         mount_row.addWidget(scale_spin)
         mount_row.addWidget(scale_only_btn)
         mount_row.addSpacing(20)
@@ -3608,6 +3654,15 @@ class FieldEditTab(QWidget):
             _by_nkey_efj: dict[int, dict] = {
                 int(e.get("key", 0)): e for e in _entries_efj
             }
+            # Characters only a DLC has (from characterinfo.dlc_01).
+            _dlc_keys_efj: set[int] = set()
+            for _de in getattr(self, '_charinfo_dlc_all', None) or []:
+                _dk = int(_de.get("key", 0))
+                if _dk not in _by_nkey_efj:
+                    _by_nkey_efj[_dk] = _de
+                    _dlc_keys_efj.add(_dk)
+                    if _de.get("string_key") and _de["string_key"] not in _by_skey_efj:
+                        _by_skey_efj[_de["string_key"]] = _de
 
             # ── Compatibility pre-check ──────────────────────────────────────
             # Check all swaps for skeleton mismatches and cross-type issues
@@ -3670,14 +3725,20 @@ class FieldEditTab(QWidget):
             # ── Build intents ────────────────────────────────────────────────
             intents = []
             skipped = []
+            needs_dlc = False
+
+            def _f2u(x: float) -> int:
+                return struct.unpack('<I', struct.pack('<f', float(x)))[0]
+
+            def _u2f(u) -> float:
+                return struct.unpack('<f', struct.pack('<I', int(u) & 0xFFFFFFFF))[0]
+
             for sw in queue:
                 try:
                     tgt_ck = int(sw["tgt"])
                     src_ck = int(sw["src"])
                 except (KeyError, TypeError, ValueError):
                     skipped.append(str(sw))
-                    continue
-                if tgt_ck == src_ck:
                     continue
 
                 tgt_name = _ck_to_name.get(tgt_ck, "")
@@ -3691,6 +3752,30 @@ class FieldEditTab(QWidget):
                 if not tgt_e or not src_e:
                     skipped.append(tgt_name or f"key {tgt_ck}")
                     continue
+
+                # Size: the source's normal size x the factor (character_scale
+                # is a float; dmm_parser shows its raw 32 bits).
+                factor = float(sw.get("scale") or 1.0)
+                src_scale = src_e.get("character_scale")
+                tgt_scale = tgt_e.get("character_scale")
+                if src_scale is not None and tgt_scale is not None:
+                    new_scale = _f2u(_u2f(src_scale) * factor)
+                    if new_scale != int(tgt_scale):
+                        intents.append({
+                            "entry": tgt_e.get("string_key", tgt_name),
+                            "key": int(tgt_e.get("key", tgt_ck)),
+                            "field": "character_scale",
+                            "op": "set",
+                            "new": new_scale,
+                            "_comment": (f"size {_u2f(src_scale) * factor:g} "
+                                         f"({factor:g} x normal size of {src_name or src_ck})"),
+                        })
+                        if tgt_ck in _dlc_keys_efj:
+                            needs_dlc = True
+                if tgt_ck == src_ck:
+                    continue
+                if tgt_ck in _dlc_keys_efj or src_ck in _dlc_keys_efj:
+                    needs_dlc = True      # DLC model or DLC character
 
                 src_vis   = src_e.get("lookup_22")        # _appearanceName — visual mesh
                 tgt_vis   = tgt_e.get("lookup_22")
@@ -3818,6 +3903,9 @@ class FieldEditTab(QWidget):
                     }
                 ],
             }
+            if needs_dlc:
+                # DMM skips the mod with a clear message for players without the DLC.
+                doc["modinfo"]["requires_dlc"] = True
             try:
                 with open(path, "w", encoding="utf-8") as _fh_efj:
                     _json_efj.dump(doc, _fh_efj, indent=2,
@@ -3827,6 +3915,8 @@ class FieldEditTab(QWidget):
                 )
                 if skipped:
                     msg2 += f"\n\nSkipped: {', '.join(skipped)}"
+                if needs_dlc:
+                    msg2 += "\n\nUses DLC characters: the mod needs the DLC."
                 QMessageBox.information(dlg, tr("Export Field JSON v3"),
                     f"{msg2}\n\nFile: {_os_efj.path.basename(path)}")
             except Exception as _e3_efj:
