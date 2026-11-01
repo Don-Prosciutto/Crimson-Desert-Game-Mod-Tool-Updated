@@ -219,7 +219,8 @@ class StoreEditorTab(QWidget):
         #   x the shop's price factor x the offer's Buy %.
         # Checked in game: Hernand fishing shop (70 %): Natural Pearl 50000 -> 350.00,
         # Ricefish 45 -> 32. The game shows amounts from 100 on as x.yz.
-        for col, tip in ((5, "The item's own price in this shop's currency."),
+        for col, tip in ((5, "The item's own price in this shop's currency, shown like the game\n"
+                             "shows money (from 100 on as x.yz: 50000 -> 500.00)."),
                          (6, "What the shop asks in game: base price x shop factor x Buy %.\n"
                              "From 100 on the game shows it as x.yz (e.g. 35000 -> 350.00)."),
                          (7, "Price factor of this offer for buying, in %. 100 = normal.\n"
@@ -636,7 +637,10 @@ class StoreEditorTab(QWidget):
                     game_w.setForeground(QBrush(QColor(COLORS['error'])))
                     game_w.setToolTip("No price in this shop's currency - shows as 0 in game.")
             else:
-                base_w.setData(Qt.DisplayRole, base)
+                # Same format as the game and the In Game column: 50000 -> 500.00
+                base_w.setText(_store_format_price(base))
+                base_w.setToolTip(f"Base price {_store_format_price(base)} "
+                                  f"(raw value {base}) in this shop's currency")
                 # integer maths: 45 x 70 % must give 31.5 -> 32 like the game, not 31.49999
                 game_w.setText(_store_format_price(base * shop_raw * int(buy_price), 10**12))
             base_w.setFlags(non_editable_flags)
