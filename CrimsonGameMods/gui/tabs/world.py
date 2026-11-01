@@ -210,10 +210,24 @@ class StoreEditorTab(QWidget):
         items_vlayout.addWidget(QLabel(tr("Items in Store:")))
 
         self._store_items_table = QTableWidget()
-        self._store_items_table.setColumnCount(7)
+        self._store_items_table.setColumnCount(9)
         self._store_items_table.setHorizontalHeaderLabels([
-            "", "Key", "Item Name", "Category", "Limit", "Buy Price", "Sell Price"
+            "", "Key", "Item Name", "Category", "Limit",
+            "Base Price", "In Game", "Buy %", "Sell %",
         ])
+        # Price in the shop = item's base price (in the shop's currency)
+        #   x the shop's price factor x the offer's Buy %.
+        # Checked in game: Hernand fishing shop (70 %): Natural Pearl 50000 -> 350.00,
+        # Ricefish 45 -> 32. The game shows amounts from 100 on as x.yz.
+        for col, tip in ((5, "The item's own price in this shop's currency."),
+                         (6, "What the shop asks in game: base price x shop factor x Buy %.\n"
+                             "From 100 on the game shows it as x.yz (e.g. 35000 -> 350.00)."),
+                         (7, "Price factor of this offer for buying, in %. 100 = normal.\n"
+                             "Double-click to change (e.g. 50 = half price)."),
+                         (8, "Price factor of this offer for selling to the shop, in %.")):
+            hi = self._store_items_table.horizontalHeaderItem(col)
+            if hi is not None:
+                hi.setToolTip(tip)
         self._store_items_table.setEditTriggers(
             QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed
         )
@@ -238,6 +252,10 @@ class StoreEditorTab(QWidget):
         self._store_items_table.setColumnWidth(5, 80)
         ih.setSectionResizeMode(6, QHeaderView.Interactive)
         self._store_items_table.setColumnWidth(6, 80)
+        ih.setSectionResizeMode(7, QHeaderView.Interactive)
+        self._store_items_table.setColumnWidth(7, 60)
+        ih.setSectionResizeMode(8, QHeaderView.Interactive)
+        self._store_items_table.setColumnWidth(8, 60)
         row_h = max(ICON_SIZE + 6, 28) if self._icons_enabled else 24
         self._store_items_table.verticalHeader().setDefaultSectionSize(row_h)
         items_vlayout.addWidget(self._store_items_table)
@@ -558,6 +576,14 @@ class StoreEditorTab(QWidget):
         non_editable_flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
         editable_flags = non_editable_flags | Qt.ItemIsEditable
 
+        currency = int(store.get('exchange_item_info_for_buy', 0) or 0)
+        factors = store.get('price_increase_percent_list') or []
+        shop_raw = int(factors[0]) if factors and 0 < int(factors[0]) < 10**9 else 1_000_000
+        shop_factor = shop_raw / 1_000_000
+        self._store_status.setText(
+            f"{store.get('string_key', '')}: prices in {self._store_currency_name(store)}, "
+            f"shop price factor {shop_factor * 100:.0f} %")
+
         for row, stock in enumerate(stock_list):
             item_key = self._store_get_stock_item_key(stock)
             buy_price = stock.get('raw_a', 0)
@@ -599,17 +625,36 @@ class StoreEditorTab(QWidget):
             limit_w.setToolTip("Double-click to edit purchase limit")
             table.setItem(row, 4, limit_w)
 
+            plain = isinstance(stock.get('value'), dict) and stock['value'].get('disc') == 0
+            base = self._store_item_price(item_key, currency) if (currency and plain) else None
+            base_w = QTableWidgetItem()
+            game_w = QTableWidgetItem()
+            if base is None:
+                base_w.setText("\u2014" if not plain else "none")
+                game_w.setText("\u2014" if not plain else "0")
+                if plain:
+                    game_w.setForeground(QBrush(QColor(COLORS['error'])))
+                    game_w.setToolTip("No price in this shop's currency - shows as 0 in game.")
+            else:
+                base_w.setData(Qt.DisplayRole, base)
+                # integer maths: 45 x 70 % must give 31.5 -> 32 like the game, not 31.49999
+                game_w.setText(_store_format_price(base * shop_raw * int(buy_price), 10**12))
+            base_w.setFlags(non_editable_flags)
+            game_w.setFlags(non_editable_flags)
+            table.setItem(row, 5, base_w)
+            table.setItem(row, 6, game_w)
+
             buy_w = QTableWidgetItem()
-            buy_w.setData(Qt.DisplayRole, buy_price)
+            buy_w.setData(Qt.DisplayRole, round(buy_price / 10_000, 2))
             buy_w.setFlags(editable_flags)
-            buy_w.setToolTip("Double-click to edit buy price")
-            table.setItem(row, 5, buy_w)
+            buy_w.setToolTip("Buy price factor in % (100 = normal). Double-click to edit.")
+            table.setItem(row, 7, buy_w)
 
             sell_w = QTableWidgetItem()
-            sell_w.setData(Qt.DisplayRole, sell_price)
+            sell_w.setData(Qt.DisplayRole, round(sell_price / 10_000, 2))
             sell_w.setFlags(editable_flags)
-            sell_w.setToolTip("Double-click to edit sell price")
-            table.setItem(row, 6, sell_w)
+            sell_w.setToolTip("Sell price factor in % (100 = normal). Double-click to edit.")
+            table.setItem(row, 8, sell_w)
 
         table.setSortingEnabled(True)
         self._store_suppress_cell_edit = False
@@ -618,7 +663,7 @@ class StoreEditorTab(QWidget):
         if getattr(self, '_store_suppress_cell_edit', False):
             return
         col = cell.column()
-        if col not in (4, 5, 6):
+        if col not in (4, 7, 8):
             return
         if not hasattr(self, '_store_dmm') or not self._store_dmm:
             return
@@ -635,12 +680,17 @@ class StoreEditorTab(QWidget):
 
         raw = cell.data(Qt.DisplayRole)
         try:
-            new_val = int(raw)
+            if col == 4:
+                new_val = int(raw)
+            else:
+                # Buy % / Sell % -> stored as millionths (100 % = 1000000)
+                new_val = int(round(float(str(raw).replace(',', '.').rstrip('%')) * 10_000))
             if new_val < 0:
                 raise ValueError
         except (TypeError, ValueError):
             self._store_suppress_cell_edit = True
-            orig = {4: stock.get('raw_c', 0), 5: stock.get('raw_a', 0), 6: stock.get('raw_b', 0)}[col]
+            orig = {4: stock.get('raw_c', 0), 7: round(stock.get('raw_a', 0) / 10_000, 2),
+                    8: round(stock.get('raw_b', 0) / 10_000, 2)}[col]
             cell.setData(Qt.DisplayRole, orig)
             self._store_suppress_cell_edit = False
             return
@@ -653,21 +703,23 @@ class StoreEditorTab(QWidget):
                 cell.setForeground(QBrush(QColor(COLORS['success'])))
             else:
                 cell.setForeground(QBrush(QColor(COLORS['text'])))
-        elif col == 5:
-            if new_val > 0xFFFFFFFFFFFFFFFF:
-                new_val = 0xFFFFFFFFFFFFFFFF
-            stock['raw_a'] = new_val
-        elif col == 6:
-            if new_val > 0xFFFFFFFFFFFFFFFF:
-                new_val = 0xFFFFFFFFFFFFFFFF
-            stock['raw_b'] = new_val
+        elif col == 7:
+            stock['raw_a'] = min(new_val, 0xFFFFFFFFFFFFFFFF)
+        elif col == 8:
+            stock['raw_b'] = min(new_val, 0xFFFFFFFFFFFFFFFF)
 
         self._store_update_change_count(1)
         item_key = self._store_get_stock_item_key(stock)
-        col_name = {4: 'limit', 5: 'buy price', 6: 'sell price'}[col]
-        self._store_status.setText(
-            f"Set {col_name}={new_val} on {self._store_get_item_name(item_key)}"
-        )
+        col_name = {4: 'limit', 7: 'buy %', 8: 'sell %'}[col]
+        if col == 7:
+            # refresh the In Game column (deferred: we are inside itemChanged)
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, self._store_selected)
+        shown = new_val if col == 4 else f"{new_val / 10_000:g} %"
+        msg = f"Set {col_name}={shown} on {self._store_get_item_name(item_key)}"
+        self._store_status.setText(msg)
+        if col == 7:
+            QTimer.singleShot(0, lambda m=msg: self._store_status.setText(m))
 
     def _store_stock_index(self, view_row: int) -> int:
         """Position in stock_data_list for a table row. The table can be
@@ -1369,6 +1421,14 @@ class StoreEditorTab(QWidget):
                 f"Exported {len(intents)} field-level intents.\n\nFile: {path}")
         except Exception as e:
             QMessageBox.critical(self, "Export Failed", str(e))
+
+
+def _store_format_price(numerator: int, denominator: int = 1) -> str:
+    """A price the way the game shows it: below 100 as a whole number, from
+    100 on divided by 100 with two decimals (35000 -> 350.00).
+    Rounded half up like the game (45 x 70 % = 31.5 -> 32)."""
+    v = (2 * int(numerator) + int(denominator)) // (2 * int(denominator))
+    return str(v) if v < 100 else f"{v / 100:.2f}"
 
 
 def _store_field_diff(entry, key, path, a, b):
