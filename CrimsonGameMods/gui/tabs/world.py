@@ -259,6 +259,13 @@ class StoreEditorTab(QWidget):
         add_btn.clicked.connect(self._store_add_item)
         edit_row.addWidget(add_btn)
 
+        remove_btn = QPushButton("Remove Added")
+        remove_btn.setToolTip(
+            "Take offers you added with 'Add Item' out again (before exporting).\n"
+            "The shop's own offers stay - to hide one of those, set its limit to 0.")
+        remove_btn.clicked.connect(self._store_remove_added)
+        edit_row.addWidget(remove_btn)
+
         edit_row.addWidget(QLabel(tr("Set Limit:")))
         self._store_limit_spin = QSpinBox()
         self._store_limit_spin.setRange(0, 99999)
@@ -762,6 +769,43 @@ class StoreEditorTab(QWidget):
             self._store_selected()
         else:
             QMessageBox.warning(self, tr("Swap Failed"), tr("Could not swap any items."))
+
+    def _store_vanilla_len(self, store) -> int:
+        """Number of offers the shop has in the game (before any change here)."""
+        key = store.get('key')
+        for lst in (getattr(self, '_store_dlc_vanilla', None) or [], self._store_dmm_vanilla or []):
+            for s in lst:
+                if s.get('key') == key:
+                    return len(s.get('stock_data_list') or [])
+        return len(store.get('stock_data_list') or [])
+
+    def _store_remove_added(self) -> None:
+        store = self._store_get_selected_store()
+        if not store:
+            QMessageBox.warning(self, "Remove Added", tr("Select a store first."))
+            return
+        rows = self._store_get_selected_items()
+        n0 = self._store_vanilla_len(store)
+        added = [r for r in rows if r >= n0]
+        if not added:
+            QMessageBox.information(
+                self, "Remove Added",
+                "Only offers added with 'Add Item' can be taken out here.\n\n"
+                "To hide one of the shop's own offers, select it and set its limit "
+                "to 0 ('Set Limit' 0, 'Apply Limit') - it disappears at the next restock.")
+            return
+        stock_list = store.get('stock_data_list') or []
+        names = []
+        for r in sorted(added, reverse=True):
+            if r < len(stock_list):
+                names.append(self._store_get_item_name(self._store_get_stock_item_key(stock_list[r])))
+                del stock_list[r]
+        # keep the slot numbers of the remaining added offers consecutive
+        for i in range(n0, len(stock_list)):
+            stock_list[i]['raw_d'] = i
+        self._store_update_change_count(-len(names))
+        self._store_selected()
+        self._store_status.setText(f"Removed {len(names)} added offer(s): {', '.join(reversed(names))}")
 
     def _store_add_item(self) -> None:
         """Append an item as a new offer (DMM op array_append).
