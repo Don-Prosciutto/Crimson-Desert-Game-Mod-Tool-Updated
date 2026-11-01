@@ -618,12 +618,13 @@ class StoreEditorTab(QWidget):
             key_cell.setFlags(non_editable_flags)
             table.setItem(row, 1, key_cell)
 
-            # Entry type: 0 = a normal buy offer (what the shop sells, shown in
-            # its Buy list). The other types are special entries the shop's Buy
-            # list does not show as offers (type 3 in the fishing shops even
-            # names creatures such as Electric Eel or Sailfish; type 9 holds the
-            # furniture shops' pieces). Listed, but not editable here - another
-            # entry type on a normal slot crashed the game in a test.
+            # Entry type: 0 = a normal buy offer (what the shop sells; the Buy
+            # list shows 'buyable_stock_count' of them). Type 3 = what the shop
+            # buys from you ('sellable_stock_count' of them - e.g. the fishing
+            # shops' fish and creatures such as Electric Eel). Other types
+            # (9 furniture pieces, 1 skills) are special. All but type 0 are
+            # listed, not editable - another entry type on a normal slot crashed
+            # the game in a test.
             disc = stock.get('value', {}).get('disc') if isinstance(stock.get('value'), dict) else None
             plain = disc == 0
             name = self._store_get_item_name(item_key)
@@ -631,7 +632,7 @@ class StoreEditorTab(QWidget):
                 name = self._store_character_name(item_key) or name
             cat = self._name_db.get_category(item_key) if hasattr(self, '_name_db') else ""
             if not plain:
-                cat = f"special (type {disc})"
+                cat = "shop buys this" if disc == 3 else f"special (type {disc})"
             color = QColor(CATEGORY_COLORS.get(cat, COLORS["text"])) if plain else QColor(COLORS['text_dim'])
             name_w = QTableWidgetItem(name)
             name_w.setForeground(QBrush(color))
@@ -885,6 +886,9 @@ class StoreEditorTab(QWidget):
         for r in sorted(added, reverse=True):
             if r < len(stock_list):
                 names.append(self._store_get_item_name(self._store_get_stock_item_key(stock_list[r])))
+                if (stock_list[r].get('value') or {}).get('disc') == 0:
+                    store['buyable_stock_count'] = max(
+                        0, int(store.get('buyable_stock_count', 0) or 0) - 1)
                 del stock_list[r]
         # keep the slot numbers of the remaining added offers consecutive
         for i in range(n0, len(stock_list)):
@@ -965,6 +969,12 @@ class StoreEditorTab(QWidget):
         entry['effect_list'] = []
         entry['lookup_a'] = skey
         stock_list.append(entry)
+        # The Buy list shows only 'buyable_stock_count' offers - without
+        # raising it the new offer stays in the shop's stock (map > stock
+        # status) but never shows in the Buy list. Tested in game 01.11.2026
+        # (Hernand fishing shop: 7 -> the 8th offer was cut off).
+        # Expanded Vendor Inventory raises it the same way.
+        store['buyable_stock_count'] = int(store.get('buyable_stock_count', 0) or 0) + 1
         self._store_update_change_count()
         self._store_selected()
         self._store_status.setText(
@@ -1417,6 +1427,11 @@ class StoreEditorTab(QWidget):
                         v_add = ((it.get('value') or {}).get('value') or {}) if it.get('op') == 'array_append' else {}
                         if v_add.get('raw_q') in dlc_items:
                             needs_dlc = True
+                    if field != 'stock_data_list' and origin == "dlc_plus" and \
+                            (base_van.get(ikey) or {}).get(field) != van.get(field):
+                        # e.g. buyable_stock_count: the base copy starts from a
+                        # different value, the number written would be wrong there
+                        needs_dlc = True
                     if field == 'stock_data_list':
                         b = (base_van.get(ikey) or {}).get('stock_data_list') or []
                         v = van.get('stock_data_list') or []
