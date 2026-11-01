@@ -19,17 +19,112 @@ def _exe_dir() -> str:
     )
 
 
+# A writable copy of the database lives beside the EXE once anything was saved
+# to it (a renamed item, a sync). It used to win over the database inside the
+# EXE forever - so after an update the tool kept showing the old item list
+# (no DLC items after v2.4.0). The database now carries a data_version in a
+# meta table; a copy older than the bundled one is rebuilt from the bundled
+# one, keeping item keys only the copy knows (items the user added).
+_META_TABLE = "meta"
+_VERSION_KEY = "data_version"
+_refresh_checked = False      # the check runs once per start, not per lookup
+
+
+def _version_tuple(text: str) -> tuple:
+    out = []
+    for part in str(text or "").replace("-", ".").split("."):
+        try:
+            out.append(int(part))
+        except ValueError:
+            break
+    return tuple(out)
+
+
+def _data_version_of(conn: sqlite3.Connection) -> str:
+    try:
+        row = conn.execute(
+            f"SELECT value FROM {_META_TABLE} WHERE key = ?", (_VERSION_KEY,)).fetchone()
+        return str(row[0]) if row else ""
+    except sqlite3.Error:
+        return ""
+
+
+def _bundled_bytes(path: str, compressed: bool) -> bytes:
+    if compressed:
+        with gzip.open(path, "rb") as f:
+            return f.read()
+    with open(path, "rb") as f:
+        return f.read()
+
+
+def _refresh_local_copy(local: str, bundled: str, compressed: bool) -> None:
+    """Replace an outdated beside-the-EXE copy with the bundled database."""
+    import logging
+    log = logging.getLogger(__name__)
+    try:
+        src = sqlite3.connect(":memory:")
+        src.deserialize(_bundled_bytes(bundled, compressed))
+        new_ver = _data_version_of(src)
+        old = sqlite3.connect(f"file:{local}?mode=ro", uri=True)
+        old_ver = _data_version_of(old)
+        if new_ver and _version_tuple(old_ver) >= _version_tuple(new_ver):
+            old.close()
+            src.close()
+            return
+        tmp = local + ".new"
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        dst = sqlite3.connect(tmp)
+        src.backup(dst)
+        src.close()
+        # Items only the old copy has (added by the user) stay.
+        kept = 0
+        try:
+            have = {r[0] for r in dst.execute("SELECT item_key FROM items")}
+            cols = [r[1] for r in old.execute("PRAGMA table_info(items)")]
+            rows = [r for r in old.execute(f"SELECT {', '.join(cols)} FROM items")
+                    if r[0] not in have]
+            if rows:
+                dst.executemany(
+                    f"INSERT OR IGNORE INTO items ({', '.join(cols)}) "
+                    f"VALUES ({', '.join('?' * len(cols))})", rows)
+                kept = len(rows)
+            dst.commit()
+        except sqlite3.Error as e:
+            log.warning("Item database refresh: own items not carried over: %s", e)
+        dst.close()
+        old.close()
+        backup = f"{local}.old-{old_ver or 'unversioned'}"
+        if os.path.exists(backup):
+            os.remove(backup)
+        os.replace(local, backup)
+        os.replace(tmp, local)
+        log.info("Item database beside the EXE was %s, refreshed to %s (%d own item(s) kept, "
+                 "old copy: %s)", old_ver or "unversioned", new_ver, kept, backup)
+    except Exception as e:  # noqa: BLE001 - never block start-up
+        log.warning("Item database beside the EXE could not be refreshed: %s", e)
+
+
 def _resolve() -> tuple[str, bool]:
     exe    = _exe_dir()
     meipass = getattr(sys, "_MEIPASS", exe)
     dev    = os.path.dirname(os.path.abspath(__file__))
 
-    candidates = [
-        (os.path.join(exe,     DB_FILENAME),  False),
+    local = os.path.join(exe, DB_FILENAME)
+    bundled = [
         (os.path.join(meipass, DBZ_FILENAME), True),
         (os.path.join(meipass, DB_FILENAME),  False),
         (os.path.join(dev,     DB_FILENAME),  False),
     ]
+    global _refresh_checked
+    if not _refresh_checked and os.path.isfile(local):
+        _refresh_checked = True
+        for path, compressed in bundled:
+            if os.path.isfile(path) and os.path.normcase(os.path.abspath(path)) != \
+                    os.path.normcase(os.path.abspath(local)):
+                _refresh_local_copy(local, path, compressed)
+                break
+    candidates = [(local, False)] + bundled
     for path, compressed in candidates:
         if os.path.isfile(path):
             return path, compressed

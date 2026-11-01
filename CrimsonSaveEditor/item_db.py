@@ -32,6 +32,18 @@ class ItemNameDB:
         self.load_auto()
 
     def load_auto(self) -> str:
+        # A refreshed copy beside the EXE used to win over the bundled list
+        # forever, so after an update the editor kept the old items (no DLC
+        # items after v2.4.0). Built from an older game than the bundled list,
+        # it is replaced by the bundled one; item keys only it has stay.
+        local = SEARCH_PATHS[0]
+        if os.path.isfile(local):
+            for bundled in SEARCH_PATHS[1:]:
+                if os.path.isfile(bundled) and os.path.normcase(os.path.abspath(bundled)) != \
+                        os.path.normcase(os.path.abspath(local)):
+                    if self._replace_outdated_local(local, bundled):
+                        return local
+                    break
         for path in SEARCH_PATHS:
             if os.path.isfile(path):
                 self.load(path)
@@ -39,6 +51,55 @@ class ItemNameDB:
                     return path
 
         return ""
+
+    @staticmethod
+    def _version_tuple(text: str) -> tuple:
+        out = []
+        for part in str(text or "").split("."):
+            try:
+                out.append(int(part))
+            except ValueError:
+                break
+        return tuple(out)
+
+    def _replace_outdated_local(self, local: str, bundled: str) -> bool:
+        """Load the bundled list instead of an older local copy. True if done."""
+        try:
+            with open(local, "r", encoding="utf-8") as f:
+                old = json.load(f)
+            with open(bundled, "r", encoding="utf-8") as f:
+                new = json.load(f)
+        except (OSError, ValueError):
+            return False
+        old_ver = str(old.get("gameVersion", "") or "")
+        new_ver = str(new.get("gameVersion", "") or "")
+        if not new_ver or self._version_tuple(old_ver) >= self._version_tuple(new_ver):
+            return False
+        self.load(bundled)
+        kept = 0
+        for entry in old.get("items", []):
+            key = entry.get("itemKey", 0)
+            if key > 0 and key not in self.items:
+                self.items[key] = ItemInfo(
+                    item_key=key, name=entry.get("name", ""),
+                    internal_name=entry.get("internalName", ""),
+                    category=entry.get("category", "Misc"),
+                    max_stack=entry.get("maxStack", 0))
+                kept += 1
+        try:
+            backup = f"{local}.old-{old_ver or 'unversioned'}"
+            if os.path.exists(backup):
+                os.remove(backup)
+            os.replace(local, backup)
+        except OSError:
+            pass
+        self.loaded_path = local
+        self.save()
+        import logging
+        logging.getLogger(__name__).info(
+            "Item list beside the EXE was from game %s, replaced by the bundled one for %s "
+            "(%d own item(s) kept)", old_ver or "unknown", new_ver, kept)
+        return True
 
     def load(self, path: str) -> None:
         self.items.clear()
