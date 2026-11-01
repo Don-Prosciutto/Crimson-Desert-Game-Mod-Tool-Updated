@@ -25,6 +25,56 @@ def _iteminfo_serialize(items):
     except Exception:
         import crimson_rs
         return crimson_rs.serialize_iteminfo(items)
+
+
+# Items only a DLC has (dlc/<name>/ since game 2.04). ItemBuffs loads them
+# beside the main table so they can be edited and exported as Field JSON;
+# DMM applies those edits to the DLC's own table. They must never end up in
+# a complete main table written out (legacy exports), so every such writer
+# filters them with _without_dlc().
+_DLC_ONLY_KEYS: set = set()
+
+
+def _without_dlc(items):
+    if not _DLC_ONLY_KEYS:
+        return items
+    return [it for it in items if int(it.get('key') or 0) not in _DLC_ONLY_KEYS]
+
+
+def _dlc_item_records(game_path: str, known_keys: set) -> tuple:
+    """Raw iteminfo records of every installed DLC whose key the main table
+    does not have. Returns (bytes of the records back to back, set of keys)."""
+    import struct as _st
+    try:
+        import dmm_parser
+        from item_db import _dlc_tables
+    except Exception:
+        return b"", set()
+    out = bytearray()
+    keys = set()
+    for root, d, hname in _dlc_tables(dmm_parser, game_path, "0008",
+                                      "iteminfo.", ".staticinfoheader"):
+        bname = hname[:-len(".staticinfoheader")] + ".staticinfobody"
+        try:
+            h = bytes(dmm_parser.extract_file(root, "0008", d, hname))
+            b = bytes(dmm_parser.extract_file(root, "0008", d, bname))
+        except Exception as e:
+            log.warning("DLC iteminfo %s not readable: %s", root, e)
+            continue
+        count = _st.unpack_from('<H', h, 0)[0] if len(h) >= 2 else 0
+        if not count or len(h) < 2 + count * 8:
+            continue
+        ents = sorted((_st.unpack_from('<I', h, 2 + i * 8 + 4)[0],
+                       _st.unpack_from('<I', h, 2 + i * 8)[0]) for i in range(count))
+        for i, (off, key) in enumerate(ents):
+            end = ents[i + 1][0] if i + 1 < len(ents) else len(b)
+            if key in known_keys or key in keys or off >= end:
+                continue
+            out.extend(b[off:end])
+            keys.add(key)
+        log.info("DLC items from %s: %d of %d not in the main table",
+                 os.path.basename(root), len(keys), count)
+    return bytes(out), keys
 import sys
 import tempfile
 import traceback
@@ -3318,6 +3368,26 @@ class ItemBuffsTab(QWidget):
         try:
             import time
             raw, _buff_source = self._buff_extract_iteminfo_preferring_overlay()
+            # DLC items (dlc/<name>/) go behind the main table, so search,
+            # editing and the Field JSON export see them like any other item.
+            _DLC_ONLY_KEYS.clear()
+            self._buff_dlc_keys = set()
+            try:
+                import dmm_parser as _dmp_keys
+                _known = {int(it['key']) for it in _dmp_keys.parse_iteminfo_from_bytes(bytes(raw))}
+                _dlc_raw, _dlc_keys = _dlc_item_records(self._buff_patcher.game_path, _known)
+                if _dlc_raw:
+                    _probe = _dmp_keys.parse_iteminfo_from_bytes(bytes(raw) + _dlc_raw)
+                    if len(_probe) == len(_known) + len(_dlc_keys):
+                        raw = bytes(raw) + _dlc_raw
+                        _DLC_ONLY_KEYS.update(_dlc_keys)
+                        self._buff_dlc_keys = set(_dlc_keys)
+                        _buff_source = f"{_buff_source} + DLC ({len(_dlc_keys)} items)"
+                    else:
+                        log.warning("DLC items left out: combined table read back %d of %d records",
+                                    len(_probe), len(_known) + len(_dlc_keys))
+            except Exception as _dlc_err:
+                log.warning("DLC items not loaded: %s", _dlc_err)
             self._buff_data = bytearray(raw)
             self._buff_modified = False
 
@@ -3707,6 +3777,8 @@ class ItemBuffsTab(QWidget):
             table.setItem(row, 0, icon_cell)
 
             display_name = _labels[item.item_key]
+            if item.item_key in _DLC_ONLY_KEYS:
+                display_name = f"{display_name}  [DLC]"
             name_cell = QTableWidgetItem(display_name)
             name_cell.setToolTip(f"Internal: {item.name}\nKey: {item.item_key}")
             name_cell.setData(Qt.UserRole, item)
@@ -3836,6 +3908,8 @@ class ItemBuffsTab(QWidget):
             table.setItem(row, 0, icon_cell)
 
             display_name = _labels[item.item_key]
+            if item.item_key in _DLC_ONLY_KEYS:
+                display_name = f"{display_name}  [DLC]"
             name_cell = QTableWidgetItem(display_name)
             tip = f"Internal: {item.name}\nKey: {item.item_key}"
             rust_info = self._buff_rust_lookup.get(item.item_key)
@@ -4844,7 +4918,7 @@ class ItemBuffsTab(QWidget):
         if skipped:
             log.warning("Transmog: %d swap(s) skipped", skipped)
         if applied:
-            new_data = _iteminfo_serialize(self._buff_rust_items)
+            new_data = _iteminfo_serialize(_without_dlc(self._buff_rust_items))
             final_data.clear()
             final_data.extend(new_data)
             log.info("Transmog: applied %d field-level swap(s), re-serialized %d bytes",
@@ -9523,6 +9597,10 @@ class ItemBuffsTab(QWidget):
             ikey = item.get('key', 0)
             skey = item.get('string_key', '')
             vanilla = orig_by_key.get(ikey)
+            if not vanilla and int(ikey or 0) in _DLC_ONLY_KEYS:
+                # No baseline for a DLC item: never create it in the main
+                # table (it exists in the DLC's own table).
+                continue
             if not vanilla:
                 intents.append({
                     'entry': skey, 'key': ikey,
@@ -9577,6 +9655,13 @@ class ItemBuffsTab(QWidget):
             'description': f'{total} field-level intent(s)',
             'note': 'Format 3 — uses field names, survives game updates',
         }
+        # Edits to items only the DLC has: DMM skips such a mod with a clear
+        # message for players without the DLC instead of failing.
+        _dlc_hits = sorted({i['entry'] for i in intents
+                            if int(i.get('key') or 0) in _DLC_ONLY_KEYS})
+        if _dlc_hits:
+            modinfo['requires_dlc'] = True
+            log.info("Export v3: %d DLC item(s) edited -> requires_dlc", len(_dlc_hits))
         targets = []
         if intents:
             targets.append({'file': 'iteminfo.pabgb', 'intents': intents})
@@ -9779,7 +9864,7 @@ class ItemBuffsTab(QWidget):
             import crimson_rs
             import crimson_rs.pack_mod
 
-            final_data = bytearray(_iteminfo_serialize(self._buff_rust_items))
+            final_data = bytearray(_iteminfo_serialize(_without_dlc(self._buff_rust_items)))
             log.info("CDUMM export: serialized iteminfo: %d bytes", len(final_data))
 
             cd_patches = getattr(self, '_cd_patches', {})
@@ -11632,7 +11717,7 @@ class ItemBuffsTab(QWidget):
                             items[i]['key'] = dlg.created_donor_key
                         break
 
-                new_iteminfo = _iteminfo_serialize(items)
+                new_iteminfo = _iteminfo_serialize(_without_dlc(items))
 
                 # Deploy iteminfo overlay
                 files_58 = [(dp, 'iteminfo.pabgb', new_iteminfo)]
@@ -12511,7 +12596,7 @@ class ItemBuffsTab(QWidget):
                     try:
                         _patch_docking_108(self._buff_rust_items)
                         final_data = bytearray(_iteminfo_serialize(
-                            self._buff_rust_items))
+                            _without_dlc(self._buff_rust_items)))
                         unparsed = getattr(self, '_buff_unparsed_raw', []) or []
                         for _raw in unparsed:
                             final_data.extend(_raw)
