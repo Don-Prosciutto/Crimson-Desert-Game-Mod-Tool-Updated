@@ -1131,17 +1131,41 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._on_top_tab_changed_se(rt.currentIndex())
 
         # One menu bar: this tool's File / Edit commands run the Save Editor's.
+        # The commands are matched by their English text OR its translation:
+        # with a language pack the menu texts are translated ("保存"), and a
+        # match on the English text alone found nothing - File > Save / Ctrl+S
+        # then stayed with this window and wrote its own, unedited copy of the
+        # save ("saved", but every edit made on the Save Editor pages was gone).
+        try:
+            from gui_i18n import tr as _ui_tr
+        except Exception:  # noqa: BLE001
+            _ui_tr = lambda t: t  # noqa: E731
+        _canon = {}
+        for cmd in self._SE_MENU_COMMANDS:
+            _canon[cmd] = cmd
+            try:
+                _canon.setdefault(_ui_tr(cmd), cmd)
+            except Exception:  # noqa: BLE001
+                pass
         se_actions = {}
         for act in win.findChildren(QAction):
-            se_actions.setdefault(act.text(), act)
+            cmd = _canon.get(act.text())
+            if cmd:
+                se_actions.setdefault(cmd, act)
+        rerouted = []
         for act in self.findChildren(QAction):
-            if act.text() in self._SE_MENU_COMMANDS and act.text() in se_actions \
-                    and act is not se_actions[act.text()]:
+            cmd = _canon.get(act.text())
+            if cmd and cmd in se_actions and act is not se_actions[cmd]:
                 try:
                     act.triggered.disconnect()
                 except (RuntimeError, TypeError):
                     pass
-                act.triggered.connect(se_actions[act.text()].trigger)
+                act.triggered.connect(se_actions[cmd].trigger)
+                rerouted.append(cmd)
+        log.info("Menu commands handed to the Save Editor: %s", ", ".join(rerouted) or "NONE")
+        if "Save" not in rerouted:
+            log.warning("File > Save is NOT connected to the Save Editor - saving "
+                        "from the menu would write this window's own copy")
         # The engine window's own menu shortcuts and F1-F12 must not compete
         # with this window's (Qt ignores a key two shortcuts claim).
         for act in win.findChildren(QAction):
@@ -3769,6 +3793,13 @@ QCheckBox {{
             )
 
     def _save_file(self) -> None:
+        # With the Save Editor merged in, its save is the one being edited.
+        # (Same as the menu hand-over above; this also covers any path that
+        # still reaches this window's own save.)
+        se = getattr(self, "_se_window", None)
+        if se is not None and hasattr(se, "_save_file"):
+            se._save_file()
+            return
         if not self._save_data or not self._loaded_path:
             QMessageBox.warning(self, "Save", "No file loaded.")
             return
@@ -3781,6 +3812,10 @@ QCheckBox {{
         self._do_save(self._loaded_path)
 
     def _save_file_as(self) -> None:
+        se = getattr(self, "_se_window", None)
+        if se is not None and hasattr(se, "_save_file_as"):
+            se._save_file_as()
+            return
         if not self._save_data:
             QMessageBox.warning(self, "Save As", "No file loaded.")
             return
