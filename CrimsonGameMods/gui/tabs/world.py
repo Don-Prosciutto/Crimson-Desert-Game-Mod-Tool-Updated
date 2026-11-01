@@ -185,8 +185,8 @@ class StoreEditorTab(QWidget):
         store_vlayout.addWidget(self._store_dlc_only_cb)
 
         self._store_list = QTableWidget()
-        self._store_list.setColumnCount(4)
-        self._store_list.setHorizontalHeaderLabels(["Key", "Store Name", "Items", "Currency"])
+        self._store_list.setColumnCount(5)
+        self._store_list.setHorizontalHeaderLabels(["Key", "Store Name", "Items", "Currency", "Vendor"])
         self._store_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._store_list.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._store_list.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -199,6 +199,8 @@ class StoreEditorTab(QWidget):
         self._store_list.setColumnWidth(2, 60)
         sh.setSectionResizeMode(3, QHeaderView.Interactive)
         self._store_list.setColumnWidth(3, 80)
+        sh.setSectionResizeMode(4, QHeaderView.Interactive)
+        self._store_list.setColumnWidth(4, 140)
         self._store_list.verticalHeader().setDefaultSectionSize(24)
         self._store_list.selectionModel().selectionChanged.connect(self._store_selected)
         store_vlayout.addWidget(self._store_list)
@@ -444,6 +446,22 @@ class StoreEditorTab(QWidget):
             self._store_char_names = cache
         return cache.get(int(key), "")
 
+    def _store_vendor_names(self, key: int) -> list:
+        """Who runs the shop (English names), so it can be found in game.
+        From npcinfo.store_info -> character name, base game + DLC, game 2.04.05
+        (data/store_vendors.json, made with work/dlcitems/npc/gen_vendors.py).
+        The tables have no map position - only the name."""
+        cache = getattr(self, '_store_vendors', None)
+        if cache is None:
+            cache = {}
+            try:
+                from data_db import _load_json_fallback
+                cache = {int(k): list(v) for k, v in (_load_json_fallback('store_vendors.json') or {}).items()}
+            except Exception:  # noqa: BLE001
+                pass
+            self._store_vendors = cache
+        return cache.get(int(key or 0), [])
+
     def _store_can_sell_dlc(self, key: int) -> bool:
         return getattr(self, '_store_origin', {}).get(int(key), "base") != "base"
 
@@ -520,7 +538,8 @@ class StoreEditorTab(QWidget):
             stores = [s for s in stores
                       if q in s.get('string_key', '').lower()
                       or q in str(s.get('key', ''))
-                      or q in self._store_display_names.get(str(s.get('key', '')), "").lower()]
+                      or q in self._store_display_names.get(str(s.get('key', '')), "").lower()
+                      or any(q in v.lower() for v in self._store_vendor_names(s.get('key', 0)))]
 
         table = self._store_list
         table.setSortingEnabled(False)
@@ -559,6 +578,13 @@ class StoreEditorTab(QWidget):
             fmt_item = QTableWidgetItem(self._store_currency_name(store))
             fmt_item.setToolTip("Items are priced in this currency (from each item's own price list).")
             table.setItem(row, 3, fmt_item)
+
+            vendors = self._store_vendor_names(skey)
+            vtext = ", ".join(vendors[:2]) + (f" +{len(vendors) - 2}" if len(vendors) > 2 else "")
+            vend_item = QTableWidgetItem(vtext or "-")
+            vend_item.setToolTip(("Run by: " + ", ".join(vendors) + "\nLook for this name in the town of the shop.")
+                                 if vendors else "No vendor found for this shop.")
+            table.setItem(row, 4, vend_item)
         table.setSortingEnabled(True)
 
     def _store_filter(self, text: str) -> None:
@@ -594,8 +620,11 @@ class StoreEditorTab(QWidget):
         factors = store.get('price_increase_percent_list') or []
         shop_raw = int(factors[0]) if factors and 0 < int(factors[0]) < 10**9 else 1_000_000
         shop_factor = shop_raw / 1_000_000
+        vendors = self._store_vendor_names(store.get('key', 0))
         self._store_status.setText(
-            f"{store.get('string_key', '')}: prices in {self._store_currency_name(store)}, "
+            f"{store.get('string_key', '')}"
+            + (f" (vendor: {', '.join(vendors[:3])}{' ...' if len(vendors) > 3 else ''})" if vendors else "")
+            + f": prices in {self._store_currency_name(store)}, "
             f"shop price factor {shop_factor * 100:.0f} %")
 
         for row, stock in enumerate(stock_list):
