@@ -33607,6 +33607,22 @@ QCheckBox::indicator {{
                     limits[int(it['key'])] = max(int(ed.get('level', 0) or 0) for ed in edl)
         except Exception as e:  # noqa: BLE001
             log.warning("Enchant limits not available: %s", e)
+        # DLC items (dlc/<name>/, since game 2.04) have their own table.
+        try:
+            dlc_base = os.path.join(game_path, "dlc")
+            for dlc in sorted(os.listdir(dlc_base)) if os.path.isdir(dlc_base) else []:
+                try:
+                    body = crimson_rs.extract_file(
+                        os.path.join(dlc_base, dlc), "0008", "gamedata/binarystaticinfo__/bin",
+                        f"iteminfo.{dlc}.staticinfobody")
+                except Exception:  # noqa: BLE001 - a DLC without an item table
+                    continue
+                for it in crimson_rs.parse_iteminfo_from_bytes(bytes(body)):
+                    edl = it.get('enchant_data_list') or []
+                    if edl and int(it['key']) not in limits:
+                        limits[int(it['key'])] = max(int(ed.get('level', 0) or 0) for ed in edl)
+        except Exception as e:  # noqa: BLE001
+            log.warning("DLC enchant limits not available: %s", e)
         self._enchant_limit_cache = (game_path, limits)
         return limits
 
