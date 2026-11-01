@@ -273,37 +273,106 @@ class ItemNameDB:
         if len(header) < 2 + count * 8:
             return False, "Local item-data header is truncated."
 
+        # Since game 2.04 a DLC ships its own item table under dlc/<name>/
+        # ("Charting the Unknown": 1,552 records, 1,310 of them in no other
+        # table). Reading only the main table left every DLC item out.
+        tables = [("main", header, body)]
+        dlc_base = os.path.join(game_path, "dlc")
+        try:
+            dlc_names = sorted(n for n in os.listdir(dlc_base)
+                               if os.path.isdir(os.path.join(dlc_base, n, "meta")))
+        except OSError:
+            dlc_names = []
+        for dlc in dlc_names:
+            try:
+                dh = crimson_rs.extract_file(
+                    os.path.join(dlc_base, dlc), "0008", "gamedata/binarystaticinfo__/bin",
+                    f"iteminfo.{dlc}.staticinfoheader")
+                db_ = crimson_rs.extract_file(
+                    os.path.join(dlc_base, dlc), "0008", "gamedata/binarystaticinfo__/bin",
+                    f"iteminfo.{dlc}.staticinfobody")
+            except Exception:  # noqa: BLE001 - a DLC without an item table
+                continue
+            if len(dh) >= 2 and len(dh) >= 2 + struct.unpack_from("<H", dh, 0)[0] * 8:
+                tables.append((dlc, dh, db_))
+
         previous = dict(self.items)
         added = updated = parsed = 0
         extracted_keys: set[int] = set()
-        for index in range(count):
-            key, offset = struct.unpack_from("<II", header, 2 + index * 8)
-            end = (struct.unpack_from("<I", header, 2 + (index + 1) * 8 + 4)[0]
-                   if index + 1 < count else len(body))
-            try:
-                record_key = struct.unpack_from("<I", body, offset)[0]
-                name_length = struct.unpack_from("<I", body, offset + 4)[0]
-                name_start = offset + 8
-                if not record_key or name_length > 512 or name_start + name_length > end:
+        per_table = []
+        for table_name, header, body in tables:
+            count = struct.unpack_from("<H", header, 0)[0]
+            per_table.append(f"{table_name}: {count}")
+            for index in range(count):
+                key, offset = struct.unpack_from("<II", header, 2 + index * 8)
+                end = (struct.unpack_from("<I", header, 2 + (index + 1) * 8 + 4)[0]
+                       if index + 1 < count else len(body))
+                try:
+                    first = struct.unpack_from("<I", body, offset)[0]
+                    if first == key:
+                        # up to game 2.03: key, name length, name
+                        record_key = first
+                        name_length = struct.unpack_from("<I", body, offset + 4)[0]
+                        name_start = offset + 8
+                    else:
+                        # since game 2.04: name length, name, key
+                        name_length = first
+                        name_start = offset + 4
+                        if name_length > 512 or name_start + name_length + 4 > len(body):
+                            continue
+                        record_key = struct.unpack_from("<I", body, name_start + name_length)[0]
+                        if record_key != key:
+                            continue
+                    if not record_key or name_length > 512 or name_start + name_length > len(body):
+                        continue
+                    if record_key in extracted_keys:
+                        continue  # the main table comes first
+                    internal = body[name_start:name_start + name_length].decode("ascii", "replace")
+                    parsed += 1
+                    extracted_keys.add(record_key)
+                    existing = previous.get(record_key)
+                    display = existing.name if existing and existing.name else internal.replace("_", " ")
+                    self.items[record_key] = ItemInfo(
+                        item_key=record_key,
+                        name=display,
+                        internal_name=internal,
+                        category=(existing.category if existing else _guess_item_category(internal)),
+                        max_stack=(existing.max_stack if existing else 0),
+                    )
+                    if existing:
+                        updated += 1
+                    else:
+                        added += 1
+                except (ValueError, struct.error):
                     continue
-                internal = body[name_start:name_start + name_length].decode("ascii", "replace")
-                parsed += 1
-                extracted_keys.add(record_key)
-                existing = previous.get(record_key)
-                display = existing.name if existing and existing.name else internal.replace("_", " ")
-                self.items[record_key] = ItemInfo(
-                    item_key=record_key,
-                    name=display,
-                    internal_name=internal,
-                    category=(existing.category if existing else _guess_item_category(internal)),
-                    max_stack=(existing.max_stack if existing else 0),
-                )
-                if existing:
-                    updated += 1
-                else:
-                    added += 1
-            except (ValueError, struct.error):
-                continue
+
+        # Names for items that only have their internal name: the game's own
+        # English text (main table and DLC tables). Name text index of an
+        # item = (item_key << 32) | 0x70.
+        unnamed = [k for k in extracted_keys
+                   if not (previous.get(k) and previous[k].name)]
+        named = 0
+        if unnamed:
+            texts: dict[int, str] = {}
+            sources = [(game_path, "item.paloc")] + [
+                (os.path.join(dlc_base, n), f"item.{n}.paloc") for n, _h, _b in tables[1:]]
+            for root, fname in sources:
+                try:
+                    raw = bytes(crimson_rs.extract_file(
+                        root, "0020", "gamedata/stringtable/binary__/eng", fname))
+                    if crimson_rs.paloc_is_container(raw):
+                        raw = bytes(crimson_rs.unwrap_paloc_container(raw))
+                    for entry in crimson_rs.parse_paloc_bytes(raw):
+                        sk = str(entry.get("string_key") or "")
+                        if sk.isdigit():
+                            texts.setdefault(int(sk), str(entry.get("string_value") or ""))
+                except Exception:  # noqa: BLE001 - names are a bonus
+                    continue
+            for k in unnamed:
+                text = texts.get((k << 32) | 0x70, "").strip()
+                if text and k in self.items:
+                    self.items[k].name = text
+                    named += 1
 
         if not self.items:
             return False, "No usable item records were found in the local game data."
@@ -325,6 +394,7 @@ class ItemNameDB:
             "archive": "0008",
             "headerPath": "gamedata/binarystaticinfo__/bin/iteminfo.staticinfoheader",
             "bodyPath": "gamedata/binarystaticinfo__/bin/iteminfo.staticinfobody",
+            "tables": per_table,
             "declaredRecords": count,
             "parsedRecords": parsed,
             "uniqueClientItemKeys": len(extracted_keys),
@@ -342,7 +412,8 @@ class ItemNameDB:
             report_path = ""
         suffix = f" Report: {report_path}" if report_path else ""
         return True, (
-            f"Local game scan complete: {len(extracted_keys)} current client items; "
+            f"Local game scan complete: {len(extracted_keys)} current client items "
+            f"({', '.join(per_table)}); {named} new names from the game; "
             f"{len(self.items)} total known ({added} added, {updated} refreshed)." + suffix
         )
 
@@ -382,4 +453,10 @@ def database_outdated(db, game_path: str):
     if not installed:
         return None, "", getattr(db, "game_version", "")
     built_from = getattr(db, "game_version", "")
+    # The bundled list may carry a data revision behind the game version
+    # ("2.04.04.1" = second list for 2.04.04); only the game part counts.
+    inst = ItemNameDB._version_tuple(installed)
+    built = ItemNameDB._version_tuple(built_from)
+    if inst and built[:len(inst)] == inst:
+        return False, installed, built_from
     return (built_from != installed), installed, built_from

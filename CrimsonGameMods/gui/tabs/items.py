@@ -469,19 +469,23 @@ class DatabaseBrowserTab(QWidget):
             # The directory name is the pre-2.01 one on purpose: dmm_parser
             # maps it to the current archive layout (table_layout.map_entry),
             # so this keeps working across the rename.
-            import crimson_rs
-            dp = "gamedata/binary__/client/bin"
-            pabgh = crimson_rs.extract_file(game_path, "0008", dp, "iteminfo.pabgh")
-            game_count = struct.unpack_from('<H', pabgh, 0)[0]
+            # Main table plus the DLC tables (dlc/<name>/, since game 2.04).
+            from item_db import game_item_keys
+            game_keys = game_item_keys(game_path)
+            game_count = len(game_keys)
             local_count = len(self._name_db.items)
-            diff = game_count - local_count
+            # Count what is missing, not the difference of the totals: the
+            # database also keeps old items the game no longer lists.
+            missing = len(game_keys - set(self._name_db.items.keys()))
+            diff = missing
             if diff > 0:
                 self._db_freshness_badge.setText(f"{diff} new items in game")
                 self._db_freshness_badge.setStyleSheet(
                     f"color: white; background: {COLORS['accent']}; "
                     f"border-radius: 4px; padding: 2px 8px; font-weight: bold; font-size: 11px;")
                 self._db_freshness_badge.setToolTip(
-                    f"Game has {game_count} items, your database has {local_count}.\n"
+                    f"Game has {game_count} items (incl. DLC), {diff} of them are\n"
+                    f"missing in your database ({local_count} entries).\n"
                     f"Click 'Sync Items Local' to update.")
                 self._db_freshness_badge.setVisible(True)
             elif diff < 0:
@@ -499,7 +503,8 @@ class DatabaseBrowserTab(QWidget):
                     "color: white; background: #4CAF50; "
                     "border-radius: 4px; padding: 2px 8px; font-weight: bold; font-size: 11px;")
                 self._db_freshness_badge.setToolTip(
-                    f"Item database matches game ({game_count} items).")
+                    f"All {game_count} game items (incl. DLC) are in the database "
+                    f"({local_count} entries, old items kept).")
                 self._db_freshness_badge.setVisible(True)
         except Exception as e:  # noqa: BLE001
             # Do not fail silently: a hidden badge looks exactly like "all

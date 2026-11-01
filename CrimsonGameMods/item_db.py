@@ -274,11 +274,33 @@ class ItemNameDB:
         except Exception as e:
             return False, f"iteminfo could not be read: {e}"
 
+        # Since game 2.04 a DLC ships its own item table under dlc/<name>/
+        # ("Charting the Unknown": 1,552 records, 1,310 of them in no other
+        # table). Reading only the main table left every DLC item out.
+        dlc_notes = []
+        for dlc_root, dlc_dir, dlc_file in _dlc_tables(
+                dmm_parser, game_path, "0008", "iteminfo.", ".staticinfobody"):
+            try:
+                dlc_parsed = dmm_parser.parse_iteminfo_from_bytes(bytes(
+                    dmm_parser.extract_file(dlc_root, "0008", dlc_dir, dlc_file)))
+            except Exception as e:
+                dlc_notes.append(f"{os.path.basename(dlc_root)}: not readable ({e})")
+                continue
+            dlc_notes.append(f"{os.path.basename(dlc_root)}: {len(dlc_parsed)} items")
+            parsed = list(parsed) + list(dlc_parsed)
+
         items_raw = []
+        seen_keys = set()
         for it in parsed:
+            key = int(it.get("key") or 0)
+            # The main table comes first; a DLC record with the same key
+            # does not replace it.
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
             name_field = it.get("item_name") or {}
             items_raw.append((
-                int(it.get("key") or 0),
+                key,
                 str(it.get("string_key") or ""),
                 int(name_field.get("index") or 0),
                 int(it.get("max_stack_count") or 0),
@@ -306,6 +328,24 @@ class ItemNameDB:
                 continue
             if loc_map:
                 paloc_source = f"game localization ({lang}, group {grp})"
+                # DLC item names are in the DLC's own string table.
+                for dlc_root in _dlc_roots(game_path):
+                    dgrp = self._find_language_group(dmm_parser, dlc_root, lang)
+                    if not dgrp:
+                        continue
+                    sdir = f"gamedata/stringtable/binary__/{lang}"
+                    for _r, _d, dname in _dlc_tables(dmm_parser, dlc_root, dgrp,
+                                                     "item.", ".paloc", root_is_dlc=True):
+                        if _d != sdir:
+                            continue
+                        try:
+                            paloc = bytes(dmm_parser.extract_file(dlc_root, dgrp, sdir, dname))
+                            for entry in dmm_parser.parse_paloc_bytes(paloc):
+                                key = str(entry.get("string_key") or "")
+                                if key.isdigit():
+                                    loc_map.setdefault(int(key), str(entry.get("string_value") or ""))
+                        except Exception:
+                            continue
                 break
 
         if not loc_map:
@@ -332,6 +372,7 @@ class ItemNameDB:
         # assignments therefore stay; only genuinely new items are classified.
         old_categories = {k: v.category for k, v in self.items.items() if v.category}
         old_keys = set(self.items.keys())
+        old_items = dict(self.items)
         self.items.clear()
         matched = 0
         for item_key, internal_name, loc_index, max_stack in items_raw:
@@ -352,8 +393,11 @@ class ItemNameDB:
             )
 
         # Items the game no longer knows stay: entries added by hand can be
-        # among them. They are only reported.
+        # among them, and saves can still hold them. They are only reported.
+        # (Until now the message said so, but the entries were dropped.)
         orphaned = sorted(old_keys - set(self.items.keys()))
+        for key in orphaned:
+            self.items[key] = old_items[key]
 
         self.version += 1
         self.save()
@@ -363,10 +407,12 @@ class ItemNameDB:
             1 for k in new_keys if self.items[k].category == 'Misc')
 
         lines = [
-            f"Read {len(self.items)} items from the game installation.",
+            f"Read {len(items_raw)} items from the game installation"
+            + (f" (incl. DLC — {', '.join(dlc_notes)})." if dlc_notes else "."),
+            f"Item database now: {len(self.items)} entries.",
             f"Newly added: {len(new_keys)}",
             f"Names matched: {matched} (source: {paloc_source})",
-            f"Without a name: {len(self.items) - matched}",
+            f"Without a name: {len(items_raw) - matched}",
         ]
         if new_keys:
             lines.append(
@@ -377,6 +423,69 @@ class ItemNameDB:
                 f"{len(orphaned)} entries the game no longer knows \u2014 "
                 f"they are kept in case they are your own items.")
         return True, "\n".join(lines)
+
+
+def _dlc_roots(game_path: str) -> list:
+    """Folders of the installed DLCs (dlc/<name>/ with its own archive groups)."""
+    base = os.path.join(game_path, "dlc")
+    try:
+        names = sorted(os.listdir(base))
+    except OSError:
+        return []
+    return [os.path.join(base, n) for n in names
+            if os.path.isdir(os.path.join(base, n, "meta"))]
+
+
+def _dlc_tables(dmm_parser, game_path: str, group: str, prefix: str, suffix: str,
+                root_is_dlc: bool = False) -> list:
+    """(dlc root, directory, file name) of the files in `group` of every DLC
+    whose name starts with `prefix` and ends with `suffix`."""
+    roots = [game_path] if root_is_dlc else _dlc_roots(game_path)
+    found = []
+    for root in roots:
+        path = os.path.join(root, group, "0.pamt")
+        if not os.path.isfile(path):
+            continue
+        try:
+            pamt = dmm_parser.parse_pamt_file(path)
+        except Exception:
+            continue
+        for d in pamt.get("directories", []):
+            for f in d.get("files", []):
+                name = str(f.get("name", ""))
+                if name.startswith(prefix) and name.endswith(suffix):
+                    found.append((root, d.get("path", "").replace("\\", "/"), name))
+    return found
+
+
+def game_item_keys(game_path: str) -> set:
+    """Item keys the installed game knows: main table plus every DLC table.
+    Read from the table headers only (u16 count, then u32 key + u32 offset
+    per record), so this is quick enough for a badge."""
+    import struct
+    import dmm_parser
+    try:
+        from table_layout import INTERNAL_DIR
+    except ImportError:
+        INTERNAL_DIR = "gamedata/binarystaticinfo__/bin"
+    headers = [bytes(dmm_parser.extract_file(game_path, "0008", INTERNAL_DIR, "iteminfo.pabgh"))]
+    for root, d, name in _dlc_tables(dmm_parser, game_path, "0008",
+                                     "iteminfo.", ".staticinfoheader"):
+        try:
+            headers.append(bytes(dmm_parser.extract_file(root, "0008", d, name)))
+        except Exception:
+            continue
+    keys = set()
+    for h in headers:
+        if len(h) < 2:
+            continue
+        count = struct.unpack_from("<H", h, 0)[0]
+        step = (len(h) - 2) // count if count else 0
+        if step < 4:
+            continue
+        for i in range(count):
+            keys.add(struct.unpack_from("<I", h, 2 + i * step)[0])
+    return keys
 
 
 def _guess_item_category(internal_name: str) -> str:
