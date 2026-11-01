@@ -85,7 +85,8 @@ class StoreEditorTab(QWidget):
             "Edit vendor inventories — swap items, change purchase limits, "
             "then Export Field JSON v3 and load it in DMM. "
             "DLC items only show up in shops marked [DLC shop] or [DLC items OK]; prices come "
-            "from each item's price in the shop's currency."
+            "from each item's price in the shop's currency. Added offers "
+            "appear in game after the shop restocks."
         )
         info.setWordWrap(True)
         info.setStyleSheet(
@@ -247,6 +248,16 @@ class StoreEditorTab(QWidget):
         swap_btn.setToolTip(tr("Replace selected item(s) with a different item from the database"))
         swap_btn.clicked.connect(self._store_swap_item)
         edit_row.addWidget(swap_btn)
+
+        add_btn = QPushButton("Add Item")
+        add_btn.setObjectName("accentBtn")
+        add_btn.setToolTip(
+            "Add an item as a NEW offer to this shop (nothing is replaced).\n"
+            "Stock: the 'Set Limit' value.\n"
+            "In game the new offer shows up after the shop restocks\n"
+            "(see 'Updated in ...' at the shop; sleeping or waiting is enough).")
+        add_btn.clicked.connect(self._store_add_item)
+        edit_row.addWidget(add_btn)
 
         edit_row.addWidget(QLabel(tr("Set Limit:")))
         self._store_limit_spin = QSpinBox()
@@ -752,6 +763,83 @@ class StoreEditorTab(QWidget):
         else:
             QMessageBox.warning(self, tr("Swap Failed"), tr("Could not swap any items."))
 
+    def _store_add_item(self) -> None:
+        """Append an item as a new offer (DMM op array_append).
+
+        Tested in game (01.11.2026, Hernand fishing shop + Natural Pearl): the
+        original offers stay, the new one appears after the shop restocks -
+        the game keeps each shop's stock per slot in the save, and a new slot
+        only joins at the next restock. DMM numbers the new slot itself in
+        every copy of the shop (raw_d), so other mods adding to the same shop
+        do not collide.
+        """
+        import copy
+        if not hasattr(self, '_store_dmm') or not self._store_dmm:
+            QMessageBox.warning(self, tr("Stores"), tr("Load store data first."))
+            return
+        store = self._store_get_selected_store()
+        if not store:
+            QMessageBox.warning(self, "Add Item", tr("Select a store first."))
+            return
+        stock_list = store.setdefault('stock_data_list', [])
+        # Template: a plain offer of this shop (slot type 0, the one normal
+        # items use). Another slot type crashed the game in a test.
+        plain = [s for s in stock_list
+                 if isinstance(s.get('value'), dict) and s['value'].get('disc') == 0]
+        if not plain:
+            QMessageBox.warning(
+                self, "Add Item",
+                f"{store.get('string_key', '')} has no normal offer to copy the "
+                f"layout from, so nothing can be added here safely.")
+            return
+        template = next((s for s in plain if not s.get('sub_data')), plain[0])
+
+        dlg = ItemSearchDialog(
+            self._name_db, title="Add Item to Shop",
+            prompt="Select the item to add as a new offer:", parent=self,
+        ) if hasattr(self, '_name_db') else None
+        if dlg is None or dlg.exec() != QDialog.Accepted or not dlg.selected_key:
+            return
+        new_key = dlg.selected_key
+        new_name = self._store_get_item_name(new_key)
+
+        skey = int(store.get('key', 0))
+        if new_key in getattr(self, '_store_dlc_items', set()) and not self._store_can_sell_dlc(skey):
+            QMessageBox.warning(
+                self, "DLC item in a base-game shop",
+                f"{new_name} is a DLC item, and {store.get('string_key', '')} is a "
+                f"base-game shop.\n\nThe game does not show DLC items there.\n\n"
+                f"Pick a shop marked [DLC shop] or [DLC items OK] "
+                f"(tick 'Only shops that can sell DLC items' to list them).")
+            return
+        currency = int(store.get('exchange_item_info_for_buy', 0) or 0)
+        if currency:
+            price = self._store_item_price(new_key, currency)
+            if price is None and getattr(self, '_store_price_cache', None):
+                reply = QMessageBox.question(
+                    self, "No price in this shop's currency",
+                    f"This shop sells for {self._store_currency_name(store)}, and "
+                    f"{new_name} has no price in it - it will show as 0 in the shop.\n\n"
+                    f"Add anyway?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if reply != QMessageBox.Yes:
+                    return
+
+        entry = copy.deepcopy(template)
+        entry['value']['raw_q'] = new_key
+        if isinstance(entry['value'].get('payload'), dict):
+            entry['value']['payload']['body'] = new_key
+        entry['raw_c'] = int(self._store_limit_spin.value()) or 1
+        entry['raw_d'] = len(stock_list)
+        entry['raw_e'] = max(int(s.get('raw_e', 0) or 0) for s in plain) + 1
+        entry['sub_data'] = None          # no mission / trust lock
+        entry['effect_list'] = []
+        entry['lookup_a'] = skey
+        stock_list.append(entry)
+        self._store_update_change_count()
+        self._store_selected()
+        self._store_status.setText(
+            f"Added {new_name} (stock {entry['raw_c']}) - appears in game after the shop restocks")
+
 
     def _store_set_limit(self) -> None:
         if not hasattr(self, '_store_dmm') or not self._store_dmm:
@@ -1193,6 +1281,9 @@ class StoreEditorTab(QWidget):
                     for it in new:
                         if isinstance(it.get('new'), int) and it['new'] in dlc_items:
                             needs_dlc = True
+                        v_add = ((it.get('value') or {}).get('value') or {}) if it.get('op') == 'array_append' else {}
+                        if v_add.get('raw_q') in dlc_items:
+                            needs_dlc = True
                     if field == 'stock_data_list':
                         b = (base_van.get(ikey) or {}).get('stock_data_list') or []
                         v = van.get('stock_data_list') or []
@@ -1259,11 +1350,15 @@ def _store_field_diff(entry, key, path, a, b):
         if set(a) - set(b):
             return [{'entry': entry, 'key': key, 'field': path, 'op': 'set', 'new': b}]
         return out
-    if (isinstance(a, list) and isinstance(b, list) and len(a) == len(b)
+    if (isinstance(a, list) and isinstance(b, list) and len(a) <= len(b)
             and all(isinstance(x, dict) for x in a + b)):
         out = []
         for i, (x, y) in enumerate(zip(a, b)):
             out.extend(_store_field_diff(entry, key, f"{path}[{i}]", x, y))
+        # Offers added on the Stores tab: appended, never a replaced list.
+        for y in b[len(a):]:
+            out.append({'entry': entry, 'key': key, 'op': 'array_append',
+                        'field': path, 'value': y})
         return out
     return [{'entry': entry, 'key': key, 'field': path, 'op': 'set', 'new': b}]
 
