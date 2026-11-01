@@ -1,5 +1,5 @@
 {
-  "version": "2.4.1",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.4.1/CrimsonGameMods.exe",
-  "notes": "Game 2.04.04 \u2014 fixes: 451 skipped intents in ItemBuffs exports, old item list kept after updating"
+  "version": "2.4.2",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.4.2/CrimsonGameMods.exe",
+  "notes": "Game 2.04.04 \u2014 1,310 DLC items added (Charting the Unknown), Sync Items Local reads the DLC"
 }
