@@ -626,13 +626,14 @@ class StoreEditorTab(QWidget):
             # listed, not editable - another entry type on a normal slot crashed
             # the game in a test.
             disc = stock.get('value', {}).get('disc') if isinstance(stock.get('value'), dict) else None
-            plain = disc == 0
+            part = self._store_part(store, row)
+            plain = disc == 0 and part == "buy"
             name = self._store_get_item_name(item_key)
             if disc == 3 and name.startswith("Item_"):
                 name = self._store_character_name(item_key) or name
             cat = self._name_db.get_category(item_key) if hasattr(self, '_name_db') else ""
             if not plain:
-                cat = "shop buys this" if disc == 3 else f"special (type {disc})"
+                cat = "shop buys this" if part == "sell" else f"special (type {disc})"
             color = QColor(CATEGORY_COLORS.get(cat, COLORS["text"])) if plain else QColor(COLORS['text_dim'])
             name_w = QTableWidgetItem(name)
             name_w.setForeground(QBrush(color))
@@ -840,10 +841,10 @@ class StoreEditorTab(QWidget):
 
         swapped = 0
         for row in sel_rows:
-            if row < len(stock_list):
+            if row < len(stock_list) and self._store_is_buy_offer(store, row):
                 stock = stock_list[row]
                 v = stock.get('value')
-                if isinstance(v, dict) and v.get('disc') == 0:
+                if isinstance(v, dict):
                     v['raw_q'] = new_key
                     p = v.get('payload')
                     if isinstance(p, dict):
@@ -856,6 +857,28 @@ class StoreEditorTab(QWidget):
             self._store_selected()
         else:
             QMessageBox.warning(self, tr("Swap Failed"), tr("Could not swap any items."))
+
+    @staticmethod
+    def _store_part(store, index: int) -> str:
+        """The stock list is [Buy list][Sell list]: the first
+        'buyable_stock_count' entries are what the shop sells, the next
+        'sellable_stock_count' what it buys from you (599 of 615 shops add up
+        exactly). Position decides, not the entry type."""
+        b = int(store.get('buyable_stock_count', 0) or 0)
+        n = int(store.get('sellable_stock_count', 0) or 0)
+        if index < b:
+            return "buy"
+        if index < b + n:
+            return "sell"
+        return "other"
+
+    def _store_is_buy_offer(self, store, index: int) -> bool:
+        lst = store.get('stock_data_list') or []
+        if index >= len(lst):
+            return False
+        v = lst[index].get('value')
+        return (self._store_part(store, index) == "buy"
+                and isinstance(v, dict) and v.get('disc') == 0)
 
     def _store_vanilla_len(self, store) -> int:
         """Number of offers the shop has in the game (before any change here)."""
@@ -872,8 +895,9 @@ class StoreEditorTab(QWidget):
             QMessageBox.warning(self, "Remove Added", tr("Select a store first."))
             return
         rows = self._store_get_selected_items()
-        n0 = self._store_vanilla_len(store)
-        added = [r for r in rows if r >= n0]
+        stock_list = store.get('stock_data_list') or []
+        ids = getattr(self, '_store_added_ids', set())
+        added = [r for r in rows if r < len(stock_list) and id(stock_list[r]) in ids]
         if not added:
             QMessageBox.information(
                 self, "Remove Added",
@@ -881,18 +905,14 @@ class StoreEditorTab(QWidget):
                 "To hide one of the shop's own offers, select it and set its limit "
                 "to 0 ('Set Limit' 0, 'Apply Limit') - it disappears at the next restock.")
             return
-        stock_list = store.get('stock_data_list') or []
         names = []
         for r in sorted(added, reverse=True):
-            if r < len(stock_list):
-                names.append(self._store_get_item_name(self._store_get_stock_item_key(stock_list[r])))
-                if (stock_list[r].get('value') or {}).get('disc') == 0:
-                    store['buyable_stock_count'] = max(
-                        0, int(store.get('buyable_stock_count', 0) or 0) - 1)
-                del stock_list[r]
-        # keep the slot numbers of the remaining added offers consecutive
-        for i in range(n0, len(stock_list)):
-            stock_list[i]['raw_d'] = i
+            names.append(self._store_get_item_name(self._store_get_stock_item_key(stock_list[r])))
+            ids.discard(id(stock_list[r]))
+            store['buyable_stock_count'] = max(0, int(store.get('buyable_stock_count', 0) or 0) - 1)
+            del stock_list[r]
+        for i, s_ in enumerate(stock_list):
+            s_['raw_d'] = i
         self._store_update_change_count(-len(names))
         self._store_selected()
         self._store_status.setText(f"Removed {len(names)} added offer(s): {', '.join(reversed(names))}")
@@ -918,8 +938,7 @@ class StoreEditorTab(QWidget):
         stock_list = store.setdefault('stock_data_list', [])
         # Template: a plain offer of this shop (slot type 0, the one normal
         # items use). Another slot type crashed the game in a test.
-        plain = [s for s in stock_list
-                 if isinstance(s.get('value'), dict) and s['value'].get('disc') == 0]
+        plain = [s for i, s in enumerate(stock_list) if self._store_is_buy_offer(store, i)]
         if not plain:
             QMessageBox.warning(
                 self, "Add Item",
@@ -962,19 +981,23 @@ class StoreEditorTab(QWidget):
         entry['value']['raw_q'] = new_key
         if isinstance(entry['value'].get('payload'), dict):
             entry['value']['payload']['body'] = new_key
+        # The list is [Buy list][Sell list]. The new offer goes to the end of
+        # the Buy list, and 'buyable_stock_count' grows by one. Appended after
+        # the Sell list it was in the shop's stock but not in the Buy list
+        # (in game 01.11.2026), and raising the count alone pulled the first
+        # Sell entry into the Buy list instead.
+        pos = min(int(store.get('buyable_stock_count', 0) or 0), len(stock_list))
         entry['raw_c'] = int(self._store_limit_spin.value()) or 1
-        entry['raw_d'] = len(stock_list)
         entry['raw_e'] = max(int(s.get('raw_e', 0) or 0) for s in plain) + 1
         entry['sub_data'] = None          # no mission / trust lock
         entry['effect_list'] = []
         entry['lookup_a'] = skey
-        stock_list.append(entry)
-        # The Buy list shows only 'buyable_stock_count' offers - without
-        # raising it the new offer stays in the shop's stock (map > stock
-        # status) but never shows in the Buy list. Tested in game 01.11.2026
-        # (Hernand fishing shop: 7 -> the 8th offer was cut off).
-        # Expanded Vendor Inventory raises it the same way.
+        stock_list.insert(pos, entry)
+        for i, s_ in enumerate(stock_list):
+            s_['raw_d'] = i               # slot number = position
         store['buyable_stock_count'] = int(store.get('buyable_stock_count', 0) or 0) + 1
+        self._store_added_ids = getattr(self, '_store_added_ids', set())
+        self._store_added_ids.add(id(entry))
         self._store_update_change_count()
         self._store_selected()
         self._store_status.setText(
@@ -997,7 +1020,7 @@ class StoreEditorTab(QWidget):
         new_limit = self._store_limit_spin.value()
         changed = 0
         for row in sel_rows:
-            if row < len(stock_list) and (stock_list[row].get('value') or {}).get('disc') == 0:
+            if row < len(stock_list) and self._store_is_buy_offer(store, row):
                 stock_list[row]['raw_c'] = new_limit
                 changed += 1
 
@@ -1025,7 +1048,7 @@ class StoreEditorTab(QWidget):
 
         # Only normal buy offers - the other entry types (creatures, furniture,
         # skills) keep their own value (often "no limit").
-        plain = [st for st in stock_list if (st.get('value') or {}).get('disc') == 0]
+        plain = [st for i, st in enumerate(stock_list) if self._store_is_buy_offer(store, i)]
         for stock in plain:
             stock['raw_c'] = new_limit
 
@@ -1394,6 +1417,7 @@ class StoreEditorTab(QWidget):
         import copy
         intents = []
         needs_dlc = False
+        replaced_lists = []
         base_van = {r['key']: r for r in self._store_dmm_vanilla}
         pairs = [(rec, base_van.get(rec.get('key'))) for rec in self._store_dmm]
         dlc_van = {r['key']: r for r in getattr(self, '_store_dlc_vanilla', None) or []}
@@ -1411,7 +1435,17 @@ class StoreEditorTab(QWidget):
                 if field in ('key', 'string_key'):
                     continue
                 if rec[field] != van.get(field):
-                    new = _store_field_diff(skey, ikey, field, van.get(field), rec[field])
+                    if (field == 'stock_data_list'
+                            and len(rec[field]) > len(van.get(field) or [])
+                            and int(van.get('sellable_stock_count', 0) or 0) > 0):
+                        # Offers inserted before the Sell list: DMM can only
+                        # append, so the whole list is written (as Expanded
+                        # Vendor Inventory does for its shops with a Sell list).
+                        new = [{'entry': skey, 'key': ikey, 'field': field,
+                                'op': 'set', 'new': rec[field]}]
+                        replaced_lists.append(skey)
+                    else:
+                        new = _store_field_diff(skey, ikey, field, van.get(field), rec[field])
                     intents.extend(new)
                     if not is_dlc_version:
                         continue
@@ -1424,6 +1458,8 @@ class StoreEditorTab(QWidget):
                     for it in new:
                         if isinstance(it.get('new'), int) and it['new'] in dlc_items:
                             needs_dlc = True
+                        if isinstance(it.get('new'), list) and origin == "dlc_plus":
+                            needs_dlc = True      # whole DLC list onto the base copy
                         v_add = ((it.get('value') or {}).get('value') or {}) if it.get('op') == 'array_append' else {}
                         if v_add.get('raw_q') in dlc_items:
                             needs_dlc = True
