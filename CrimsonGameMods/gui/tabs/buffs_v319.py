@@ -9657,11 +9657,19 @@ class ItemBuffsTab(QWidget):
         }
         # Edits to items only the DLC has: DMM skips such a mod with a clear
         # message for players without the DLC instead of failing.
+        # Only a mod that edits nothing but DLC items is marked as needing the
+        # DLC. A mixed mod stays usable without it: DMM then only skips the
+        # DLC items' edits instead of the whole mod.
         _dlc_hits = sorted({i['entry'] for i in intents
                             if int(i.get('key') or 0) in _DLC_ONLY_KEYS})
-        if _dlc_hits:
+        _only_dlc = bool(intents) and all(
+            int(i.get('key') or 0) in _DLC_ONLY_KEYS for i in intents)
+        if _only_dlc and not (equip_intents or charinfo_intents or buffinfo_intents):
             modinfo['requires_dlc'] = True
-            log.info("Export v3: %d DLC item(s) edited -> requires_dlc", len(_dlc_hits))
+            log.info("Export v3: only DLC items edited (%d) -> requires_dlc", len(_dlc_hits))
+        elif _dlc_hits:
+            log.info("Export v3: %d DLC item(s) among the edits - not marked as "
+                     "requiring the DLC (mixed mod)", len(_dlc_hits))
         targets = []
         if intents:
             targets.append({'file': 'iteminfo.pabgb', 'intents': intents})
