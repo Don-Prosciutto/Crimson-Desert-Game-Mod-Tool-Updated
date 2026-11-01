@@ -839,6 +839,7 @@ class FieldEditTab(QWidget):
                             'dmm_ref': cd,
                         })
                 self._charinfo_mount_entries = mount_entries
+                self._charinfo_load_dlc_mounts(game_path)
                 self._mount_populate()
                 log.info("Loaded %d mount entries from dmm_parser", len(mount_entries))
 
@@ -1155,15 +1156,75 @@ class FieldEditTab(QWidget):
         self._field_edit_status.setText(
             f"Modified region {e.get('_stringKey', '?')} {field_map[col]}={new_val}")
 
+    def _charinfo_load_dlc_mounts(self, game_path: str) -> None:
+        """Mounts only a DLC has (sharks, orca, manta rays, ships ...).
+
+        They are in the DLC's own table characterinfo.dlc_01, not in
+        characterinfo.pabgb. Kept as separate records with their own vanilla
+        copy; the export adds their changes and marks the mod requires_dlc.
+        Mounts of the base game stay as they are (their DLC copies have the
+        same ride limits, checked for 2.04.05)."""
+        import copy as _copy
+        self._charinfo_dlc_items = []
+        self._charinfo_dlc_vanilla = []
+        try:
+            import dmm_parser as _dmp
+            from item_db import _dlc_tables
+        except Exception as e:  # noqa: BLE001
+            log.warning("DLC mounts not loaded: %s", e)
+            return
+        base_mounts = {e.get('_key') for e in self._charinfo_mount_entries}
+        seen = set()
+        for root, d, bname in _dlc_tables(_dmp, game_path, "0008",
+                                          "characterinfo.", ".staticinfobody"):
+            hname = bname[:-len(".staticinfobody")] + ".staticinfoheader"
+            try:
+                rows = _dmp.parse_table(
+                    'character_info',
+                    bytes(_dmp.extract_file(root, "0008", d, bname)),
+                    bytes(_dmp.extract_file(root, "0008", d, hname)))
+            except Exception as e:  # noqa: BLE001
+                log.warning("DLC mounts of %s not readable: %s", root, e)
+                continue
+            for cd in rows:
+                k = cd.get('key')
+                vi = cd.get('vehicle_info', 0)
+                sk = cd.get('string_key', '')
+                if k in seen or k in base_mounts or not (vi != 0 or sk.startswith('Riding_')):
+                    continue
+                seen.add(k)
+                self._charinfo_dlc_items.append(cd)
+        self._charinfo_dlc_vanilla = _copy.deepcopy(self._charinfo_dlc_items)
+        for cd in self._charinfo_dlc_items:
+            sk = cd.get('string_key', '')
+            self._charinfo_mount_entries.append({
+                'name': sk,
+                '_key': cd['key'],
+                '_stringKey': sk,
+                '_vehicleInfo': cd.get('vehicle_info', 0),
+                '_callMercenarySpawnDuration': cd.get('call_mercenary_spawn_duration', 0),
+                '_callMercenaryCoolTime': cd.get('call_mercenary_cool_time', 0),
+                '_mercenaryCoolTimeType': cd.get('mercenary_cool_time_type', 0),
+                'dmm_ref': cd,
+                '_dlc': True,
+            })
+        log.info("DLC mounts: %d", len(self._charinfo_dlc_items))
+
     def _mount_populate(self):
         self._charinfo_editing = True
         from characterinfo_full_parser import MOUNT_VEHICLE_TYPES
         entries = self._charinfo_mount_entries
         self._mount_table.setRowCount(len(entries))
+        dlc_van = {v['key']: v for v in getattr(self, '_charinfo_dlc_vanilla', None) or []}
         for row, e in enumerate(entries):
-            item = QTableWidgetItem(e.get('name', '?'))
+            is_dlc = bool(e.get('_dlc'))
+            item = QTableWidgetItem(("[DLC] " if is_dlc else "") + e.get('name', '?'))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setData(Qt.UserRole, row)
+            if is_dlc:
+                item.setForeground(QColor(COLORS['accent']))
+                item.setToolTip("Only exists with the DLC. A mod that changes it\n"
+                                "is exported as 'requires DLC' (DMM skips it without the DLC).")
             self._mount_table.setItem(row, 0, item)
             vtype = e.get('_vehicleInfo', 0)
             vname = MOUNT_VEHICLE_TYPES.get(vtype, str(vtype))
@@ -1172,7 +1233,10 @@ class FieldEditTab(QWidget):
             self._mount_table.setItem(row, 1, item)
             dur = e.get('_callMercenarySpawnDuration', 0)
             item = QTableWidgetItem(str(dur))
-            van_m = next((v for v in self._charinfo_dmm_vanilla if v['key'] == e.get('_key')), None)
+            if is_dlc:
+                van_m = dlc_van.get(e.get('_key'))
+            else:
+                van_m = next((v for v in self._charinfo_dmm_vanilla if v['key'] == e.get('_key')), None)
             orig_dur = (van_m or {}).get('call_mercenary_spawn_duration', dur)
             if dur != orig_dur:
                 item.setBackground(QColor(60, 40, 20))
@@ -4396,6 +4460,22 @@ class FieldEditTab(QWidget):
             if its:
                 targets.append({'file': 'characterinfo.pabgb', 'intents': its})
 
+        # ── characterinfo of the DLC (mounts only a DLC has) ────────────────
+        needs_dlc = False
+        dlc_cur = getattr(self, '_charinfo_dlc_items', None)
+        dlc_van = getattr(self, '_charinfo_dlc_vanilla', None)
+        if dlc_cur and dlc_van:
+            its = _struct_diff(dlc_cur, dlc_van)
+            if its:
+                # Same file name: DMM applies the change by key to the table
+                # that has the record (here the DLC's characterinfo.dlc_01).
+                needs_dlc = True
+                ci_t = next((t for t in targets if t['file'] == 'characterinfo.pabgb'), None)
+                if ci_t is None:
+                    targets.append({'file': 'characterinfo.pabgb', 'intents': its})
+                else:
+                    ci_t['intents'].extend(its)
+
         # ── wantedinfo ──────────────────────────────────────────────────────
         if _has_diff(self._wantedinfo_data, self._wantedinfo_original):
             its = _dmm_diff('wanted_info', self._wantedinfo_data,
@@ -4430,6 +4510,9 @@ class FieldEditTab(QWidget):
             'format': 3, 'format_minor': 1,
             'targets': targets,
         }
+        if needs_dlc:
+            # DMM skips the mod with a clear message for players without the DLC.
+            doc['modinfo']['requires_dlc'] = True
 
         import json as _json
         with open(path, 'w', encoding='utf-8') as f:
@@ -4439,6 +4522,7 @@ class FieldEditTab(QWidget):
         QMessageBox.information(self, tr("Export Field JSON v3"),
             f"Exported {total} structured field intent(s) across {len(targets)} target(s):\n"
             + "\n".join(f"  \u2022 {t['file']}: {len(t['intents'])} intent(s)" for t in targets)
+            + ("\n\nChanges DLC mounts: the mod needs the DLC." if needs_dlc else "")
             + f"\n\nFile: {path}")
 
 

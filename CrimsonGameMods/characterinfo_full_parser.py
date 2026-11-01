@@ -210,6 +210,16 @@ MOUNT_VEHICLE_TYPES = {
     17002: 'LuggageWagon',
     17003: 'Wagon',
     17004: 'TwoHorseWagon',
+    # DLC "Charting the Unknown" (names from vehicleinfo / vehicleinfo.dlc_01)
+    16970: 'Ship',
+    16971: 'Shark',
+    16972: 'Orca',
+    16973: 'SunFish',
+    16974: 'Seal',
+    16976: 'Turtle',
+    16977: 'MantaRay',
+    16987: 'Dolphin',
+    16989: 'ScooterWarmachine',
 }
 
 
