@@ -10,13 +10,13 @@ import tempfile
 from pathlib import Path
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QSpinBox,
     QApplication, QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
     QHBoxLayout, QInputDialog, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QMessageBox, QPushButton, QScrollArea, QSplitter, QTableWidget,
-    QTableWidgetItem, QVBoxLayout, QWidget,
+    QTableWidgetItem, QVBoxLayout, QWidget, QTabWidget, QGroupBox, QToolButton,
 )
 
 from gui.theme import COLORS, button_css
@@ -25,6 +25,18 @@ from i18n import tr
 from overlay_coordinator import safe_rmtree, _safe_overlay_default  # guard game data folders
 
 log = logging.getLogger(__name__)
+
+
+class _ShowHookWidget(QWidget):
+    """A page that tells its owner when it is shown (loads the data then)."""
+
+    def __init__(self, on_show, parent=None) -> None:
+        super().__init__(parent)
+        self._on_show = on_show
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        self._on_show()
 
 
 class FieldEditTab(QWidget):
@@ -120,24 +132,18 @@ class FieldEditTab(QWidget):
             w.setVisible(bool(enabled))
 
     def _build_ui(self) -> None:
+        # 2.4.6: one tab "Mounts" (Quick / Mounts one by one / Advanced) and
+        # one tab "Characters" (self.characters_page, added by the main
+        # window). Both share this object's data and save into one mod.
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.NoFrame)
-        inner = QWidget()
-        scroll.setWidget(inner)
-        outer.addWidget(scroll)
-
-        layout = QVBoxLayout(inner)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
-        layout.addWidget(make_scope_label("game"))
-
+        outer.setContentsMargins(8, 8, 8, 8)
+        outer.setSpacing(6)
+        outer.addWidget(make_scope_label("game"))
         info = QLabel(
-            "Edit zone/field properties — enable mount summoning in towns, "
-            "modify zone flags. Modifies fieldinfo / vehicleinfo / regioninfo / "
-            "characterinfo / wantedinfo via a single PAZ overlay (0039/)."
+            "Mounts — where you can call them, how long you can ride, the cooldown "
+            "and whether they can die. Works for the mounts you already have, "
+            "including the DLC sea mounts. Pick what you want, then 'Save as mod' "
+            "and load the file in DMM."
         )
         info.setWordWrap(True)
         info.setStyleSheet(
@@ -145,7 +151,85 @@ class FieldEditTab(QWidget):
             f"border: 1px solid {COLORS['border']}; border-radius: 4px; "
             f"background-color: rgba(218,168,80,0.08);"
         )
-        layout.addWidget(info)
+        outer.addWidget(info)
+        header_row = QHBoxLayout()
+        reload_btn = QPushButton(tr("Reload"))
+        reload_btn.setToolTip("Read the game data again (e.g. after a game update).")
+        reload_btn.clicked.connect(self._fe_reload)
+        header_row.addWidget(reload_btn)
+        outer.addLayout(header_row)
+
+        self._fe_pages = QTabWidget()
+        quick_w = QWidget()
+        quick_l = QVBoxLayout(quick_w)
+        mounts_w = QWidget()
+        mounts_l = QVBoxLayout(mounts_w)
+        adv_scroll = QScrollArea()
+        adv_scroll.setWidgetResizable(True)
+        adv_scroll.setFrameShape(QScrollArea.NoFrame)
+        adv_inner = QWidget()
+        adv_scroll.setWidget(adv_inner)
+        adv_l = QVBoxLayout(adv_inner)
+        self._fe_pages.addTab(quick_w, tr("Quick"))
+        self._fe_pages.addTab(mounts_w, tr("Mounts one by one"))
+        self._fe_pages.addTab(adv_scroll, tr("Advanced"))
+        outer.addWidget(self._fe_pages, 1)
+        outer.addWidget(self._fe_make_footer())
+
+        self._fe_build_quick(quick_l)
+        self._fe_build_mount_filters(mounts_l)
+        adv_note = QLabel("For tinkerers: the raw game tables behind Quick. "
+                          "Double-click a cell to change it. Changes land in the same mod.")
+        adv_note.setWordWrap(True)
+        adv_note.setStyleSheet(f"color: {COLORS['text_dim']};")
+        adv_l.addWidget(adv_note)
+        adv_vehicle_l = self._fe_section(
+            adv_l, "Mount Types", "rules per mount type, e.g. calling in safe zones (vehicleinfo)")
+        adv_region_l = self._fe_section(
+            adv_l, "Regions", "towns and forced dismount per region (regioninfo)")
+        adv_l.addStretch()
+
+        # Buttons and rows of the old layout that have no place any more
+        # (Load / Apply to Game / Overlay / Restore / old exports) stay
+        # created - other code reads them - but are never shown.
+        self._fe_legacy = QWidget(self)
+        self._fe_legacy.setVisible(False)
+        legacy_l = QVBoxLayout(self._fe_legacy)
+
+        # Characters tab
+        self.characters_page = _ShowHookWidget(self._fe_auto_load)
+        chars_outer = QVBoxLayout(self.characters_page)
+        chars_outer.setContentsMargins(8, 8, 8, 8)
+        chars_outer.setSpacing(6)
+        chars_outer.addWidget(make_scope_label("game"))
+        cinfo = QLabel("Characters — NPC behaviour and the runtime packages of the "
+                       "player characters. Saved into the same mod as the Mounts tab.")
+        cinfo.setWordWrap(True)
+        cinfo.setStyleSheet(info.styleSheet())
+        chars_outer.addWidget(cinfo)
+        chars_scroll = QScrollArea()
+        chars_scroll.setWidgetResizable(True)
+        chars_scroll.setFrameShape(QScrollArea.NoFrame)
+        chars_inner = QWidget()
+        chars_scroll.setWidget(chars_inner)
+        chars_l = QVBoxLayout(chars_inner)
+        chars_outer.addWidget(chars_scroll, 1)
+        npc_grp = QGroupBox("NPCs")
+        npc_l = QVBoxLayout(npc_grp)
+        self._fe_cb_killable = QCheckBox("All NPCs can be attacked")
+        self._fe_cb_killable.setStyleSheet("font-weight: bold;")
+        self._fe_cb_killable.toggled.connect(lambda _c: self._fe_refresh_summary())
+        npc_l.addWidget(self._fe_cb_killable)
+        npc_l.addWidget(self._fe_hint("Mounts are left out. Killing quest NPCs can block quests.",
+                                      warn=True))
+        chars_l.addWidget(npc_grp)
+        rp_grp = QGroupBox("Runtime Packages (expert)")
+        rp_l = QVBoxLayout(rp_grp)
+        chars_l.addWidget(rp_grp)
+        chars_l.addStretch()
+        chars_outer.addWidget(self._fe_make_footer())
+
+        layout = legacy_l
 
         top_row = QHBoxLayout()
 
@@ -172,7 +256,8 @@ class FieldEditTab(QWidget):
             "on the right to make all cats look like wyverns.\n\n"
             "Queued into the 0039/ overlay — apply via Apply to Game or Export.")
         mesh_swap_btn.clicked.connect(self._field_edit_open_mesh_swap)
-        top_row.addWidget(mesh_swap_btn)
+        header_row.addStretch()
+        header_row.addWidget(mesh_swap_btn)
 
         mount_btn = QPushButton(tr("Enable Mounts Everywhere"))
         mount_btn.setStyleSheet(button_css("neutral") + " font-weight: bold;")
@@ -258,7 +343,7 @@ class FieldEditTab(QWidget):
         top_row.addWidget(restore_btn)
 
         self._field_edit_status = QLabel("")
-        top_row.addWidget(self._field_edit_status, 1)
+        header_row.insertWidget(1, self._field_edit_status, 1)
         layout.addLayout(top_row)
 
         ally_row = QHBoxLayout()
@@ -303,6 +388,7 @@ class FieldEditTab(QWidget):
         self._field_edit_table.cellChanged.connect(self._field_edit_cell_changed)
         self._field_edit_table.setVisible(False)
 
+        layout = adv_vehicle_l
         vlabel = QLabel(tr("Vehicle Info (vehicleinfo.pabgb) — per-mount call restrictions:"))
         vlabel.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold; padding: 4px 0;")
         layout.addWidget(vlabel)
@@ -328,6 +414,7 @@ class FieldEditTab(QWidget):
         self._gt_table.setHorizontalHeaderLabels(["Key", "Name", "Flags", "safeZoneType"])
         self._gt_table.setVisible(False)
 
+        layout = adv_region_l
         rlabel = QLabel(tr("Region Info (regioninfo.pabgb) — town/dismount flags per region:"))
         rlabel.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold; padding: 4px 0;")
         layout.addWidget(rlabel)
@@ -356,6 +443,7 @@ class FieldEditTab(QWidget):
         self._ri_table.cellChanged.connect(self._ri_cell_changed)
         layout.addWidget(self._ri_table, 1)
 
+        layout = legacy_l
         mlabel = QLabel(tr("Mount Duration/Cooldown (characterinfo.pabgb) — per-mount ride limits:"))
         mlabel.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold; padding: 4px 0;")
         layout.addWidget(mlabel)
@@ -363,15 +451,17 @@ class FieldEditTab(QWidget):
         self._mount_table = QTableWidget()
         self._mount_table.setColumnCount(5)
         self._mount_table.setHorizontalHeaderLabels([
-            "Name", "Vehicle Type", "Duration (s)", "Cooldown (s)", "CoolType",
+            "Mount", "Type", "Ride Time (s)", "Cooldown (s)", "Cool Type",
         ])
         self._mount_table.horizontalHeader().setStretchLastSection(True)
         self._mount_table.setSelectionBehavior(QTableWidget.SelectRows)
         self._mount_table.setAlternatingRowColors(True)
         self._mount_table.verticalHeader().setVisible(False)
         self._mount_table.cellChanged.connect(self._mount_cell_changed)
-        layout.addWidget(self._mount_table, 1)
+        mounts_l.addWidget(self._mount_table, 1)
+        self._mount_table.setSelectionMode(QTableWidget.ExtendedSelection)
 
+        layout = rp_l
         wlabel = QLabel(tr(
             "Cross-Character Runtime Packages (characterinfo.pabgb) — "
             "swap how the player chars LOAD combat behavior at runtime. "
@@ -565,6 +655,397 @@ class FieldEditTab(QWidget):
         credit.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 2px;")
         layout.addWidget(credit)
 
+
+    # ── 2.4.6 layout: helpers ─────────────────────────────────────────────
+    def _fe_hint(self, text: str, warn: bool = False) -> QLabel:
+        lab = QLabel(text)
+        lab.setWordWrap(True)
+        color = COLORS['warning'] if warn else COLORS['text_dim']
+        lab.setStyleSheet(f"color: {color}; font-size: 11px; padding-left: 24px;")
+        return lab
+
+    def _fe_section(self, parent_layout, title: str, desc: str):
+        """A section that opens and closes with a click (Advanced page)."""
+        btn = QToolButton()
+        btn.setCheckable(True)
+        btn.setText(f"▸  {title}   —   {desc}")
+        btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        from PySide6.QtWidgets import QSizePolicy
+        btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        btn.setStyleSheet(
+            f"QToolButton {{ text-align: left; padding: 8px; font-weight: bold; "
+            f"border: 1px solid {COLORS['border']}; border-radius: 4px; "
+            f"background: {COLORS['panel']}; }}")
+        body = QWidget()
+        body.setVisible(False)
+        body.setMinimumHeight(320)
+        body_l = QVBoxLayout(body)
+        body_l.setContentsMargins(4, 4, 4, 4)
+
+        def _toggle(on: bool) -> None:
+            body.setVisible(on)
+            btn.setText(f"{'▾' if on else '▸'}  {title}   —   {desc}")
+        btn.toggled.connect(_toggle)
+        parent_layout.addWidget(btn)
+        parent_layout.addWidget(body)
+        return body_l
+
+    def _fe_build_quick(self, lay) -> None:
+        grp = QGroupBox("Pick what you want")
+        g = QVBoxLayout(grp)
+        self._fe_quick = {}
+        for key, text, hint, warn in (
+            ('everywhere', "Call mounts everywhere",
+             "Also in towns and safe zones, no forced dismount.", False),
+            ('ride', "Ride as long as you want",
+             "No ride time limit for mounts that have one.", False),
+            ('cool', "No cooldown when calling a mount",
+             "Call it again right away.", False),
+            ('invincible', "Mounts can't die",
+             "Mounts can't be killed in combat.", False),
+            ('dlc', "Include DLC mounts (sharks, orca, ships ...)",
+             "Ride time, cooldown and 'can't die' also for the DLC mounts. "
+             "The mod then needs the DLC (DMM skips it without).", True)):
+            cb = QCheckBox(text)
+            cb.setStyleSheet("font-weight: bold;")
+            cb.toggled.connect(lambda _c: self._fe_refresh_summary())
+            g.addWidget(cb)
+            g.addWidget(self._fe_hint(hint, warn))
+            self._fe_quick[key] = cb
+        lay.addWidget(grp)
+        lay.addWidget(self._fe_hint(
+            "These options are applied when you save. Values you changed by hand on "
+            "'Mounts one by one' stay, unless an option here sets the same value.", False))
+        lay.addStretch()
+
+    def _fe_build_mount_filters(self, lay) -> None:
+        row = QHBoxLayout()
+        self._fe_search = QLineEdit()
+        self._fe_search.setPlaceholderText("Search mounts (orca, horse ...)")
+        self._fe_search.setFixedWidth(230)
+        self._fe_search.textChanged.connect(lambda _t: self._fe_apply_mount_filter())
+        row.addWidget(self._fe_search)
+        row.addWidget(QLabel("Type:"))
+        self._fe_type_combo = QComboBox()
+        self._fe_type_combo.addItem("All")
+        self._fe_type_combo.currentIndexChanged.connect(lambda _i: self._fe_apply_mount_filter())
+        row.addWidget(self._fe_type_combo)
+        self._fe_dlc_only = QCheckBox("Only DLC mounts")
+        self._fe_dlc_only.toggled.connect(lambda _c: self._fe_apply_mount_filter())
+        row.addWidget(self._fe_dlc_only)
+        row.addStretch()
+        row.addWidget(QLabel("Selected:"))
+        b1 = QPushButton("Set Ride Time...")
+        b1.clicked.connect(lambda: self._fe_bulk_set(2))
+        b2 = QPushButton("Set Cooldown...")
+        b2.clicked.connect(lambda: self._fe_bulk_set(3))
+        b3 = QPushButton("Reset")
+        b3.setStyleSheet(button_css("warn"))
+        b3.setToolTip("Back to the game's values for the selected mounts.")
+        b3.clicked.connect(self._fe_bulk_reset)
+        for b in (b1, b2, b3):
+            row.addWidget(b)
+        lay.addLayout(row)
+        lay.addWidget(self._fe_hint(
+            "Double-click a value to change it. Ctrl/Shift-click to select several mounts. "
+            "Times are in seconds.", False))
+
+    def _fe_make_footer(self) -> QWidget:
+        w = QWidget()
+        h = QHBoxLayout(w)
+        h.setContentsMargins(0, 4, 0, 0)
+        lab = QLabel("<b>In the mod:</b><br>• nothing changed yet")
+        lab.setWordWrap(True)
+        lab.setStyleSheet(f"background: {COLORS['input_bg']}; border: 1px solid "
+                          f"{COLORS['border']}; border-radius: 4px; padding: 6px 10px;")
+        h.addWidget(lab, 1)
+        btn = QPushButton("Save as mod (Field JSON for DMM)")
+        btn.setStyleSheet(button_css("primary") + " font-weight: bold; padding: 8px 16px;")
+        btn.setMinimumHeight(40)
+        btn.setToolTip("Saves the changes of the Mounts and the Characters tab as one\n"
+                       "Field JSON mod. Load it in DMM, activate it and mount.")
+        btn.clicked.connect(self._fe_save_as_mod)
+        h.addWidget(btn)
+        self._fe_summaries = getattr(self, '_fe_summaries', []) + [lab]
+        return w
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        self._fe_auto_load()
+
+    def _fe_auto_load(self) -> None:
+        if self._charinfo_data is not None or getattr(self, '_fe_loading', False):
+            return
+        game_path = self._config.get("game_install_path", "")
+        if not game_path or not os.path.isdir(game_path):
+            self._field_edit_status.setText("Set the game folder first (top of the window).")
+            return
+        self._fe_loading = True
+        self._field_edit_status.setText("Loading game data ...")
+        QTimer.singleShot(50, self._fe_do_load)
+
+    def _fe_do_load(self) -> None:
+        try:
+            self._fe_van_cache = None
+            self._fe_names = None
+            self._field_edit_load()
+        finally:
+            self._fe_loading = False
+        if self._charinfo_data is not None:
+            n_dlc = sum(1 for e in self._charinfo_mount_entries if e.get('_dlc'))
+            self._field_edit_status.setText(
+                f"Loaded: {len(self._charinfo_mount_entries)} mounts"
+                + (f" ({n_dlc} from the DLC)" if n_dlc else "")
+                + f", {len(self._regioninfo_entries)} regions")
+        self._fe_refresh_summary()
+
+    def _fe_reload(self) -> None:
+        self._charinfo_data = None
+        self._fe_auto_load()
+
+    def _fe_mount_name(self, e: dict) -> str:
+        """In-game name of a mount (DLC names from the DLC texts)."""
+        if e.get('_dlc'):
+            n = getattr(self, '_charinfo_dlc_names', {}).get(int(e.get('_key', 0)))
+            return n or e.get('name', '?')
+        names = getattr(self, '_fe_names', None)
+        if names is None:
+            names = {}
+            try:
+                from data_db import get_connection
+                for r in get_connection().execute(
+                        "SELECT internal_name, display_name FROM characters"):
+                    if r['internal_name'] and r['display_name']:
+                        names[r['internal_name']] = r['display_name']
+            except Exception:  # noqa: BLE001
+                pass
+            self._fe_names = names
+        return names.get(e.get('name', ''), '') or e.get('name', '?')
+
+    def _fe_vanilla_of(self, e: dict):
+        if e.get('_dlc'):
+            return next((v for v in getattr(self, '_charinfo_dlc_vanilla', None) or []
+                         if v.get('key') == e.get('_key')), None)
+        cache = getattr(self, '_fe_van_cache', None)
+        van = getattr(self, '_charinfo_dmm_vanilla', None) or []
+        if cache is None or cache[0] is not van:
+            cache = (van, {v.get('key'): v for v in van})
+            self._fe_van_cache = cache
+        return cache[1].get(e.get('_key'))
+
+    def _fe_after_mount_populate(self) -> None:
+        from characterinfo_full_parser import MOUNT_VEHICLE_TYPES
+        cur = self._fe_type_combo.currentText()
+        types = sorted({MOUNT_VEHICLE_TYPES.get(e.get('_vehicleInfo', 0), str(e.get('_vehicleInfo', 0)))
+                        for e in self._charinfo_mount_entries})
+        self._fe_type_combo.blockSignals(True)
+        self._fe_type_combo.clear()
+        self._fe_type_combo.addItem("All")
+        self._fe_type_combo.addItems(types)
+        i = self._fe_type_combo.findText(cur)
+        self._fe_type_combo.setCurrentIndex(max(0, i))
+        self._fe_type_combo.blockSignals(False)
+        has_dlc = any(e.get('_dlc') for e in self._charinfo_mount_entries)
+        self._fe_quick['dlc'].setEnabled(has_dlc)
+        self._fe_dlc_only.setEnabled(has_dlc)
+        self._fe_apply_mount_filter()
+
+    def _fe_apply_mount_filter(self) -> None:
+        t = self._mount_table
+        q = self._fe_search.text().strip().lower()
+        typ = self._fe_type_combo.currentText()
+        dlc_only = self._fe_dlc_only.isChecked()
+        for row in range(t.rowCount()):
+            it0 = t.item(row, 0)
+            it1 = t.item(row, 1)
+            if it0 is None:
+                continue
+            ridx = it0.data(Qt.UserRole)
+            e = self._charinfo_mount_entries[ridx] if ridx is not None and ridx < len(
+                self._charinfo_mount_entries) else {}
+            show = True
+            if q and q not in it0.text().lower() and q not in (e.get('name', '') or '').lower():
+                show = False
+            if typ != "All" and (it1 is None or it1.text() != typ):
+                show = False
+            if dlc_only and not e.get('_dlc'):
+                show = False
+            t.setRowHidden(row, not show)
+
+    def _fe_selected_mount_rows(self) -> list:
+        t = self._mount_table
+        return sorted({i.row() for i in t.selectedIndexes() if not t.isRowHidden(i.row())})
+
+    def _fe_bulk_set(self, col: int) -> None:
+        rows = self._fe_selected_mount_rows()
+        if not rows:
+            QMessageBox.information(self, "Mounts", "Select one or more mounts in the table first.")
+            return
+        what = "Ride time" if col == 2 else "Cooldown"
+        first = self._mount_table.item(rows[0], col)
+        val, ok = QInputDialog.getInt(
+            self, what, f"{what} in seconds for {len(rows)} mount(s):",
+            int(first.text()) if first and first.text().isdigit() else 0, 0, 604800)
+        if not ok:
+            return
+        for r in rows:
+            cell = self._mount_table.item(r, col)
+            if cell is not None:
+                cell.setText(str(val))       # -> _mount_cell_changed
+        self._mount_populate()
+
+    def _fe_bulk_reset(self) -> None:
+        rows = self._fe_selected_mount_rows()
+        if not rows:
+            QMessageBox.information(self, "Mounts", "Select one or more mounts in the table first.")
+            return
+        for r in rows:
+            ridx = self._mount_table.item(r, 0).data(Qt.UserRole)
+            e = self._charinfo_mount_entries[ridx]
+            van = self._fe_vanilla_of(e) or {}
+            cd = e.get('dmm_ref')
+            for fld, attr in (('call_mercenary_spawn_duration', '_callMercenarySpawnDuration'),
+                              ('call_mercenary_cool_time', '_callMercenaryCoolTime')):
+                if fld in van:
+                    if cd is not None:
+                        cd[fld] = van[fld]
+                    e[attr] = van[fld]
+        self._mount_populate()
+        self._fe_refresh_summary()
+
+    def _fe_refresh_summary(self) -> None:
+        labs = getattr(self, '_fe_summaries', [])
+        if not labs:
+            return
+        lines = []
+        q = getattr(self, '_fe_quick', {})
+        dlc = q.get('dlc') is not None and q['dlc'].isChecked() and q['dlc'].isEnabled()
+        for key in ('everywhere', 'ride', 'cool', 'invincible'):
+            cb = q.get(key)
+            if cb is not None and cb.isChecked():
+                lines.append(cb.text() + (" (incl. DLC mounts)" if dlc and key != 'everywhere' else ""))
+        needs_dlc = dlc and any(q[k].isChecked() for k in ('ride', 'cool', 'invincible'))
+        if getattr(self, '_fe_cb_killable', None) is not None and self._fe_cb_killable.isChecked():
+            lines.append("All NPCs can be attacked")
+        changed = 0
+        for e in self._charinfo_mount_entries or []:
+            cd = e.get('dmm_ref') or {}
+            van = self._fe_vanilla_of(e) or {}
+            if any(cd.get(f) != van.get(f) for f in
+                   ('call_mercenary_spawn_duration', 'call_mercenary_cool_time')):
+                changed += 1
+                if e.get('_dlc'):
+                    needs_dlc = True
+        if changed:
+            lines.append(f"{changed} mount(s) changed by hand")
+        for attr, label in (('_regioninfo_dmm', "region(s)"), ('_vehicleinfo_dmm', "mount type(s)")):
+            cur = getattr(self, attr + '_items', None) or []
+            van = getattr(self, attr + '_vanilla', None) or []
+            n = sum(1 for a, b in zip(cur, van) if a != b)
+            if n:
+                lines.append(f"{n} {label} changed on 'Advanced'")
+        np_ = 0
+        for pe in getattr(self, '_charinfo_player_entries', None) or []:
+            van = next((v for v in getattr(self, '_charinfo_dmm_vanilla', None) or []
+                        if v.get('key') == pe.get('_key')), None)
+            if van is not None and pe.get('dmm_ref') is not None and any(
+                    pe['dmm_ref'].get(f) != van.get(f)
+                    for f in getattr(self, '_weapon_dmm_map', {}).values()):
+                np_ += 1
+        if np_:
+            lines.append(f"Runtime packages of {np_} character(s)")
+        text = "<b>In the mod:</b><br>" + ("<br>".join("• " + x for x in lines)
+                                          if lines else "• nothing changed yet")
+        if needs_dlc:
+            text += f"<br><span style='color:{COLORS['warning']}'>Needs the DLC (DMM skips it without)</span>"
+        for lab in labs:
+            lab.setText(text)
+
+    def _fe_save_as_mod(self) -> None:
+        """Apply the Quick options to copies of the records and export.
+
+        The options never change the loaded data itself: unticking one and
+        saving again leaves it out of the mod."""
+        if self._charinfo_data is None:
+            QMessageBox.information(self, "Save as mod",
+                                    "The game data is not loaded yet - wait a moment, or click Reload.")
+            return
+        q = self._fe_quick
+        dlc = q['dlc'].isChecked() and q['dlc'].isEnabled()
+        everywhere = q['everywhere'].isChecked()
+        ride, cool, inv = q['ride'].isChecked(), q['cool'].isChecked(), q['invincible'].isChecked()
+        killable = self._fe_cb_killable.isChecked()
+
+        def _cow(items, fn):
+            out, n = [], 0
+            for it in items or []:
+                ch = fn(it)
+                if ch:
+                    c = dict(it)
+                    c.update(ch)
+                    out.append(c)
+                    n += 1
+                else:
+                    out.append(it)
+            return out, n
+
+        def _char_fn(with_npcs: bool):
+            def fn(it):
+                ch = {}
+                sk = it.get('string_key', '') or ''
+                vi = it.get('vehicle_info', 0) or 0
+                is_mount = vi != 0 or sk.startswith('Riding_')
+                if vi != 0:
+                    if ride and (it.get('call_mercenary_spawn_duration', 0) or 0) > 0:
+                        ch['call_mercenary_spawn_duration'] = 604800   # 7 days, as Enable Mounts did
+                    if cool and (it.get('call_mercenary_cool_time', 0) or 0) > 0:
+                        ch['call_mercenary_cool_time'] = 0
+                if is_mount and inv and 'of_origin_invincibility' in it \
+                        and not it.get('of_origin_invincibility'):
+                    ch['of_origin_invincibility'] = 1
+                if with_npcs and killable and not is_mount:
+                    if it.get('of_origin_is_attackable') == 0:
+                        ch['of_origin_is_attackable'] = 1
+                    if it.get('of_origin_invincibility'):
+                        ch['of_origin_invincibility'] = 0
+                return ch
+            return fn
+
+        saved = {}
+
+        def _swap(attr, value):
+            saved[attr] = getattr(self, attr, None)
+            setattr(self, attr, value)
+
+        quick_used = 0
+        try:
+            if everywhere:
+                vi_items = getattr(self, '_vehicleinfo_dmm_items', None)
+                ri_items = getattr(self, '_regioninfo_dmm_items', None)
+                if vi_items:
+                    new, n = _cow(vi_items, lambda it: {'send_damage_to': 1}
+                                  if it.get('send_damage_to', 1) == 0 else {})
+                    _swap('_vehicleinfo_dmm_items', new)
+                    quick_used += n
+                if ri_items:
+                    new, n = _cow(ri_items, lambda it: {f: 0 for f in
+                                  ('is_wild', 'is_town', 'limit_vehicle_run') if it.get(f, 0)})
+                    _swap('_regioninfo_dmm_items', new)
+                    quick_used += n
+            if ride or cool or inv or killable:
+                new, n = _cow(self._charinfo_dmm_items, _char_fn(True))
+                _swap('_charinfo_dmm_items', new)
+                quick_used += n
+                if dlc and (ride or cool or inv):
+                    new, n = _cow(getattr(self, '_charinfo_dlc_items', None), _char_fn(False))
+                    _swap('_charinfo_dlc_items', new)
+                    quick_used += n
+            if quick_used:
+                _swap('_field_edit_modified', True)
+            self._field_edit_export_field_json_v3()
+        finally:
+            for attr, value in saved.items():
+                setattr(self, attr, value)
 
     def _check_stale_field_overlay(self, game_path: str) -> None:
         mod_group = f"{self._fieldedit_overlay_spin.value():04d}"
@@ -1240,12 +1721,13 @@ class FieldEditTab(QWidget):
         dlc_van = {v['key']: v for v in getattr(self, '_charinfo_dlc_vanilla', None) or []}
         for row, e in enumerate(entries):
             is_dlc = bool(e.get('_dlc'))
-            item = QTableWidgetItem(("[DLC] " if is_dlc else "") + e.get('name', '?'))
+            item = QTableWidgetItem(("[DLC] " if is_dlc else "") + self._fe_mount_name(e))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setData(Qt.UserRole, row)
+            item.setToolTip(e.get('name', '?'))
             if is_dlc:
                 item.setForeground(QColor(COLORS['accent']))
-                item.setToolTip("Only exists with the DLC. A mod that changes it\n"
+                item.setToolTip(e.get('name', '?') + "\nOnly exists with the DLC. A mod that changes it\n"
                                 "is exported as 'requires DLC' (DMM skips it without the DLC).")
             self._mount_table.setItem(row, 0, item)
             vtype = e.get('_vehicleInfo', 0)
@@ -1278,6 +1760,8 @@ class FieldEditTab(QWidget):
             self._mount_table.setItem(row, 4, item)
         self._mount_table.resizeColumnsToContents()
         self._charinfo_editing = False
+        if hasattr(self, '_fe_type_combo'):
+            self._fe_after_mount_populate()
 
     def _mount_cell_changed(self, row, col):
         if self._charinfo_editing or not self._charinfo_mount_entries:
@@ -1310,7 +1794,8 @@ class FieldEditTab(QWidget):
             label = f"cooldown={new_val}s"
         self._charinfo_dmm_dirty = True
         self._field_edit_modified = True
-        self._field_edit_status.setText(f"Modified {e.get('name', '?')} {label}")
+        self._field_edit_status.setText(f"Modified {self._fe_mount_name(e)} {label}")
+        self._fe_refresh_summary()
 
 
     def _weapon_player_order(self):
@@ -2843,8 +3328,7 @@ class FieldEditTab(QWidget):
         if not self._charinfo_data:
             QMessageBox.information(
                 self, tr("Mesh Swap"),
-                "Click 'Load FieldInfo' first — we need characterinfo.pabgb "
-                "loaded into memory before we can queue mesh swaps.")
+                "The game data is not loaded yet - wait a moment, or click Reload.")
             return
 
         catalog: list = []
@@ -4583,14 +5067,14 @@ class FieldEditTab(QWidget):
                             for t in targets)
 
         path, _ = QFileDialog.getSaveFileName(
-            self, tr("Export Field JSON v3"), "FieldEdit.field.json",
+            self, tr("Save as mod"), "Mounts.field.json",
             "Field JSON (*.field.json *.json);;All Files (*)")
         if not path:
             return
 
         doc = {
             'modinfo': {
-                'title': 'FieldEdit Mod', 'version': '1.0',
+                'title': 'Mounts Mod', 'version': '1.0',
                 'author': 'CrimsonGameMods FieldEdit',
                 'description': f'{total} field-level intent(s) across {len(targets)} target(s) — {summary}',
                 'note': ('Format 3.1 multi-target field JSON. '

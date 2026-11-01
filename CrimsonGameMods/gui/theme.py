@@ -303,6 +303,7 @@ QTabBar::tab:hover {{
 }}
 QTableWidget {{
     background-color: {c['panel']};
+    alternate-background-color: {c['bg']};
     color: {c['text']};
     gridline-color: {c['border']};
     selection-background-color: {c['selected']};

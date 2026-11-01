@@ -728,7 +728,9 @@ class MainWindow(SelfTestMixin, QMainWindow):
                 self._field_edit_tab_obj.set_game_path(_saved_gp_fe)
             except Exception:
                 pass
-        self._mods_tabs.addTab(self._field_edit_tab_obj, tr("FieldEdit"))
+        # 2.4.6: FieldEdit is split into "Mounts" and "Characters" (same data).
+        self._mods_tabs.addTab(self._field_edit_tab_obj, tr("Mounts"))
+        self._mods_tabs.addTab(self._field_edit_tab_obj.characters_page, tr("Characters"))
 
         self._iteminfo_cache = ItemInfoCache()
         self._iteminfo_cache.set_game_path(self._config.get("game_install_path", ""))
