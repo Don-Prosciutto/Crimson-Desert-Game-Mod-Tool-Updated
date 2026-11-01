@@ -431,6 +431,19 @@ class StoreEditorTab(QWidget):
                 return s
         return None
 
+    def _store_character_name(self, key: int) -> str:
+        cache = getattr(self, '_store_char_names', None)
+        if cache is None:
+            cache = {}
+            try:
+                db = get_connection()
+                cache = {int(r['character_key']): r['display_name'] or r['internal_name']
+                         for r in db.execute("SELECT character_key, display_name, internal_name FROM characters")}
+            except Exception:  # noqa: BLE001
+                pass
+            self._store_char_names = cache
+        return cache.get(int(key), "")
+
     def _store_can_sell_dlc(self, key: int) -> bool:
         return getattr(self, '_store_origin', {}).get(int(key), "base") != "base"
 
@@ -605,12 +618,27 @@ class StoreEditorTab(QWidget):
             key_cell.setFlags(non_editable_flags)
             table.setItem(row, 1, key_cell)
 
+            # Entry type: 0 = a normal buy offer (what the shop sells, shown in
+            # its Buy list). The other types are special entries the shop's Buy
+            # list does not show as offers (type 3 in the fishing shops even
+            # names creatures such as Electric Eel or Sailfish; type 9 holds the
+            # furniture shops' pieces). Listed, but not editable here - another
+            # entry type on a normal slot crashed the game in a test.
+            disc = stock.get('value', {}).get('disc') if isinstance(stock.get('value'), dict) else None
+            plain = disc == 0
             name = self._store_get_item_name(item_key)
+            if disc == 3 and name.startswith("Item_"):
+                name = self._store_character_name(item_key) or name
             cat = self._name_db.get_category(item_key) if hasattr(self, '_name_db') else ""
-            color = QColor(CATEGORY_COLORS.get(cat, COLORS["text"]))
+            if not plain:
+                cat = f"special (type {disc})"
+            color = QColor(CATEGORY_COLORS.get(cat, COLORS["text"])) if plain else QColor(COLORS['text_dim'])
             name_w = QTableWidgetItem(name)
             name_w.setForeground(QBrush(color))
             name_w.setFlags(non_editable_flags)
+            if not plain:
+                name_w.setToolTip("Special entry (type %s), not a normal buy offer.\n"
+                                  "Left as it is: Swap, Add and the limits only work on normal offers." % disc)
             table.setItem(row, 2, name_w)
 
             cat_w = QTableWidgetItem(cat)
@@ -619,14 +647,16 @@ class StoreEditorTab(QWidget):
             table.setItem(row, 3, cat_w)
 
             limit_w = QTableWidgetItem()
-            limit_w.setData(Qt.DisplayRole, trade_flags)
-            if trade_flags >= 999:
+            if trade_flags >= 0xFFFFFFFF:
+                limit_w.setText("\u221e")          # 4294967295 = no limit
+            else:
+                limit_w.setData(Qt.DisplayRole, trade_flags)
+            if trade_flags >= 999 and plain:
                 limit_w.setForeground(QBrush(QColor(COLORS['success'])))
-            limit_w.setFlags(editable_flags)
-            limit_w.setToolTip("Double-click to edit purchase limit")
+            limit_w.setFlags(editable_flags if plain else non_editable_flags)
+            limit_w.setToolTip("Double-click to edit purchase limit" if plain else "")
             table.setItem(row, 4, limit_w)
 
-            plain = isinstance(stock.get('value'), dict) and stock['value'].get('disc') == 0
             base = self._store_item_price(item_key, currency) if (currency and plain) else None
             base_w = QTableWidgetItem()
             game_w = QTableWidgetItem()
@@ -650,13 +680,13 @@ class StoreEditorTab(QWidget):
 
             buy_w = QTableWidgetItem()
             buy_w.setData(Qt.DisplayRole, round(buy_price / 10_000, 2))
-            buy_w.setFlags(editable_flags)
+            buy_w.setFlags(editable_flags if plain else non_editable_flags)
             buy_w.setToolTip("Buy price factor in % (100 = normal). Double-click to edit.")
             table.setItem(row, 7, buy_w)
 
             sell_w = QTableWidgetItem()
             sell_w.setData(Qt.DisplayRole, round(sell_price / 10_000, 2))
-            sell_w.setFlags(editable_flags)
+            sell_w.setFlags(editable_flags if plain else non_editable_flags)
             sell_w.setToolTip("Sell price factor in % (100 = normal). Double-click to edit.")
             table.setItem(row, 8, sell_w)
 
@@ -812,7 +842,7 @@ class StoreEditorTab(QWidget):
             if row < len(stock_list):
                 stock = stock_list[row]
                 v = stock.get('value')
-                if isinstance(v, dict):
+                if isinstance(v, dict) and v.get('disc') == 0:
                     v['raw_q'] = new_key
                     p = v.get('payload')
                     if isinstance(p, dict):
@@ -957,7 +987,7 @@ class StoreEditorTab(QWidget):
         new_limit = self._store_limit_spin.value()
         changed = 0
         for row in sel_rows:
-            if row < len(stock_list):
+            if row < len(stock_list) and (stock_list[row].get('value') or {}).get('disc') == 0:
                 stock_list[row]['raw_c'] = new_limit
                 changed += 1
 
@@ -983,11 +1013,14 @@ class StoreEditorTab(QWidget):
         if reply != QMessageBox.Yes:
             return
 
-        for stock in stock_list:
+        # Only normal buy offers - the other entry types (creatures, furniture,
+        # skills) keep their own value (often "no limit").
+        plain = [st for st in stock_list if (st.get('value') or {}).get('disc') == 0]
+        for stock in plain:
             stock['raw_c'] = new_limit
 
-        self._store_update_change_count(len(stock_list))
-        self._store_status.setText(f"Set limit={new_limit} on all {len(stock_list)} items")
+        self._store_update_change_count(len(plain))
+        self._store_status.setText(f"Set limit={new_limit} on all {len(plain)} offers")
         self._store_selected()
 
     def _store_import_json(self) -> None:
