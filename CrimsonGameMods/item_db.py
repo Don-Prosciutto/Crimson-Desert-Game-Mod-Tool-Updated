@@ -278,6 +278,8 @@ class ItemNameDB:
         # ("Charting the Unknown": 1,552 records, 1,310 of them in no other
         # table). Reading only the main table left every DLC item out.
         dlc_notes = []
+        main_keys = {int(it.get("key") or 0) for it in parsed}
+        dlc_only_keys = set()
         for dlc_root, dlc_dir, dlc_file in _dlc_tables(
                 dmm_parser, game_path, "0008", "iteminfo.", ".staticinfobody"):
             try:
@@ -288,6 +290,7 @@ class ItemNameDB:
                 continue
             dlc_notes.append(f"{os.path.basename(dlc_root)}: {len(dlc_parsed)} items")
             parsed = list(parsed) + list(dlc_parsed)
+            dlc_only_keys.update(int(it.get("key") or 0) for it in dlc_parsed)
 
         items_raw = []
         seen_keys = set()
@@ -383,7 +386,12 @@ class ItemNameDB:
                 matched += 1
             else:
                 display_name = internal_name.replace('_', ' ')
-            category = old_categories.get(item_key) or _guess_item_category(internal_name)
+            # Items only a DLC has are filed as "DLC", so they are easy to
+            # spot and to filter for.
+            if item_key in dlc_only_keys and item_key not in main_keys:
+                category = "DLC"
+            else:
+                category = old_categories.get(item_key) or _guess_item_category(internal_name)
             self.items[item_key] = ItemInfo(
                 item_key=item_key,
                 name=display_name,

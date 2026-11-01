@@ -336,7 +336,9 @@ class ItemNameDB:
                         item_key=record_key,
                         name=display,
                         internal_name=internal,
-                        category=(existing.category if existing else _guess_item_category(internal)),
+                        # Items only a DLC has are filed as "DLC".
+                        category=("DLC" if table_name != "main" else
+                                  existing.category if existing else _guess_item_category(internal)),
                         max_stack=(existing.max_stack if existing else 0),
                     )
                     if existing:
