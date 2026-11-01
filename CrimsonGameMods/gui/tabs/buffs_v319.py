@@ -9712,6 +9712,11 @@ class ItemBuffsTab(QWidget):
             va, vb = a.get(k), b.get(k)
             if va == vb:
                 continue
+            # Game 2.04 leaves empty optional fields out (None); the tool's
+            # own edits often write an empty list instead. Same meaning -
+            # no intent (it was exported as "set []" for nothing).
+            if va is None and vb in ([], {}) or vb is None and va in ([], {}):
+                continue
             if isinstance(va, dict) and isinstance(vb, dict):
                 # Recurse into nested dicts — emit sub-field paths only
                 intents.extend(
