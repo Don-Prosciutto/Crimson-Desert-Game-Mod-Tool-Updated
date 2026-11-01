@@ -83,8 +83,9 @@ class StoreEditorTab(QWidget):
 
         info = QLabel(
             "Edit vendor inventories — swap items, change purchase limits, "
-            "then Export JSON to use with CD JSON Mod Manager. "
-            "Compatible with community JSON patch format (Pldada/CDUMM)."
+            "then Export Field JSON v3 and load it in DMM. "
+            "DLC items only show up in shops marked [DLC] or [DLC+]; prices come "
+            "from each item's price in the shop's currency."
         )
         info.setWordWrap(True)
         info.setStyleSheet(
@@ -170,9 +171,21 @@ class StoreEditorTab(QWidget):
         store_search_row.addWidget(self._store_search, 1)
         store_vlayout.addLayout(store_search_row)
 
+        # DLC items only show up in shops whose record the DLC ships
+        # (dlc/<name>/storeinfo). In a base-game shop they stay an empty slot.
+        self._store_dlc_only_cb = QCheckBox("Only shops that can sell DLC items")
+        self._store_dlc_only_cb.setToolTip(
+            "[DLC]  shop that only exists with the DLC\n"
+            "[DLC+] base-game shop the DLC ships its own version of\n"
+            "Shops without a mark (e.g. the black markets) cannot show DLC items -\n"
+            "the game leaves those slots empty.")
+        self._store_dlc_only_cb.toggled.connect(
+            lambda _c: self._store_populate_list(self._store_search.text()))
+        store_vlayout.addWidget(self._store_dlc_only_cb)
+
         self._store_list = QTableWidget()
         self._store_list.setColumnCount(4)
-        self._store_list.setHorizontalHeaderLabels(["Key", "Store Name", "Items", "Type"])
+        self._store_list.setHorizontalHeaderLabels(["Key", "Store Name", "Items", "Currency"])
         self._store_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._store_list.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._store_list.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -300,11 +313,15 @@ class StoreEditorTab(QWidget):
             self._store_dmm_vanilla = copy.deepcopy(self._store_dmm)
             self._store_gh = gh
             self._store_game_path = game_path
+            self._store_load_dlc(game_path)
 
-            log.info("Store loaded via dmm_parser: %d stores", len(self._store_dmm))
+            log.info("Store loaded via dmm_parser: %d stores (+%d DLC)",
+                     len(self._store_dmm), len(self._store_dlc))
+            n_plus = sum(1 for o in self._store_origin.values() if o == "dlc_plus")
+            n_only = sum(1 for o in self._store_origin.values() if o == "dlc_only")
             self._store_status.setText(
-                f"Loaded {len(self._store_dmm)} stores, "
-                f"{sum(len(s.get('stock_data_list', [])) for s in self._store_dmm)} stock items")
+                f"Loaded {len(self._store_dmm)} stores"
+                + (f" + DLC ({n_only} new, {n_plus} with a DLC version)" if self._store_dlc else ""))
             self._store_populate_list()
             self._store_modified = False
             self._store_change_count = 0
@@ -313,6 +330,110 @@ class StoreEditorTab(QWidget):
             log.error("Store extract failed: %s", e)
             log.exception("Unhandled exception")
             self._store_status.setText(f"Failed: {e}")
+
+    # ── DLC shops ──────────────────────────────────────────────────────
+    # Since game 2.04 the DLC ships its own shop table (dlc/<name>/storeinfo):
+    # new shops, and its own version of many base-game shops. Tested in game
+    # (01.11.2026): DLC items show only in shops of that table; in a base-game
+    # shop (e.g. the black markets) the slot stays empty with price 0, and
+    # changing the slot type makes the game crash when the shop opens.
+    # The game uses the DLC version of a shop when it has one, so that is the
+    # version shown and edited here. DMM applies a shop edit (by key and
+    # position) to both copies.
+
+    def _store_load_dlc(self, game_path: str) -> None:
+        import copy
+        self._store_dlc = []
+        self._store_dlc_vanilla = []
+        self._store_origin = {int(r.get('key', 0)): "base" for r in self._store_dmm}
+        self._store_dlc_items = set()
+        try:
+            import dmm_parser
+            from item_db import _dlc_tables
+        except Exception as e:  # noqa: BLE001
+            log.warning("DLC shops not loaded: %s", e)
+            return
+        base_keys = set(self._store_origin)
+        for root, d, bname in _dlc_tables(dmm_parser, game_path, "0008",
+                                          "storeinfo.", ".staticinfobody"):
+            hname = bname[:-len(".staticinfobody")] + ".staticinfoheader"
+            try:
+                rows = dmm_parser.parse_table(
+                    'store_info',
+                    bytes(dmm_parser.extract_file(root, "0008", d, bname)),
+                    bytes(dmm_parser.extract_file(root, "0008", d, hname)))
+            except Exception as e:  # noqa: BLE001
+                log.warning("DLC shops of %s not readable: %s", root, e)
+                continue
+            for r in rows:
+                k = int(r.get('key', 0))
+                if any(int(x.get('key', 0)) == k for x in self._store_dlc):
+                    continue
+                self._store_dlc.append(r)
+                self._store_origin[k] = "dlc_plus" if k in base_keys else "dlc_only"
+        self._store_dlc_vanilla = copy.deepcopy(self._store_dlc)
+        # Items only a DLC has (category "DLC" in the item list).
+        try:
+            db = get_connection()
+            self._store_dlc_items = {
+                int(row['item_key']) for row in
+                db.execute("SELECT item_key FROM items WHERE category = 'DLC'")}
+        except Exception:  # noqa: BLE001
+            self._store_dlc_items = set()
+        log.info("DLC shops: %d (%d new, %d with a DLC version)", len(self._store_dlc),
+                 sum(1 for o in self._store_origin.values() if o == "dlc_only"),
+                 sum(1 for o in self._store_origin.values() if o == "dlc_plus"))
+
+    def _store_record(self, key: int):
+        """The shop record the game uses: the DLC version if there is one."""
+        for s in getattr(self, '_store_dlc', None) or []:
+            if s.get('key') == key:
+                return s
+        for s in self._store_dmm or []:
+            if s.get('key') == key:
+                return s
+        return None
+
+    def _store_can_sell_dlc(self, key: int) -> bool:
+        return getattr(self, '_store_origin', {}).get(int(key), "base") != "base"
+
+    def _store_currency_name(self, store) -> str:
+        cur = int(store.get('exchange_item_info_for_buy', 0) or 0)
+        if not cur:
+            return "-"
+        return self._store_get_item_name(cur)
+
+    def _store_item_price(self, item_key: int, currency: int):
+        """Price of an item in a currency, from the item's own price list
+        (main + DLC item table). None: the item has no price in it (shows 0)."""
+        cache = getattr(self, '_store_price_cache', None)
+        if cache is None:
+            cache = {}
+            try:
+                import dmm_parser
+                from table_layout import INTERNAL_DIR
+                from item_db import _dlc_tables
+                gp = getattr(self, '_store_game_path', '') or self._game_path.strip()
+                tables = [bytes(dmm_parser.extract_file(gp, "0008", INTERNAL_DIR, "iteminfo.pabgb"))]
+                for root, d, n in _dlc_tables(dmm_parser, gp, "0008", "iteminfo.", ".staticinfobody"):
+                    try:
+                        tables.append(bytes(dmm_parser.extract_file(root, "0008", d, n)))
+                    except Exception:  # noqa: BLE001
+                        pass
+                for raw in tables:
+                    for it in dmm_parser.parse_iteminfo_from_bytes(raw):
+                        k = int(it.get('key', 0))
+                        if k in cache:
+                            continue
+                        cache[k] = {int(p.get('key', 0)): int((p.get('price') or {}).get('price', 0) or 0)
+                                    for p in (it.get('price_list') or [])}
+            except Exception as e:  # noqa: BLE001
+                log.warning("Item prices not available: %s", e)
+            self._store_price_cache = cache
+        prices = cache.get(int(item_key))
+        if prices is None:
+            return None
+        return prices.get(int(currency))
 
     def _store_update_change_count(self, delta: int = 1) -> None:
         self._store_change_count += delta
@@ -338,7 +459,13 @@ class StoreEditorTab(QWidget):
                 pass
 
         q = filter_text.lower().strip()
-        stores = self._store_dmm
+        # Every shop once, in the version the game uses.
+        stores = [self._store_record(s.get('key')) or s for s in self._store_dmm]
+        stores += [s for s in getattr(self, '_store_dlc', None) or []
+                   if self._store_origin.get(int(s.get('key', 0))) == "dlc_only"]
+        cb = getattr(self, '_store_dlc_only_cb', None)
+        if cb is not None and cb.isChecked():
+            stores = [s for s in stores if self._store_can_sell_dlc(s.get('key', 0))]
         if q:
             stores = [s for s in stores
                       if q in s.get('string_key', '').lower()
@@ -361,8 +488,16 @@ class StoreEditorTab(QWidget):
             display = self._store_display_names.get(str(skey), "")
             if not display:
                 display = sname.replace("Store_", "").replace("_", " ")
-            name_item = QTableWidgetItem(display)
-            name_item.setToolTip(sname)
+            origin = getattr(self, '_store_origin', {}).get(int(skey), "base")
+            tag = {"dlc_only": "[DLC] ", "dlc_plus": "[DLC+] "}.get(origin, "")
+            name_item = QTableWidgetItem(tag + display)
+            name_item.setToolTip(sname + {
+                "dlc_only": "\nOnly exists with the DLC - can sell DLC items.",
+                "dlc_plus": "\nThe DLC ships its own version of this shop - can sell DLC items.\n"
+                            "Shown and edited here: the DLC version.",
+            }.get(origin, "\nBase-game shop - DLC items stay an EMPTY slot here."))
+            if origin != "base":
+                name_item.setForeground(QBrush(QColor(COLORS['accent'])))
             table.setItem(row, 1, name_item)
 
             count_item = QTableWidgetItem()
@@ -371,7 +506,8 @@ class StoreEditorTab(QWidget):
                 count_item.setForeground(QBrush(QColor(COLORS['success'])))
             table.setItem(row, 2, count_item)
 
-            fmt_item = QTableWidgetItem("Parsed")
+            fmt_item = QTableWidgetItem(self._store_currency_name(store))
+            fmt_item.setToolTip("Items are priced in this currency (from each item's own price list).")
             table.setItem(row, 3, fmt_item)
         table.setSortingEnabled(True)
 
@@ -388,10 +524,7 @@ class StoreEditorTab(QWidget):
         if not key_item:
             return None
         target_key = key_item.data(Qt.UserRole)
-        for s in self._store_dmm:
-            if s.get('key') == target_key:
-                return s
-        return None
+        return self._store_record(target_key)
 
     def _store_selected(self, *_args) -> None:
         store = self._store_get_selected_store()
@@ -578,6 +711,27 @@ class StoreEditorTab(QWidget):
             new_key = dlg.selected_key
 
         new_name = self._store_get_item_name(new_key)
+
+        skey = int(store.get('key', 0))
+        if new_key in getattr(self, '_store_dlc_items', set()) and not self._store_can_sell_dlc(skey):
+            QMessageBox.warning(
+                self, "DLC item in a base-game shop",
+                f"{new_name} is a DLC item, and {store.get('string_key', '')} is a "
+                f"base-game shop.\n\nThe game does not show DLC items there - the slot "
+                f"would stay empty with price 0.\n\nPick a shop marked [DLC] or [DLC+] "
+                f"(tick 'Only shops that can sell DLC items' to list them).")
+            return
+        currency = int(store.get('exchange_item_info_for_buy', 0) or 0)
+        if currency:
+            price = self._store_item_price(new_key, currency)
+            if price is None and getattr(self, '_store_price_cache', None):
+                reply = QMessageBox.question(
+                    self, "No price in this shop's currency",
+                    f"This shop sells for {self._store_currency_name(store)}, and "
+                    f"{new_name} has no price in it - it will show as 0 in the shop.\n\n"
+                    f"Swap anyway?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if reply != QMessageBox.Yes:
+                    return
 
         swapped = 0
         for row in sel_rows:
@@ -1007,19 +1161,45 @@ class StoreEditorTab(QWidget):
             QMessageBox.warning(self, "Export Field JSON v3", "No vanilla baseline. Re-load store data.")
             return
         import copy
-        van_by_key = {r['key']: r for r in self._store_dmm_vanilla}
         intents = []
-        for rec in self._store_dmm:
+        needs_dlc = False
+        base_van = {r['key']: r for r in self._store_dmm_vanilla}
+        pairs = [(rec, base_van.get(rec.get('key'))) for rec in self._store_dmm]
+        dlc_van = {r['key']: r for r in getattr(self, '_store_dlc_vanilla', None) or []}
+        pairs += [(rec, dlc_van.get(rec.get('key'))) for rec in getattr(self, '_store_dlc', None) or []]
+        dlc_items = getattr(self, '_store_dlc_items', set())
+        for rec, van in pairs:
             ikey = rec.get('key')
             skey = rec.get('string_key', '')
-            van = van_by_key.get(ikey)
             if van is None:
                 continue
+            origin = getattr(self, '_store_origin', {}).get(int(ikey or 0), "base")
+            is_dlc_version = rec is not base_van.get(ikey) and any(
+                rec is x for x in getattr(self, '_store_dlc', None) or [])
             for field in rec:
                 if field in ('key', 'string_key'):
                     continue
                 if rec[field] != van.get(field):
-                    intents.extend(_store_field_diff(skey, ikey, field, van.get(field), rec[field]))
+                    new = _store_field_diff(skey, ikey, field, van.get(field), rec[field])
+                    intents.extend(new)
+                    if not is_dlc_version:
+                        continue
+                    # DMM applies a shop edit by key and position to both copies
+                    # of the shop. Players without the DLC only have the base
+                    # copy: a DLC-only shop, a DLC item, or a position that holds
+                    # a different item in the base copy would go wrong there.
+                    if origin == "dlc_only":
+                        needs_dlc = True
+                    for it in new:
+                        if isinstance(it.get('new'), int) and it['new'] in dlc_items:
+                            needs_dlc = True
+                    if field == 'stock_data_list':
+                        b = (base_van.get(ikey) or {}).get('stock_data_list') or []
+                        v = van.get('stock_data_list') or []
+                        for i in range(len(v)):
+                            if i < len(rec[field]) and rec[field][i] != v[i] and (
+                                    i >= len(b) or b[i].get('value') != v[i].get('value')):
+                                needs_dlc = True
 
         if not intents:
             QMessageBox.information(self, "Export Field JSON v3", "No field-level changes detected.")
@@ -1035,10 +1215,14 @@ class StoreEditorTab(QWidget):
             "Field JSON (*.field.json *.json);;All Files (*)")
         if not path:
             return
+        modinfo = {'title': name, 'version': '1.0', 'author': 'CrimsonGameMods Stores',
+                   'description': f'{len(intents)} field-level intent(s)',
+                   'note': 'Format 3 field JSON for storeinfo.pabgb'}
+        if needs_dlc:
+            # DMM skips the mod with a clear message for players without the DLC.
+            modinfo['requires_dlc'] = True
         doc = {
-            'modinfo': {'title': name, 'version': '1.0', 'author': 'CrimsonGameMods Stores',
-                'description': f'{len(intents)} field-level intent(s)',
-                'note': 'Format 3 field JSON for storeinfo.pabgb'},
+            'modinfo': modinfo,
             'format': 3, 'format_minor': 1,
             'targets': [{'file': 'storeinfo.pabgb', 'intents': intents}],
         }
