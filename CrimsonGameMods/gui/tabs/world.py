@@ -1019,7 +1019,7 @@ class StoreEditorTab(QWidget):
                 if field in ('key', 'string_key'):
                     continue
                 if rec[field] != van.get(field):
-                    intents.append({'entry': skey, 'key': ikey, 'field': field, 'op': 'set', 'new': rec[field]})
+                    intents.extend(_store_field_diff(skey, ikey, field, van.get(field), rec[field]))
 
         if not intents:
             QMessageBox.information(self, "Export Field JSON v3", "No field-level changes detected.")
@@ -1050,6 +1050,38 @@ class StoreEditorTab(QWidget):
                 f"Exported {len(intents)} field-level intents.\n\nFile: {path}")
         except Exception as e:
             QMessageBox.critical(self, "Export Failed", str(e))
+
+
+def _store_field_diff(entry, key, path, a, b):
+    """Field intents for one changed store field, as narrow as possible.
+
+    The export used to write the whole stock list of a shop as one change
+    (stock_data_list = [... 20 entries ...]). Next to another vendor mod
+    (e.g. Expanded Vendor Inventory) DMM then had two complete lists for
+    the same shop, and the result mixed both. A swapped item or a changed
+    limit is now exported as just that value
+    (stock_data_list[3].value.raw_q, stock_data_list[3].raw_c); only a list
+    that changed length is still written whole.
+    """
+    if a == b:
+        return []
+    if isinstance(a, dict) and isinstance(b, dict):
+        out = []
+        for k in b:
+            if a.get(k) != b.get(k):
+                if k not in a:
+                    return [{'entry': entry, 'key': key, 'field': path, 'op': 'set', 'new': b}]
+                out.extend(_store_field_diff(entry, key, f"{path}.{k}", a.get(k), b.get(k)))
+        if set(a) - set(b):
+            return [{'entry': entry, 'key': key, 'field': path, 'op': 'set', 'new': b}]
+        return out
+    if (isinstance(a, list) and isinstance(b, list) and len(a) == len(b)
+            and all(isinstance(x, dict) for x in a + b)):
+        out = []
+        for i, (x, y) in enumerate(zip(a, b)):
+            out.extend(_store_field_diff(entry, key, f"{path}[{i}]", x, y))
+        return out
+    return [{'entry': entry, 'key': key, 'field': path, 'op': 'set', 'new': b}]
 
 
 class SpawnTab(QWidget):
