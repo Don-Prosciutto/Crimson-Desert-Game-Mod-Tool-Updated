@@ -466,10 +466,13 @@ class FieldEditTab(QWidget):
         layout.addWidget(mlabel)
 
         self._mount_table = QTableWidget()
-        self._mount_table.setColumnCount(5)
+        self._mount_table.setColumnCount(6)
         self._mount_table.setHorizontalHeaderLabels([
-            "Mount", "Type", "Ride Time (s)", "Cooldown (s)", "Cool Type",
+            "Mount", "Type", "Ride Time (s)", "Cooldown (s)", "Speed %", "Cool Type",
         ])
+        self._mount_table.horizontalHeaderItem(4).setToolTip(
+            "Movement speed (MoveSpeedRate): 100 = normal, 150 = half again as fast.\n"
+            "Works for running and flying (tested: wyvern at 150 % flies much faster).")
         self._mount_table.horizontalHeader().setStretchLastSection(True)
         self._mount_table.setSelectionBehavior(QTableWidget.SelectRows)
         self._mount_table.setAlternatingRowColors(True)
@@ -756,16 +759,19 @@ class FieldEditTab(QWidget):
         b1.clicked.connect(lambda: self._fe_bulk_set(2))
         b2 = QPushButton("Set Cooldown...")
         b2.clicked.connect(lambda: self._fe_bulk_set(3))
+        b4 = QPushButton("Set Speed...")
+        b4.setToolTip("Movement speed in % for the selected mounts (100 = normal).")
+        b4.clicked.connect(lambda: self._fe_bulk_set(4))
         b3 = QPushButton("Reset")
         b3.setStyleSheet(button_css("warn"))
         b3.setToolTip("Back to the game's values for the selected mounts.")
         b3.clicked.connect(self._fe_bulk_reset)
-        for b in (b1, b2, b3):
+        for b in (b1, b2, b4, b3):
             row.addWidget(b)
         lay.addLayout(row)
         lay.addWidget(self._fe_hint(
             "Double-click a value to change it. Ctrl/Shift-click to select several mounts. "
-            "Times are in seconds.", False))
+            "Times are in seconds, speed in % (100 = normal).", False))
 
     def _fe_make_footer(self) -> QWidget:
         w = QWidget()
@@ -898,11 +904,16 @@ class FieldEditTab(QWidget):
         if not rows:
             QMessageBox.information(self, "Mounts", "Select one or more mounts in the table first.")
             return
-        what = "Ride time" if col == 2 else "Cooldown"
+        what = {2: "Ride time", 3: "Cooldown", 4: "Speed"}[col]
         first = self._mount_table.item(rows[0], col)
-        val, ok = QInputDialog.getInt(
-            self, what, f"{what} in seconds for {len(rows)} mount(s):",
-            int(first.text()) if first and first.text().isdigit() else 0, 0, 604800)
+        if col == 4:
+            val, ok = QInputDialog.getInt(
+                self, what, f"Movement speed in % for {len(rows)} mount(s) (100 = normal):",
+                int(first.text()) if first and first.text().isdigit() else 100, 10, 500)
+        else:
+            val, ok = QInputDialog.getInt(
+                self, what, f"{what} in seconds for {len(rows)} mount(s):",
+                int(first.text()) if first and first.text().isdigit() else 0, 0, 604800)
         if not ok:
             return
         for r in rows:
@@ -927,6 +938,9 @@ class FieldEditTab(QWidget):
                     if cd is not None:
                         cd[fld] = van[fld]
                     e[attr] = van[fld]
+            if cd is not None and 'character_level_data_list' in van:
+                import copy as _cp
+                cd['character_level_data_list'] = _cp.deepcopy(van['character_level_data_list'])
         self._mount_populate()
         self._fe_refresh_summary()
 
@@ -951,7 +965,8 @@ class FieldEditTab(QWidget):
             cd = e.get('dmm_ref') or {}
             van = self._fe_vanilla_of(e) or {}
             if any(cd.get(f) != van.get(f) for f in
-                   ('call_mercenary_spawn_duration', 'call_mercenary_cool_time')):
+                   ('call_mercenary_spawn_duration', 'call_mercenary_cool_time',
+                    'character_level_data_list')):
                 changed += 1
                 if e.get('_dlc'):
                     needs_dlc = True
@@ -1838,18 +1853,53 @@ class FieldEditTab(QWidget):
             if cool > 0:
                 item.setForeground(QColor(255, 100, 100))
             self._mount_table.setItem(row, 3, item)
+            cd_ = e.get('dmm_ref') or {}
+            sp = self._fe_speed_of(cd_)
+            item = QTableWidgetItem("" if sp is None else str(sp))
+            if sp is None:
+                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                item.setToolTip("No speed value in the game data for this mount.")
+            else:
+                vsp = self._fe_speed_of(van_m or {})
+                if vsp is not None and sp != vsp:
+                    item.setBackground(QColor(60, 40, 20))
+                    item.setToolTip(f"Game value: {vsp} %")
+                if sp != 100:
+                    item.setForeground(QColor(120, 200, 255))
+            self._mount_table.setItem(row, 4, item)
             item = QTableWidgetItem(str(e.get('_mercenaryCoolTimeType', 0)))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._mount_table.setItem(row, 4, item)
+            self._mount_table.setItem(row, 5, item)
         self._mount_table.resizeColumnsToContents()
         self._charinfo_editing = False
         if hasattr(self, '_fe_type_combo'):
             self._fe_after_mount_populate()
 
+    # Movement speed = MoveSpeedRate, index 10 of each level's
+    # stat_list_data_defined_static (1,000,000,000 = 100 %).
+    _FE_SPEED_IDX = 10
+
+    def _fe_speed_of(self, cd: dict):
+        for lv in cd.get('character_level_data_list') or []:
+            st = lv.get('stat_list_data_defined_static') or []
+            if len(st) > self._FE_SPEED_IDX:
+                return int(round(int(st[self._FE_SPEED_IDX].get('initial_stat', 0) or 0) / 10_000_000))
+        return None
+
+    def _fe_set_speed(self, cd: dict, pct: int) -> None:
+        raw = int(pct) * 10_000_000
+        for lv in cd.get('character_level_data_list') or []:
+            st = lv.get('stat_list_data_defined_static') or []
+            if len(st) > self._FE_SPEED_IDX:
+                s_ = st[self._FE_SPEED_IDX]
+                s_['initial_stat'] = raw
+                if int(s_.get('max_stat', 0) or 0) < raw:
+                    s_['max_stat'] = raw
+
     def _mount_cell_changed(self, row, col):
         if self._charinfo_editing or not self._charinfo_mount_entries:
             return
-        if col not in (2, 3):
+        if col not in (2, 3, 4):
             return
         item0 = self._mount_table.item(row, 0)
         if not item0: return
@@ -1865,6 +1915,16 @@ class FieldEditTab(QWidget):
             return
         new_val = max(0, new_val)
         cd = e.get('dmm_ref')
+        if col == 4:
+            if cd is None or self._fe_speed_of(cd) is None:
+                return
+            new_val = max(10, min(500, new_val))
+            self._fe_set_speed(cd, new_val)
+            self._charinfo_dmm_dirty = True
+            self._field_edit_modified = True
+            self._field_edit_status.setText(f"Modified {self._fe_mount_name(e)} speed={new_val} %")
+            self._fe_refresh_summary()
+            return
         if col == 2:
             if cd is not None:
                 cd['call_mercenary_spawn_duration'] = new_val
@@ -5066,6 +5126,18 @@ class FieldEditTab(QWidget):
 
         import dmm_parser as _dmp_efj
 
+        def _deep_leaf_diff(cur, van, path, out):
+            if isinstance(cur, dict) and isinstance(van, dict) and set(cur) == set(van):
+                for k in cur:
+                    if cur[k] != van[k]:
+                        _deep_leaf_diff(cur[k], van[k], f"{path}.{k}", out)
+            elif isinstance(cur, list) and isinstance(van, list) and len(cur) == len(van):
+                for i, (a, b) in enumerate(zip(cur, van)):
+                    if a != b:
+                        _deep_leaf_diff(a, b, f"{path}[{i}]", out)
+            else:
+                out.append((path, cur))
+
         def _struct_diff(current_recs, vanilla_recs):
             """Diff two dmm_parser record lists, return Format 3 intents.
 
@@ -5089,6 +5161,20 @@ class FieldEditTab(QWidget):
                     van_val = van.get(field)
                     if cur_val == van_val:
                         continue
+                    # Speed % (Mounts tab) changes one value per level deep in
+                    # character_level_data_list: emit just those values
+                    # (character_level_data_list[0].stat_list_data_defined_static
+                    # [10].initial_stat), like the in-game tested Wyvern Test 9,
+                    # instead of the whole list.
+                    if field == 'character_level_data_list' and isinstance(cur_val, list) \
+                            and isinstance(van_val, list) and len(cur_val) == len(van_val):
+                        leaf = []
+                        _deep_leaf_diff(cur_val, van_val, field, leaf)
+                        if leaf is not None and all(p_ is not None for p_, _v in leaf):
+                            for p_, v_ in leaf:
+                                intents.append({'entry': rskey, 'key': rkey, 'field': p_,
+                                                'op': 'set', 'new': v_})
+                            continue
                     # For nested dicts, emit one intent per changed sub-field
                     # using dot-path syntax (e.g. 'four_flags.flag_a')
                     if isinstance(cur_val, dict) and isinstance(van_val, dict):
