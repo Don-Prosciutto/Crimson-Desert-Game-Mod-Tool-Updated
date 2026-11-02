@@ -222,6 +222,10 @@ class FieldEditTab(QWidget):
         npc_l.addWidget(self._fe_cb_killable)
         npc_l.addWidget(self._fe_hint("Mounts are left out. Killing quest NPCs can block quests.",
                                       warn=True))
+        self._fe_cb_killable_dlc = QCheckBox("Also the characters of the DLC")
+        self._fe_cb_killable_dlc.toggled.connect(lambda _c: self._fe_refresh_summary())
+        npc_l.addWidget(self._fe_cb_killable_dlc)
+        npc_l.addWidget(self._fe_hint("The mod then needs the DLC (DMM skips it without).", warn=True))
         chars_l.addWidget(npc_grp)
         rp_grp = QGroupBox("Runtime Packages (expert)")
         rp_l = QVBoxLayout(rp_grp)
@@ -716,8 +720,8 @@ class FieldEditTab(QWidget):
              "Call it again right away.", False),
             ('invincible', "Mounts can't die",
              "Mounts can't be killed in combat.", False),
-            ('dlc', "Include DLC mounts (sharks, orca, ships ...)",
-             "Ride time, cooldown and 'can't die' also for the DLC mounts. "
+            ('dlc', "Include the DLC (sea mounts, ships, DLC regions)",
+             "The options above also for the DLC mounts and the regions of the DLC. "
              "The mod then needs the DLC (DMM skips it without).", True)):
             cb = QCheckBox(text)
             cb.setStyleSheet("font-weight: bold;")
@@ -936,10 +940,12 @@ class FieldEditTab(QWidget):
         for key in ('everywhere', 'ride', 'cool', 'invincible'):
             cb = q.get(key)
             if cb is not None and cb.isChecked():
-                lines.append(cb.text() + (" (incl. DLC mounts)" if dlc and key != 'everywhere' else ""))
-        needs_dlc = dlc and any(q[k].isChecked() for k in ('ride', 'cool', 'invincible'))
+                lines.append(cb.text() + (" (incl. DLC)" if dlc else ""))
+        needs_dlc = dlc and any(q[k].isChecked() for k in ('everywhere', 'ride', 'cool', 'invincible'))
         if getattr(self, '_fe_cb_killable', None) is not None and self._fe_cb_killable.isChecked():
-            lines.append("All NPCs can be attacked")
+            kdlc = self._fe_cb_killable_dlc.isChecked()
+            lines.append("All NPCs can be attacked" + (" (incl. DLC characters)" if kdlc else ""))
+            needs_dlc = needs_dlc or kdlc
         changed = 0
         for e in self._charinfo_mount_entries or []:
             cd = e.get('dmm_ref') or {}
@@ -1053,6 +1059,37 @@ class FieldEditTab(QWidget):
                     new, n = _cow(getattr(self, '_charinfo_dlc_items', None), _char_fn(False))
                     _swap('_charinfo_dlc_items', new)
                     quick_used += n
+            # Records that only a DLC has: changed copies, exported as extra intents.
+            extra = {}
+
+            def _extra(file, rows, fn):
+                new, _n = _cow(rows, fn)
+                its = []
+                for a, b in zip(rows, new):
+                    if a is b:
+                        continue
+                    for f, v in b.items():
+                        if a.get(f) != v:
+                            its.append({'entry': b.get('string_key', ''), 'key': b.get('key'),
+                                        'field': f, 'op': 'set', 'new': v})
+                if its:
+                    extra.setdefault(file, []).extend(its)
+                return len(its)
+
+            dlc_rows = getattr(self, '_fe_dlc_rows', None) or {}
+            if dlc and everywhere:
+                quick_used += _extra('vehicleinfo.pabgb', dlc_rows.get('vehicleinfo', []),
+                                     lambda it: {'send_damage_to': 1} if it.get('send_damage_to', 1) == 0 else {})
+                quick_used += _extra('regioninfo.pabgb', dlc_rows.get('regioninfo', []),
+                                     lambda it: {f: 0 for f in ('is_wild', 'is_town', 'limit_vehicle_run') if it.get(f, 0)})
+            if killable and self._fe_cb_killable_dlc.isChecked():
+                mounts_dlc = {id(x) for x in getattr(self, '_charinfo_dlc_items', None) or []}
+                rows = [r for r in getattr(self, '_charinfo_dlc_all', None) or [] if id(r) not in mounts_dlc]
+                k_fn = _char_fn(True)
+                quick_used += _extra('characterinfo.pabgb', rows,
+                                     lambda it: {k: v for k, v in k_fn(it).items()
+                                                 if k in ('of_origin_is_attackable', 'of_origin_invincibility')})
+            _swap('_fe_extra_intents', extra)
             if quick_used:
                 _swap('_field_edit_modified', True)
             self._field_edit_export_field_json_v3()
@@ -1334,6 +1371,7 @@ class FieldEditTab(QWidget):
                         })
                 self._charinfo_mount_entries = mount_entries
                 self._charinfo_load_dlc_mounts(game_path)
+                self._fe_load_dlc_tables(game_path)
                 self._mount_populate()
                 log.info("Loaded %d mount entries from dmm_parser", len(mount_entries))
 
@@ -1725,6 +1763,38 @@ class FieldEditTab(QWidget):
                 '_dlc': True,
             })
         log.info("DLC mounts: %d", len(self._charinfo_dlc_items))
+
+    def _fe_load_dlc_tables(self, game_path: str) -> None:
+        """Regions and mount types that only a DLC has (regioninfo.dlc_01,
+        vehicleinfo.dlc_01). Used by 'Call mounts everywhere' when 'Include
+        DLC' is ticked; not shown in the Advanced tables."""
+        self._fe_dlc_rows = {}
+        try:
+            import dmm_parser as _dmp
+            from item_db import _dlc_tables
+        except Exception as e:  # noqa: BLE001
+            log.warning("DLC regions not loaded: %s", e)
+            return
+        base = {'regioninfo': getattr(self, '_regioninfo_dmm_items', None) or [],
+                'vehicleinfo': getattr(self, '_vehicleinfo_dmm_items', None) or []}
+        for stem, table in (('regioninfo', 'region_info'), ('vehicleinfo', 'vehicle_info')):
+            have = {r.get('key') for r in base[stem]}
+            rows_out = []
+            for root, d, bname in _dlc_tables(_dmp, game_path, "0008", stem + ".", ".staticinfobody"):
+                hname = bname[:-len(".staticinfobody")] + ".staticinfoheader"
+                try:
+                    rows = _dmp.parse_table(table, bytes(_dmp.extract_file(root, "0008", d, bname)),
+                                            bytes(_dmp.extract_file(root, "0008", d, hname)))
+                except Exception as e:  # noqa: BLE001
+                    log.warning("DLC %s of %s not readable: %s", stem, root, e)
+                    continue
+                for r in rows:
+                    if r.get('key') not in have and not r.get('_blob_fallback'):
+                        rows_out.append(r)
+                        have.add(r.get('key'))
+            self._fe_dlc_rows[stem] = rows_out
+        log.info("DLC regions: %d, DLC mount types: %d",
+                 len(self._fe_dlc_rows.get('regioninfo', [])), len(self._fe_dlc_rows.get('vehicleinfo', [])))
 
     def _mount_populate(self):
         self._charinfo_editing = True
@@ -5073,6 +5143,17 @@ class FieldEditTab(QWidget):
                     targets.append({'file': 'characterinfo.pabgb', 'intents': its})
                 else:
                     ci_t['intents'].extend(its)
+
+        # ── records only a DLC has, changed by the Quick options ────────────
+        for _file, _its in (getattr(self, '_fe_extra_intents', None) or {}).items():
+            if not _its:
+                continue
+            needs_dlc = True
+            _t = next((t for t in targets if t['file'] == _file), None)
+            if _t is None:
+                targets.append({'file': _file, 'intents': list(_its)})
+            else:
+                _t['intents'].extend(_its)
 
         # ── wantedinfo ──────────────────────────────────────────────────────
         if _has_diff(self._wantedinfo_data, self._wantedinfo_original):
