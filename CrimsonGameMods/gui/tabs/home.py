@@ -49,8 +49,10 @@ GAME_CARDS = [
 SAVE_CARDS = [
     ("Save Editor", "Inventory, equipment, sockets, refining, dyes, mercenaries."),
     ("World", "Quests, knowledge, waypoints & abyss gates, factions."),
-    ("Items", "Item database with icons and item packs."),
     ("Backup", "Backups of your save files."),
+]
+MORE_CARDS = [
+    ("Items", "Item database with icons and item packs."),
 ]
 
 
@@ -105,8 +107,10 @@ class HomePage(QWidget):
 
     def __init__(self, version: str, goto: Callable[[str], None],
                  status: Callable[[], tuple], config: dict,
-                 save_config: Optional[Callable[[], None]] = None, parent=None):
+                 save_config: Optional[Callable[[], None]] = None,
+                 support: Optional[Callable[[], None]] = None, parent=None):
         super().__init__(parent)
+        self._support = support
         self._goto = goto
         self._status = status
         self._config = config
@@ -143,6 +147,14 @@ class HomePage(QWidget):
         self._status_label.setWordWrap(True)
         st_lay.addWidget(self._status_label)
         st_lay.addStretch()
+        if support is not None:
+            sp = QLabel(f"<a href='support' style='color:{COLORS['accent']}'>Problems? "
+                        "Create a support package…</a>")
+            sp.setTextFormat(Qt.RichText)
+            sp.setToolTip("A zip with versions, the log and settings that you can send\n"
+                          "when something goes wrong. No save files, no game files.")
+            sp.linkActivated.connect(lambda _l: self._support())
+            st_lay.addWidget(sp)
         row.addWidget(st_box, 1)
 
         how_box, how_lay = _box("How a mod gets into the game")
@@ -177,6 +189,8 @@ class HomePage(QWidget):
         v.addWidget(self._section("SAVE FILE", "changes your loaded save (back it up first)",
                                   COLORS["scope_save"]))
         v.addLayout(self._grid(SAVE_CARDS, COLORS["scope_save"]))
+        v.addWidget(self._section("MORE", "reference", COLORS["text_dim"]))
+        v.addLayout(self._grid(MORE_CARDS, COLORS["accent"]))
 
         self._start_cb = QCheckBox("Show this page at start (otherwise: the page used last)")
         self._start_cb.setChecked(bool(self._config.get("home_at_start", True)))
