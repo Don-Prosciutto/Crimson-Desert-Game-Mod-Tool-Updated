@@ -287,6 +287,14 @@ class StoreEditorTab(QWidget):
         remove_btn.clicked.connect(self._store_remove_added)
         edit_row.addWidget(remove_btn)
 
+        dlc_vendor_btn = QPushButton("DLC Vendor...")
+        dlc_vendor_btn.setToolTip(
+            "Turn the selected shop into a DLC vendor: adds the DLC's weapons,\n"
+            "armor, materials, blueprints ... as new offers, optionally all at\n"
+            "one price in Silver. Needs a shop marked [DLC shop] / [DLC items OK].")
+        dlc_vendor_btn.clicked.connect(self._store_dlc_vendor)
+        edit_row.addWidget(dlc_vendor_btn)
+
         edit_row.addWidget(QLabel(tr("Set Limit:")))
         self._store_limit_spin = QSpinBox()
         self._store_limit_spin.setRange(0, 99999)
@@ -935,8 +943,11 @@ class StoreEditorTab(QWidget):
                 "to 0 ('Set Limit' 0, 'Apply Limit') - it disappears at the next restock.")
             return
         names = []
+        price_edits = getattr(self, '_store_item_price_edits', None) or {}
         for r in sorted(added, reverse=True):
-            names.append(self._store_get_item_name(self._store_get_stock_item_key(stock_list[r])))
+            _k = self._store_get_stock_item_key(stock_list[r])
+            names.append(self._store_get_item_name(_k))
+            price_edits.pop(_k, None)        # price set by DLC Vendor goes too
             ids.discard(id(stock_list[r]))
             store['buyable_stock_count'] = max(0, int(store.get('buyable_stock_count', 0) or 0) - 1)
             del stock_list[r]
@@ -1032,6 +1043,147 @@ class StoreEditorTab(QWidget):
         self._store_status.setText(
             f"Added {new_name} (stock {entry['raw_c']}) - appears in game after the shop restocks")
 
+
+    def _store_dlc_vendor(self) -> None:
+        """Add the DLC's items (by group) to the selected shop, optionally all
+        at one price: the items' own Silver price is set to it (iteminfo,
+        so selling them is worth that too - no buy-cheap-sell-dear loop) and
+        each offer's factor evens out the shop's price factor."""
+        import copy
+        if not getattr(self, '_store_dmm', None):
+            QMessageBox.warning(self, tr("Stores"), tr("Load store data first."))
+            return
+        store = self._store_get_selected_store()
+        if not store:
+            QMessageBox.warning(self, "DLC Vendor", tr("Select a store first."))
+            return
+        skey = int(store.get('key', 0))
+        sname = store.get('string_key', '')
+        if not self._store_can_sell_dlc(skey):
+            QMessageBox.warning(
+                self, "DLC Vendor",
+                f"{sname} is a base-game shop - the game does not show DLC items there.\n\n"
+                f"Pick a shop marked [DLC shop] or [DLC items OK] "
+                f"(tick 'Only shops that can sell DLC items').")
+            return
+        stock_list = store.setdefault('stock_data_list', [])
+        plain = [s_ for i, s_ in enumerate(stock_list) if self._store_is_buy_offer(store, i)]
+        if not plain:
+            QMessageBox.warning(self, "DLC Vendor",
+                                f"{sname} has no normal offer to copy the layout from.")
+            return
+        template = next((s_ for s_ in plain if not s_.get('sub_data')), plain[0])
+
+        import dlc_vendor as dv
+        if getattr(self, '_store_dlc_vendor_items', None) is None:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                gp = getattr(self, '_store_game_path', '') or self._game_path.strip()
+                self._store_dlc_vendor_items = dv.dlc_items(gp)
+            except Exception as e:  # noqa: BLE001
+                self._store_dlc_vendor_items = None
+                QApplication.restoreOverrideCursor()
+                QMessageBox.critical(self, "DLC Vendor", f"DLC items not readable:\n{e}")
+                return
+            QApplication.restoreOverrideCursor()
+        groups = dv.grouped(self._store_dlc_vendor_items)
+        have = {self._store_get_stock_item_key(s_) for s_ in stock_list}
+        currency = int(store.get('exchange_item_info_for_buy', 0) or 0)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"DLC Vendor - {sname}")
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel("Add these DLC items as new offers (items the shop "
+                             "already has are skipped):"))
+        boxes = {}
+        for gid, label in dv.GROUPS:
+            n = sum(1 for it in groups[gid] if int(it['key']) not in have)
+            cb = QCheckBox(f"{label} ({n})")
+            cb.setChecked(n > 0)
+            cb.setEnabled(n > 0)
+            boxes[gid] = cb
+            lay.addWidget(cb)
+        price_row = QHBoxLayout()
+        price_cb = QCheckBox("Everything costs")
+        price_cb.setChecked(currency == dv.SILVER)
+        price_cb.setEnabled(currency == dv.SILVER)
+        price_spin = QSpinBox()
+        price_spin.setRange(1, 1_000_000)
+        price_spin.setValue(10)
+        price_spin.setSuffix(" Silver")
+        price_row.addWidget(price_cb)
+        price_row.addWidget(price_spin)
+        price_row.addStretch()
+        lay.addLayout(price_row)
+        hint = QLabel(
+            "Sets each item's own Silver price, so other vendors also pay only\n"
+            "that much for it. Stock per offer: the 'Set Limit' value."
+            if currency == dv.SILVER else
+            "This shop does not sell for Silver - the items keep their own prices.")
+        hint.setStyleSheet(f"color: {COLORS['text_dim']};")
+        lay.addWidget(hint)
+        btns = QHBoxLayout()
+        ok_b = QPushButton("Add")
+        ok_b.setObjectName("accentBtn")
+        cancel_b = QPushButton("Cancel")
+        ok_b.clicked.connect(dlg.accept)
+        cancel_b.clicked.connect(dlg.reject)
+        btns.addStretch()
+        btns.addWidget(ok_b)
+        btns.addWidget(cancel_b)
+        lay.addLayout(btns)
+        if dlg.exec() != QDialog.Accepted:
+            return
+
+        chosen = [it for gid, _ in dv.GROUPS if boxes[gid].isChecked()
+                  for it in groups[gid] if int(it['key']) not in have]
+        if not chosen:
+            return
+        set_price = price_cb.isChecked() and currency == dv.SILVER
+        target_raw = int(price_spin.value()) * 100       # 10 Silver -> 1000 (shown 10.00)
+        factors = store.get('price_increase_percent_list') or []
+        shop_raw = int(factors[0]) if factors and 0 < int(factors[0]) < 10**9 else 1_000_000
+        raw_a = int(round(10**12 / shop_raw)) if set_price else None
+
+        edits = getattr(self, '_store_item_price_edits', None)
+        if edits is None:
+            edits = self._store_item_price_edits = {}
+        cache = getattr(self, '_store_price_cache', None)
+        pos = min(int(store.get('buyable_stock_count', 0) or 0), len(stock_list))
+        next_e = max(int(s_.get('raw_e', 0) or 0) for s_ in plain) + 1
+        limit = int(self._store_limit_spin.value()) or 1
+        self._store_added_ids = getattr(self, '_store_added_ids', set())
+        for it in chosen:
+            k = int(it['key'])
+            entry = copy.deepcopy(template)
+            entry['value']['raw_q'] = k
+            if isinstance(entry['value'].get('payload'), dict):
+                entry['value']['payload']['body'] = k
+            entry['raw_c'] = limit
+            entry['raw_e'] = next_e
+            next_e += 1
+            entry['sub_data'] = None
+            entry['effect_list'] = []
+            entry['lookup_a'] = skey
+            if raw_a is not None:
+                entry['raw_a'] = raw_a
+            stock_list.insert(pos, entry)
+            pos += 1
+            self._store_added_ids.add(id(entry))
+            if set_price:
+                edits[k] = {'entry': it.get('string_key', ''),
+                            'price_list': dv.price_list_with(it, dv.SILVER, target_raw)}
+                if isinstance(cache, dict):
+                    cache.setdefault(k, {})[dv.SILVER] = target_raw
+        for i, s_ in enumerate(stock_list):
+            s_['raw_d'] = i
+        store['buyable_stock_count'] = int(store.get('buyable_stock_count', 0) or 0) + len(chosen)
+        self._store_update_change_count(len(chosen))
+        self._store_selected()
+        self._store_status.setText(
+            f"DLC Vendor: added {len(chosen)} offers to {sname}"
+            + (f", all at {price_spin.value()} Silver" if set_price else "")
+            + " - appear in game after the shop restocks. Export Field JSON v3 to save.")
 
     def _store_set_limit(self) -> None:
         if not hasattr(self, '_store_dmm') or not self._store_dmm:
@@ -1522,13 +1674,25 @@ class StoreEditorTab(QWidget):
         modinfo = {'title': name, 'version': '1.0', 'author': 'CrimsonGameMods Stores',
                    'description': f'{len(intents)} field-level intent(s)',
                    'note': 'Format 3 field JSON for storeinfo.pabgb'}
+        # Item prices set by "DLC Vendor" (items only the DLC has: DMM writes
+        # them into the DLC's item table).
+        price_intents = [
+            {'entry': e['entry'], 'key': k, 'field': 'price_list', 'op': 'set',
+             'new': e['price_list']}
+            for k, e in sorted((getattr(self, '_store_item_price_edits', None) or {}).items())]
+        if price_intents:
+            needs_dlc = True
         if needs_dlc:
             # DMM skips the mod with a clear message for players without the DLC.
             modinfo['requires_dlc'] = True
+        targets = [{'file': 'storeinfo.pabgb', 'intents': intents}]
+        if price_intents:
+            targets.append({'file': 'iteminfo.pabgb', 'intents': price_intents})
+            modinfo['description'] += f', {len(price_intents)} item price(s)'
         doc = {
             'modinfo': modinfo,
             'format': 3, 'format_minor': 1,
-            'targets': [{'file': 'storeinfo.pabgb', 'intents': intents}],
+            'targets': targets,
         }
         try:
             with open(path, 'w', encoding='utf-8') as f:
