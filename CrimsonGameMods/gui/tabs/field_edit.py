@@ -3595,7 +3595,8 @@ class FieldEditTab(QWidget):
                 {'src': int(s['src']), 'tgt': int(s['tgt']),
                  'scale': float(s.get('scale', 1.0) or 1.0),
                  'rideable': bool(s.get('rideable', False)),
-                 'rider_y': float(s.get('rider_y', 8.0) or 8.0)}
+                 'rider_y': float(s.get('rider_y', 8.0) or 8.0),
+                 'look_only': bool(s.get('look_only', False))}
                 for s in saved if isinstance(s, dict) and 'src' in s and 'tgt' in s
             ]
 
@@ -3858,10 +3859,13 @@ class FieldEditTab(QWidget):
                 if tk == sk:
                     line = f"{_short(tk)}   ·   size only {sc:g}"
                     warn = False
+                elif sw.get('look_only'):
+                    warn = False
+                    line = f"{_short(tk)}   →   {_short(sk)}   ·   look only   ·   size {sc:g}"
                 else:
                     a, b = self._ms_skeleton_of(tk), self._ms_skeleton_of(sk)
                     warn = bool(a and b and a != b)
-                    line = (f"{_short(tk)}   →   {_short(sk)}   ·   size {sc:g}"
+                    line = (f"{_short(tk)}   →   {_short(sk)}   ·   full swap   ·   size {sc:g}"
                             + ("   ⚠ different skeleton" if warn else ""))
                     n_skel += warn
                 item = QListWidgetItem(line)
@@ -3929,13 +3933,31 @@ class FieldEditTab(QWidget):
 
         # ── Mount options row: scale + rideable ──
         mount_row = QHBoxLayout()
+        look_only_cb = QCheckBox("Look only")
+        look_only_cb.setChecked(True)
+        look_only_cb.setToolTip(
+            "Transmog: the target only gets the look of the source. Its skeleton,\n"
+            "movement, size and values stay - a mount stays rideable as before\n"
+            "(tested: shark with the orca's look swims and steers normally).\n\n"
+            "Off = full swap: skeleton and animations of the source too. Looks\n"
+            "cleaner for very different bodies, but a mount may no longer be\n"
+            "rideable (shark -> orca sank and could not steer).")
+        mount_row.addWidget(look_only_cb)
+        mount_row.addSpacing(12)
         mount_row.addWidget(QLabel("3.  Size:"))
         scale_spin.setDecimals(2)
         scale_spin.setFixedWidth(90)
         mount_row.addWidget(scale_spin)
-        _sz_hint = QLabel("1.0 = the normal size of the look, 0.5 = half of it")
+        _sz_hint = QLabel("")
         _sz_hint.setStyleSheet(f"color: {COLORS['text_dim']};")
         mount_row.addWidget(_sz_hint)
+
+        def _sz_hint_update(*_a):
+            _sz_hint.setText("1.0 = the target's own size, 0.5 = half of it"
+                             if look_only_cb.isChecked() else
+                             "1.0 = the normal size of the look, 0.5 = half of it")
+        look_only_cb.toggled.connect(_sz_hint_update)
+        _sz_hint_update()
         mount_row.addSpacing(20)
         rideable_cb = QCheckBox("Make Rideable")
         rideable_cb.setToolTip(
@@ -4017,7 +4039,8 @@ class FieldEditTab(QWidget):
             self._mesh_swap_queue[:] = [s for s in self._mesh_swap_queue if s['tgt'] != tk]
             self._mesh_swap_queue.append(
                 {'src': int(sk), 'tgt': int(tk), 'scale': scale,
-                 'rideable': rideable, 'rider_y': rider_y})
+                 'rideable': rideable, 'rider_y': rider_y,
+                 'look_only': look_only_cb.isChecked()})
             refresh_queue()
 
         def on_scale_only():
@@ -4082,7 +4105,8 @@ class FieldEditTab(QWidget):
                     added += 1
                 existing_by_tgt[tk] = {'src': sk, 'tgt': tk, 'scale': scale,
                                        'rideable': rideable_cb.isChecked(),
-                                       'rider_y': float(rider_y_spin.value())}
+                                       'rider_y': float(rider_y_spin.value()),
+                                       'look_only': look_only_cb.isChecked()}
             self._mesh_swap_queue[:] = list(existing_by_tgt.values())
             refresh_queue()
             QMessageBox.information(dlg, tr("Change All"),
@@ -4116,6 +4140,7 @@ class FieldEditTab(QWidget):
                         'scale': float(s.get('scale') or 0),
                         'rideable': bool(s.get('rideable', False)),
                         'rider_y': float(s.get('rider_y', 8.0) or 8.0),
+                        'look_only': bool(s.get('look_only', False)),
                     }
                     for s in self._mesh_swap_queue
                 ],
@@ -4173,7 +4198,8 @@ class FieldEditTab(QWidget):
                 self._mesh_swap_queue.append(
                     {'src': int(sk), 'tgt': int(tk), 'scale': sc,
                      'rideable': bool(s.get('rideable', False)),
-                     'rider_y': float(s.get('rider_y', 8.0) or 8.0)})
+                     'rider_y': float(s.get('rider_y', 8.0) or 8.0),
+                     'look_only': bool(s.get('look_only', False))})
                 added += 1
             refresh_queue()
             QMessageBox.information(dlg, tr("Import"),
@@ -4250,8 +4276,8 @@ class FieldEditTab(QWidget):
                     _tc = int(_sw["tgt"]); _sc = int(_sw["src"])
                 except Exception:
                     continue
-                if _tc == _sc:
-                    continue
+                if _tc == _sc or _sw.get("look_only"):
+                    continue            # look only: skeleton stays the target's
                 _tn = _ck_to_name.get(_tc, "")
                 _sn = _ck_to_name.get(_sc, "")
                 _te = _by_skey_efj.get(_tn) or _by_nkey_efj.get(_tc)
@@ -4333,7 +4359,10 @@ class FieldEditTab(QWidget):
                 # Size: the source's normal size x the factor (character_scale
                 # is a float; dmm_parser shows its raw 32 bits).
                 factor = float(sw.get("scale") or 1.0)
-                src_scale = src_e.get("character_scale")
+                look_only = bool(sw.get("look_only")) and tgt_ck != src_ck
+                # Look only: the target keeps its skeleton, so the size is
+                # relative to the target's own size (1.0 = unchanged).
+                src_scale = (tgt_e if look_only else src_e).get("character_scale")
                 tgt_scale = tgt_e.get("character_scale")
                 if src_scale is not None and tgt_scale is not None:
                     new_scale = _f2u(_u2f(src_scale) * factor)
@@ -4345,7 +4374,8 @@ class FieldEditTab(QWidget):
                             "op": "set",
                             "new": new_scale,
                             "_comment": (f"size {_u2f(src_scale) * factor:g} "
-                                         f"({factor:g} x normal size of {src_name or src_ck})"),
+                                         f"({factor:g} x normal size of "
+                                         f"{(tgt_name or tgt_ck) if look_only else (src_name or src_ck)})"),
                         })
                         if tgt_ck in _dlc_keys_efj:
                             needs_dlc = True
@@ -4370,6 +4400,11 @@ class FieldEditTab(QWidget):
                 skel_differs  = src_skel  is not None and tgt_skel  != src_skel
                 mdl_differs   = src_mdl   is not None and tgt_mdl   != src_mdl
                 skelv_differs = src_skelv is not None and tgt_skelv != src_skelv
+                if look_only:
+                    # Transmog: only the look (lookup_22). Skeleton, model
+                    # path, animations stay the target's - in game (Test F,
+                    # shark with the orca's look) it stayed rideable.
+                    anim_differs = skel_differs = mdl_differs = skelv_differs = False
 
                 # Nothing to change for this pair
                 if not any([vis_differs, anim_differs, skel_differs,
