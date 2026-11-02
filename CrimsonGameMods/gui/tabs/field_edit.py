@@ -229,6 +229,19 @@ class FieldEditTab(QWidget):
         chars_l.addStretch()
         chars_outer.addWidget(self._fe_make_footer())
 
+        # Mesh Swap tab (was a dialog). Built when it is first shown and the
+        # game data is loaded.
+        self.mesh_swap_page = _ShowHookWidget(self._ms_on_show)
+        ms_outer = QVBoxLayout(self.mesh_swap_page)
+        ms_outer.setContentsMargins(8, 8, 8, 8)
+        ms_outer.setSpacing(6)
+        ms_outer.addWidget(make_scope_label("game"))
+        self._ms_placeholder = QLabel("Loading game data ...")
+        self._ms_placeholder.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 20px;")
+        ms_outer.addWidget(self._ms_placeholder)
+        self._ms_page_layout = ms_outer
+        self._ms_built = False
+
         layout = legacy_l
 
         top_row = QHBoxLayout()
@@ -239,7 +252,7 @@ class FieldEditTab(QWidget):
         load_btn.clicked.connect(self._field_edit_load)
         top_row.addWidget(load_btn)
 
-        mesh_swap_btn = QPushButton(tr("🎭 Mesh Swap (Pets / Mounts / NPCs)"))
+        mesh_swap_btn = QPushButton(tr("🎭 Mesh Swap →"))
         mesh_swap_btn.setStyleSheet(
             button_css("neutral") + " font-weight: bold; "
             "padding: 8px 14px; font-size: 13px;")
@@ -3325,6 +3338,40 @@ class FieldEditTab(QWidget):
 
 
     def _field_edit_open_mesh_swap(self) -> None:
+        """Switch to the Mesh Swap tab."""
+        p = self.mesh_swap_page.parentWidget()
+        while p is not None and not isinstance(p, QTabWidget):
+            p = p.parentWidget()
+        if p is not None:
+            p.setCurrentWidget(self.mesh_swap_page)
+
+    def _ms_on_show(self) -> None:
+        if self._ms_built:
+            return
+        if self._charinfo_data is None:
+            self._fe_auto_load()
+            if getattr(self, '_fe_loading', False):
+                QTimer.singleShot(500, self._ms_on_show)
+            else:
+                self._ms_placeholder.setText(
+                    "Set the game folder first (top of the window), then open this tab again.")
+            return
+        try:
+            self._ms_build()
+        except Exception as e:  # noqa: BLE001
+            log.exception("Mesh Swap tab could not be built")
+            self._ms_placeholder.setText(f"Mesh Swap could not be loaded: {e}")
+
+    def _ms_skeleton_of(self, ck: int):
+        cache = getattr(self, '_ms_skel_cache', None)
+        if cache is None:
+            cache = {}
+            for it in (self._charinfo_dmm_items or []) + (getattr(self, '_charinfo_dlc_all', None) or []):
+                cache.setdefault(int(it.get('key', 0)), it.get('skeleton_name'))
+            self._ms_skel_cache = cache
+        return cache.get(int(ck))
+
+    def _ms_build(self) -> None:
         if not self._charinfo_data:
             QMessageBox.information(
                 self, tr("Mesh Swap"),
@@ -3482,46 +3529,19 @@ class FieldEditTab(QWidget):
                 for s in saved if isinstance(s, dict) and 'src' in s and 'tgt' in s
             ]
 
-        dlg = QDialog(self)
-        from PySide6.QtWidgets import QScrollArea
-        dlg.setWindowTitle(tr("Mesh Swap — Character Visual Transmog"))
-        dlg.resize(1100, 860)
-        dlg.setSizeGripEnabled(True)
-        _dl_outer = QVBoxLayout(dlg)
-        _dl_outer.setContentsMargins(0, 0, 0, 0)
-        _scroll = QScrollArea(dlg)
-        _scroll.setWidgetResizable(True)
-        _scroll.setFrameShape(QScrollArea.NoFrame)
-        _scroll_widget = QWidget()
-        _dl_outer.addWidget(_scroll)
-        _scroll.setWidget(_scroll_widget)
-        dlg_layout = QVBoxLayout(_scroll_widget)
-
-        tutorial = QLabel(
-            "<b>How to use Mesh Swap (Visual Transmog)</b><br>"
-            "<b>1.</b> Pick what you want to change on the <b>LEFT</b> (Target) "
-            "— e.g. your horse, your pet cat, an NPC.<br>"
-            "<b>2.</b> Pick what you want it to <b>look like</b> on the <b>RIGHT</b> "
-            "(Source) — e.g. a wolf, a dragon, another NPC.<br>"
-            "<b>3.</b> Click <b>Add Swap</b>. Repeat for as many swaps as you want.<br>"
-            "<b>4.</b> Close this dialog and click <b>Apply to Game</b> in the Field Edit tab "
-            "(or <b>Export Field JSON v3</b>).<br>"
-            "<b>Tip:</b> Use the <b>Category</b> dropdown to narrow down to Pets, Mounts, "
-            "Animals, Heroes, or Bosses. Use the search boxes to find a specific character by name.")
-        tutorial.setWordWrap(True)
-        tutorial.setTextFormat(Qt.RichText)
-        tutorial.setStyleSheet(
-            f"color: {COLORS['text']}; background-color: {COLORS['panel']}; "
-            f"padding: 10px; border: 2px solid {COLORS['accent']}; "
-            f"border-radius: 6px; font-size: 12px;")
-        dlg_layout.addWidget(tutorial)
-
+        dlg = QWidget()
+        dlg_layout = QVBoxLayout(dlg)
+        dlg_layout.setContentsMargins(0, 0, 0, 0)
         info = QLabel(
-            "Swap one character's visual mesh with another's. Same 0039/ overlay "
-            "as Field Edit — applied on Apply-to-Game / Export.")
+            "Mesh Swap — make one character look like another: your horse like a dragon, "
+            "a shark like Leviakan, a cat like a wolf. Works for mounts, pets, NPCs and bosses, "
+            "including the DLC creatures. Pick a character on the left, a look on the right, "
+            "Add Swap, then 'Save as mod' and load the file in DMM.")
         info.setWordWrap(True)
         info.setStyleSheet(
-            f"color: {COLORS['text_dim']}; padding: 4px; font-size: 10px;")
+            f"color: {COLORS['accent']}; padding: 8px; "
+            f"border: 1px solid {COLORS['border']}; border-radius: 4px; "
+            f"background-color: rgba(218,168,80,0.08);")
         dlg_layout.addWidget(info)
 
         CATEGORY_ORDER = ['All',
@@ -3550,7 +3570,7 @@ class FieldEditTab(QWidget):
 
         # ─── Quick-Swap Presets row ────────────────────────────────────────
         presets_row = QHBoxLayout()
-        presets_lbl = QLabel("Quick Swap Helpers:")
+        presets_lbl = QLabel("Quick picks:")
         presets_lbl.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
         presets_row.addWidget(presets_lbl)
 
@@ -3563,17 +3583,9 @@ class FieldEditTab(QWidget):
             si = src_cat_combo.findText(source_cat)
             if si >= 0:
                 src_cat_combo.setCurrentIndex(si)
-            QMessageBox.information(
-                dlg, "Quick Swap Tip",
-                f"Target filter set to <b>{target_cat}</b> (left panel).<br>"
-                f"Source filter set to <b>{source_cat}</b> (right panel) — "
-                f"change it on the right if you want something different.<br><br>"
-                f"1. Pick the specific character on the LEFT.<br>"
-                f"2. Pick what to look like on the RIGHT "
-                f"(use the source search or change its category to 'All' for full freedom).<br>"
-                f"3. Click <b>Add Swap</b>.")
+            return
 
-        cat_btn = QPushButton("🐱 Cats →")
+        cat_btn = QPushButton("Cats")
         cat_btn.setToolTip(
             "Guided helper: filter Target to Pet (Cat) — 11 named cat breeds "
             "from Ghost Hunter's catalog. Then pick what you want them to look "
@@ -3581,7 +3593,7 @@ class FieldEditTab(QWidget):
         cat_btn.clicked.connect(lambda: _show_filter('Pet (Cat)', 'Animal'))
         presets_row.addWidget(cat_btn)
 
-        dog_btn = QPushButton("🐶 Dogs →")
+        dog_btn = QPushButton("Dogs")
         dog_btn.setToolTip(
             "Guided helper: filter Target to Pet (Dog) — 12 named dog breeds "
             "(Beagle, Boarhound, Husky, etc). Then pick what you want them "
@@ -3589,7 +3601,7 @@ class FieldEditTab(QWidget):
         dog_btn.clicked.connect(lambda: _show_filter('Pet (Dog)', 'Animal'))
         presets_row.addWidget(dog_btn)
 
-        horse_btn = QPushButton("🐴 Horses →")
+        horse_btn = QPushButton("Horses")
         horse_btn.setToolTip(
             "Guided helper: filter Target to Mount (Horse) — named horse "
             "breeds (Priden, Royler, Camora, etc). Then pick what you want "
@@ -3597,7 +3609,7 @@ class FieldEditTab(QWidget):
         horse_btn.clicked.connect(lambda: _show_filter('Mount (Horse)', 'Dragon'))
         presets_row.addWidget(horse_btn)
 
-        special_btn = QPushButton("✨ Special Mounts →")
+        special_btn = QPushButton("Special Mounts")
         special_btn.setToolTip(
             "Guided helper: filter Target to Mount (Special) — the 5 unique "
             "mounts (Silver Fang, White Bear, Snowwhite Deer, Clawed Bear, "
@@ -3605,7 +3617,26 @@ class FieldEditTab(QWidget):
         special_btn.clicked.connect(lambda: _show_filter('Mount (Special)', 'Animal'))
         presets_row.addWidget(special_btn)
 
+        more_btn = QToolButton()
+        more_btn.setText("More ▾")
+        more_btn.setPopupMode(QToolButton.InstantPopup)
+        more_btn.setStyleSheet(button_css("neutral") + " padding: 4px 10px;")
+        from PySide6.QtWidgets import QMenu
+        more_menu = QMenu(more_btn)
+        for _txt, _fn in (
+                ("Change all visible characters to this look", lambda: change_all_btn.click()),
+                ("Size only (no new look)", lambda: scale_only_btn.click()),
+                (None, None),
+                ("Export swap list ...", lambda: export_btn.click()),
+                ("Import swap list ...", lambda: import_btn.click())):
+            if _txt is None:
+                more_menu.addSeparator()
+                continue
+            _act = more_menu.addAction(_txt)
+            _act.triggered.connect(lambda _c=False, f=_fn: f())
+        more_btn.setMenu(more_menu)
         presets_row.addStretch()
+        presets_row.addWidget(more_btn)
         dlg_layout.addLayout(presets_row)
 
         vsplitter = QSplitter(Qt.Vertical)
@@ -3629,19 +3660,22 @@ class FieldEditTab(QWidget):
             search.setPlaceholderText(placeholder)
             box.addWidget(search)
             lst = QListWidget()
-            lst.setMinimumHeight(350)
+            lst.setMinimumHeight(200)
             box.addWidget(lst, 1)
             return box, search, lst
 
         tgt_col, tgt_search, tgt_list = make_column(
-            tr("Target (the character to re-skin)"),
-            tr("Search name, internal name, or character key (e.g. 1000318)"),
+            tr("1.  Change this character"),
+            tr("Search name ..."),
             tgt_cat_combo)
         src_col, src_search, src_list = make_column(
-            tr("Source (visual to copy — pick ANY character, any category)"),
-            tr("Search name, internal name, or character key (e.g. 30507). Set filter to 'All' to browse everything."),
+            tr("2.  to look like"),
+            tr("Search name ..."),
             src_cat_combo)
         cols.addLayout(tgt_col, 1)
+        _arrow = QLabel("→")
+        _arrow.setStyleSheet("font-size: 22px; padding: 0 6px;")
+        cols.addWidget(_arrow)
         cols.addLayout(src_col, 1)
         picker_wrap_layout.addLayout(cols, 1)
         vsplitter.addWidget(picker_wrap)
@@ -3654,6 +3688,9 @@ class FieldEditTab(QWidget):
         )
         tgt_list.setStyleSheet(persistent_sel_style)
         src_list.setStyleSheet(persistent_sel_style)
+
+        from collections import Counter as _Ctr
+        _dup_names = _Ctr(c.get('display_name') or '' for c in catalog)
 
         def populate(lst: QListWidget, search_text: str, cat_filter: str):
             prev_key = None
@@ -3685,12 +3722,11 @@ class FieldEditTab(QWidget):
                         continue
                 disp = c.get('display_name') or ''
                 internal_show = c.get('internal_name') or ''
-                if disp and disp != internal_show:
-                    label = (f"[{c.get('category', 'Other')}] {disp}"
-                             f"  — {internal_show}  ({ck})")
-                else:
-                    label = f"[{c.get('category', 'Other')}] {internal_show}  ({ck})"
+                label = disp or internal_show or f"char {ck}"
+                if disp and _dup_names.get(disp, 0) > 1 and internal_show:
+                    label += f"   ({internal_show})"
                 it = QListWidgetItem(label)
+                it.setToolTip(f"{internal_show}  ·  key {ck}  ·  {c.get('category', 'Other')}")
                 it.setData(Qt.UserRole, ck)
                 lst.addItem(it)
                 if prev_key is not None and ck == prev_key:
@@ -3712,7 +3748,7 @@ class FieldEditTab(QWidget):
         queue_wrap = QWidget()
         queue_wrap_layout = QVBoxLayout(queue_wrap)
         queue_wrap_layout.setContentsMargins(0, 0, 0, 0)
-        queue_lbl = QLabel(tr("Queued swaps (applied at Export/Apply time — drag divider above to resize):"))
+        queue_lbl = QLabel(tr("Your swaps"))
         queue_lbl.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
         queue_wrap_layout.addWidget(queue_lbl)
         queue_list = QListWidget()
@@ -3733,25 +3769,49 @@ class FieldEditTab(QWidget):
                     return internal or f"char {ck}"
             return f"char {ck}"
 
+        _dlc_ck = {int(c.get('key', 0)) for c in getattr(self, '_charinfo_dlc_all', None) or []}
+
+        def _short(ck: int) -> str:
+            for c in catalog:
+                if c.get('character_key') == ck:
+                    return c.get('display_name') or c.get('internal_name') or f"char {ck}"
+            return f"char {ck}"
+
         def refresh_queue():
             queue_list.clear()
+            n_dlc = n_skel = 0
             for sw in self._mesh_swap_queue:
                 sc = float(sw.get('scale') or 1.0)
                 tk, sk = sw['tgt'], sw['src']
-                tags = []
-                if sc != 1.0:
-                    tags.append(f"scale {sc:g}")
-                if sw.get('rideable'):
-                    tags.append(f"rideable Y={float(sw.get('rider_y', 8.0)):g}")
-                tag_str = "   [" + ", ".join(tags) + "]" if tags else ""
-                if tk == sk and sc != 1.0 and not sw.get('rideable'):
-                    xp = sw.get('xml_path', '')
-                    xml_short = xp.split('/')[-1] if xp else 'auto'
-                    line = f"{_name_for(tk)}   ->   [SCALE {sc:g}, xml: {xml_short}]"
+                if tk in _dlc_ck or sk in _dlc_ck:
+                    n_dlc += 1
+                if tk == sk:
+                    line = f"{_short(tk)}   ·   size only {sc:g}"
+                    warn = False
                 else:
-                    line = (f"{_name_for(tk)}   ->   now looks like   ->   "
-                            f"{_name_for(sk)}{tag_str}")
-                queue_list.addItem(line)
+                    a, b = self._ms_skeleton_of(tk), self._ms_skeleton_of(sk)
+                    warn = bool(a and b and a != b)
+                    line = (f"{_short(tk)}   →   {_short(sk)}   ·   size {sc:g}"
+                            + ("   ⚠ different skeleton" if warn else ""))
+                    n_skel += warn
+                item = QListWidgetItem(line)
+                item.setToolTip(f"{_name_for(tk)}  →  {_name_for(sk)}")
+                if warn:
+                    item.setForeground(QColor(COLORS['warning']))
+                queue_list.addItem(item)
+            text = (f"<b>In the mod:</b><br>• {len(self._mesh_swap_queue)} swap(s)"
+                    if self._mesh_swap_queue else "<b>In the mod:</b><br>• nothing yet")
+            notes = []
+            if n_dlc:
+                notes.append("Needs the DLC (DMM skips it without)")
+            if n_skel:
+                notes.append(f"{n_skel} swap(s) with a different skeleton – may not be rideable or look odd")
+            if notes:
+                text += f"<br><span style='color:{COLORS['warning']}'>" + " · ".join(notes) + "</span>"
+            try:
+                ms_summary.setText(text)
+            except NameError:
+                pass                      # first call, before the footer exists
             try:
                 self._config['mesh_swap_queue'] = list(self._mesh_swap_queue)
                 self.config_save_requested.emit()
@@ -3790,19 +3850,22 @@ class FieldEditTab(QWidget):
             "Compatible with Stacker Tool and DMM mod loader.")
         export_field_btn.setStyleSheet(
             "QPushButton { " + button_css("primary") + " font-weight: bold; }")
-        btn_row.addWidget(add_btn)
-        btn_row.addWidget(change_all_btn)
-        btn_row.addWidget(remove_btn)
-        btn_row.addWidget(clear_btn)
-        btn_row.addWidget(export_field_btn)
-        btn_row.addStretch()
-        dlg_layout.addLayout(btn_row)
+        queue_btns = QHBoxLayout()
+        queue_btns.addStretch()
+        remove_btn.setText(tr("Remove"))
+        queue_btns.addWidget(remove_btn)
+        queue_btns.addWidget(clear_btn)
+        queue_wrap_layout.addLayout(queue_btns)
 
         # ── Mount options row: scale + rideable ──
         mount_row = QHBoxLayout()
-        mount_row.addWidget(QLabel("Size (1.0 = source's normal size):"))
+        mount_row.addWidget(QLabel("3.  Size:"))
+        scale_spin.setDecimals(2)
+        scale_spin.setFixedWidth(90)
         mount_row.addWidget(scale_spin)
-        mount_row.addWidget(scale_only_btn)
+        _sz_hint = QLabel("1.0 = the normal size of the look, 0.5 = half of it")
+        _sz_hint.setStyleSheet(f"color: {COLORS['text_dim']};")
+        mount_row.addWidget(_sz_hint)
         mount_row.addSpacing(20)
         rideable_cb = QCheckBox("Make Rideable")
         rideable_cb.setToolTip(
@@ -3841,17 +3904,27 @@ class FieldEditTab(QWidget):
         rideable_cb.setVisible(False)
         rider_y_spin.setVisible(False)
         mount_row.addStretch()
-        dlg_layout.addLayout(mount_row)
+        add_btn.setStyleSheet(button_css("primary") + " font-weight: bold; padding: 6px 14px;")
+        mount_row.addWidget(add_btn)
+        picker_wrap_layout.addLayout(mount_row)
 
         cfg_row = QHBoxLayout()
         export_btn = QPushButton(tr("Export Config"))
         import_btn = QPushButton(tr("Import Config"))
         close_btn = QPushButton(tr("Close"))
-        cfg_row.addWidget(export_btn)
-        cfg_row.addWidget(import_btn)
-        cfg_row.addStretch()
-        cfg_row.addWidget(close_btn)
-        dlg_layout.addLayout(cfg_row)
+        # Export/Import of the swap list are in "More"; no Close on a tab.
+        foot = QHBoxLayout()
+        ms_summary = QLabel("")
+        ms_summary.setWordWrap(True)
+        ms_summary.setStyleSheet(f"background: {COLORS['input_bg']}; border: 1px solid "
+                                 f"{COLORS['border']}; border-radius: 4px; padding: 6px 10px;")
+        foot.addWidget(ms_summary, 1)
+        export_field_btn.setText("Save as mod (Field JSON for DMM)")
+        export_field_btn.setStyleSheet(button_css("primary") + " font-weight: bold; padding: 8px 16px;")
+        export_field_btn.setMinimumHeight(40)
+        foot.addWidget(export_field_btn)
+        dlg_layout.addLayout(foot)
+        refresh_queue()
 
         def on_add():
             ti = tgt_list.currentItem()
@@ -3881,8 +3954,8 @@ class FieldEditTab(QWidget):
             scale = float(scale_spin.value())
             if scale == 1.0:
                 QMessageBox.information(dlg, tr("Scale Only"),
-                    "Change the Scale value from 1.0 first.\n"
-                    "1.0 = default size. Use <1.0 to shrink, >1.0 to enlarge.")
+                    "Change the Size value from 1.0 first.\n"
+                    "1.0 = normal size. Use <1.0 to shrink, >1.0 to enlarge.")
                 return
             ti = tgt_list.currentItem()
             si = src_list.currentItem()
@@ -3892,59 +3965,9 @@ class FieldEditTab(QWidget):
                     "Select a character in either the TARGET or SOURCE panel first.")
                 return
             ck = int(pick.data(Qt.UserRole))
-
-            from character_mesh_swap import _load_appearance_paths
-            catalog = _load_appearance_paths() or []
-            if not catalog:
-                QMessageBox.warning(dlg, tr("Scale Only"),
-                    "appearance_paths.json not found — cannot look up XML paths.")
-                return
-
-            from PySide6.QtWidgets import QInputDialog
-            pick_name = pick.text().split('[')[0].strip()
-            search_dlg = QDialog(dlg)
-            search_dlg.setWindowTitle(f"Pick appearance XML for: {pick_name}")
-            search_dlg.resize(600, 400)
-            sl = QVBoxLayout(search_dlg)
-            sf = QLineEdit()
-            sf.setPlaceholderText("Search by name (e.g. horse, wolf, blackstar)...")
-            sl.addWidget(sf)
-            from PySide6.QtWidgets import QListWidget
-            slist = QListWidget()
-            sl.addWidget(slist, 1)
-            from PySide6.QtWidgets import QDialogButtonBox
-            sbb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-            sbb.accepted.connect(search_dlg.accept)
-            sbb.rejected.connect(search_dlg.reject)
-            sl.addWidget(sbb)
-
-            def _filter_xml(text):
-                slist.clear()
-                q = text.strip().lower()
-                for e in catalog:
-                    p = e.get('path', '')
-                    if q and q not in p.lower():
-                        continue
-                    item = QListWidgetItem(p)
-                    item.setData(Qt.UserRole, p)
-                    slist.addItem(item)
-                    if slist.count() > 200:
-                        break
-
-            sf.textChanged.connect(_filter_xml)
-            _filter_xml("")
-
-            if search_dlg.exec() != QDialog.Accepted:
-                return
-            sel = slist.currentItem()
-            if not sel:
-                return
-            xml_path = sel.data(Qt.UserRole)
-
             self._mesh_swap_queue[:] = [s for s in self._mesh_swap_queue if s['tgt'] != ck]
             self._mesh_swap_queue.append(
                 {'src': ck, 'tgt': ck, 'scale': scale,
-                 'xml_path': xml_path,
                  'rideable': False, 'rider_y': 8.0})
             refresh_queue()
 
@@ -4414,10 +4437,11 @@ class FieldEditTab(QWidget):
         export_field_btn.clicked.connect(on_export_field_json)
         export_btn.clicked.connect(on_export)
         import_btn.clicked.connect(on_import)
-        close_btn.clicked.connect(dlg.accept)
         queue_list.itemDoubleClicked.connect(lambda _: on_remove())
 
-        dlg.exec()
+        self._ms_placeholder.setVisible(False)
+        self._ms_page_layout.addWidget(dlg, 1)
+        self._ms_built = True
 
     def _field_edit_apply_mesh_swaps(self) -> int:
         queue = self._mesh_swap_queue or []

@@ -731,6 +731,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         # 2.4.6: FieldEdit is split into "Mounts" and "Characters" (same data).
         self._mods_tabs.addTab(self._field_edit_tab_obj, tr("Mounts"))
         self._mods_tabs.addTab(self._field_edit_tab_obj.characters_page, tr("Characters"))
+        self._mods_tabs.addTab(self._field_edit_tab_obj.mesh_swap_page, tr("Mesh Swap"))
 
         self._iteminfo_cache = ItemInfoCache()
         self._iteminfo_cache.set_game_path(self._config.get("game_install_path", ""))
