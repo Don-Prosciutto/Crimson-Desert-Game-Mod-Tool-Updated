@@ -9670,6 +9670,18 @@ class ItemBuffsTab(QWidget):
         elif _dlc_hits:
             log.info("Export v3: %d DLC item(s) among the edits - not marked as "
                      "requiring the DLC (mixed mod)", len(_dlc_hits))
+        # Buffs / passives only the DLC has, put on any item: without the DLC
+        # the game doesn't know them, so the whole mod needs the DLC.
+        _dlc_buff_refs, _dlc_skill_refs = set(), set()
+        try:
+            from client_names import dlc_refs as _dlc_refs
+            _dlc_buff_refs, _dlc_skill_refs = _dlc_refs(intents)
+        except Exception as _e:  # noqa: BLE001
+            log.warning("DLC buff check failed: %s", _e)
+        if _dlc_buff_refs or _dlc_skill_refs:
+            modinfo['requires_dlc'] = True
+            log.info("Export v3: uses %d DLC buff(s), %d DLC skill(s) -> requires_dlc",
+                     len(_dlc_buff_refs), len(_dlc_skill_refs))
         targets = []
         if intents:
             targets.append({'file': 'iteminfo.pabgb', 'intents': intents})
@@ -9690,9 +9702,14 @@ class ItemBuffsTab(QWidget):
                 + (f", {len(charinfo_intents)} characterinfo" if charinfo_intents else ""))
             self._buff_status_label.setText(
                 f"Exported {total} field intents ({target_summary}) to {os.path.basename(path)}")
+            _dlc_note = ""
+            if _dlc_buff_refs or _dlc_skill_refs:
+                _dlc_note = ("Uses buffs from the DLC - the mod needs the DLC "
+                             "(DMM skips it without).\n\n")
             QMessageBox.information(self, "Export Field JSON v3",
                 f"Exported {total} field-level intents.\n"
                 f"  {target_summary}\n\n"
+                f"{_dlc_note}"
                 f"Compatible with Stacker Tool, DMM, and future mod loaders.\n\n"
                 f"File: {path}")
         except Exception as e:

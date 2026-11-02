@@ -144,10 +144,65 @@ def _extract_table(game_path: str, stem: str, table_name: str) -> list[dict]:
     return list(dmm_parser.parse_table(table_name, body, header))
 
 
+# Buff / skill keys that only an installed DLC has (dlc/<name>/ since 2.04).
+# Filled by load_client_name_maps(); exports check them to mark a mod as
+# needing the DLC.
+DLC_BUFF_KEYS: set[int] = set()
+DLC_SKILL_KEYS: set[int] = set()
+
+
+def _extract_dlc_tables(game_path: str, stem: str, table_name: str) -> list[dict]:
+    """Records of `stem` from every installed DLC (empty without a DLC)."""
+    import dmm_parser
+    try:
+        from item_db import _dlc_tables
+    except Exception:
+        return []
+    out: list[dict] = []
+    for root, d, hname in _dlc_tables(dmm_parser, game_path, "0008",
+                                      f"{stem}.", ".staticinfoheader"):
+        bname = hname[:-len(".staticinfoheader")] + ".staticinfobody"
+        try:
+            header = dmm_parser.extract_file(root, "0008", d, hname)
+            body = dmm_parser.extract_file(root, "0008", d, bname)
+            out.extend(dmm_parser.parse_table(table_name, body, header))
+        except Exception as exc:
+            log.warning("DLC %s not readable in %s: %s", stem, root, exc)
+    return out
+
+
+def _dlc_only(game_path: str, stem: str, table_name: str,
+              base_keys: set) -> list[dict]:
+    recs = []
+    for rec in _extract_dlc_tables(game_path, stem, table_name):
+        try:
+            key = int(rec.get("key") or 0)
+        except (TypeError, ValueError):
+            continue
+        if key > 0 and key not in base_keys:
+            recs.append(rec)
+    return recs
+
+
 def load_buff_names_from_game(game_path: str) -> dict[int, str]:
-    """All buffinfo keys → humanised labels from the installed client."""
+    """All buffinfo keys → humanised labels from the installed client.
+    Buffs only a DLC has are added as "[DLC] <label>"."""
     names: dict[int, str] = {}
-    for rec in _extract_table(game_path, "buffinfo", "buff_info"):
+    base = _extract_table(game_path, "buffinfo", "buff_info")
+    base_keys = set()
+    for rec in base:
+        try:
+            base_keys.add(int(rec.get("key") or 0))
+        except (TypeError, ValueError):
+            pass
+    DLC_BUFF_KEYS.clear()
+    for rec in _dlc_only(game_path, "buffinfo", "buff_info", base_keys):
+        key = int(rec.get("key") or 0)
+        DLC_BUFF_KEYS.add(key)
+        label = humanise_string_key(str(rec.get("string_key") or ""))
+        if label:
+            names[key] = f"[DLC] {label}"
+    for rec in base:
         try:
             key = int(rec.get("key") or 0)
         except (TypeError, ValueError):
@@ -163,7 +218,19 @@ def load_buff_names_from_game(game_path: str) -> dict[int, str]:
 def load_passive_names_from_game(game_path: str) -> dict[int, str]:
     """Equip-passive skill keys → humanised labels from the installed client."""
     names: dict[int, str] = {}
-    for rec in _extract_table(game_path, "skill", "skill_info"):
+    base = _extract_table(game_path, "skill", "skill_info")
+    base_keys = set()
+    for rec in base:
+        try:
+            base_keys.add(int(rec.get("key") or 0))
+        except (TypeError, ValueError):
+            pass
+    DLC_SKILL_KEYS.clear()
+    dlc = _dlc_only(game_path, "skill", "skill_info", base_keys)
+    for rec in dlc:
+        DLC_SKILL_KEYS.add(int(rec.get("key") or 0))
+    dlc_keys = set(DLC_SKILL_KEYS)
+    for rec in list(base) + dlc:
         string_key = str(rec.get("string_key") or "")
         if not string_key.startswith((
             "Equip_Passive_",
@@ -179,8 +246,40 @@ def load_passive_names_from_game(game_path: str) -> dict[int, str]:
             continue
         label = humanise_string_key(string_key)
         if label:
-            names[key] = label
+            names[key] = f"[DLC] {label}" if key in dlc_keys else label
     return names
+
+
+def dlc_refs(obj) -> tuple[set, set]:
+    """(DLC buff keys, DLC skill keys) used anywhere in `obj` - item dicts or
+    export intents ({'buff': n} / {'skill': n} entries)."""
+    buffs: set = set()
+    skills: set = set()
+    if not (DLC_BUFF_KEYS or DLC_SKILL_KEYS):
+        return buffs, skills
+    stack = [obj]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, dict):
+            # Dot-path intent: {'field': '...equip_buffs[0].buff', 'new': n}
+            field = cur.get("field")
+            new = cur.get("new")
+            if isinstance(field, str) and isinstance(new, int):
+                last = field.rsplit(".", 1)[-1]
+                if last == "buff" and new in DLC_BUFF_KEYS:
+                    buffs.add(new)
+                elif last == "skill" and new in DLC_SKILL_KEYS:
+                    skills.add(new)
+            for k, v in cur.items():
+                if isinstance(v, (dict, list, tuple)):
+                    stack.append(v)
+                elif k == "buff" and isinstance(v, int) and v in DLC_BUFF_KEYS:
+                    buffs.add(v)
+                elif k == "skill" and isinstance(v, int) and v in DLC_SKILL_KEYS:
+                    skills.add(v)
+        elif isinstance(cur, (list, tuple)):
+            stack.extend(cur)
+    return buffs, skills
 
 
 def load_client_name_maps(game_path: Optional[str]) -> tuple[dict[int, str], dict[int, str]]:
