@@ -3563,7 +3563,6 @@ QCheckBox {{
             ('_swap_tab',         lambda: self._swap_tab.load(self._save_data, self._items)),
             ('_quest_editor_tab', lambda: self._quest_editor_tab.load(self._save_data, self._loaded_path)),
             ('_waypoint_tab',     lambda: self._waypoint_tab.load(self._save_data)),
-            ('_teleport_tab',     lambda: self._teleport_tab.load(self._save_data)),
             ('_knowledge_tab',    lambda: self._knowledge_tab.load(self._save_data)),
             ('_quest_db_tab',     lambda: self._quest_db_tab.load(self._save_data)),
             ('_player_tab',       lambda: self._player_tab.load(self._save_data)),

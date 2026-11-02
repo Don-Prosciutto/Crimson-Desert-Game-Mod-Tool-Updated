@@ -647,7 +647,7 @@ class SkillTreeTab(QWidget):
                 if getattr(self, '_skill_dmm_loaded', False):
                     import dmm_parser as _dmp_ser
                     new_pabgb = bytes(_dmp_ser.serialize_table(
-                        'skill_info', self._skill_entries))
+                        'skill_info', self._skill_base_entries()))
                     result["skill.pabgb"] = new_pabgb
                     result["skill.pabgh"] = self._skill_pabgh
                 else:
@@ -803,7 +803,7 @@ class SkillTreeTab(QWidget):
                 if getattr(self, '_skill_dmm_loaded', False):
                     import dmm_parser as _dmp_ser2
                     _new_pabgb = bytes(_dmp_ser2.serialize_table(
-                        'skill_info', self._skill_entries))
+                        'skill_info', self._skill_base_entries()))
                     builder.add_file(INTERNAL_DIR, "skill.pabgb", _new_pabgb)
                     builder.add_file(INTERNAL_DIR, "skill.pabgh", self._skill_pabgh)
                 else:
@@ -960,6 +960,18 @@ class SkillTreeTab(QWidget):
             import copy as _copy_sk
             dmm_entries = list(_dmp_sk.parse_table('skill_info', pabgb, pabgh))
             if dmm_entries:
+                # Skills only the DLC has go behind the main table, marked
+                # [DLC]. They are never written into skill.pabgb; their
+                # edits go into the Field JSON (DMM applies them to the DLC).
+                self._skill_dlc_keys = set()
+                try:
+                    from item_db import dlc_only_records
+                    _dlc = dlc_only_records(game_path, "skill", "skill_info",
+                                            {int(e.get('key', 0)) for e in dmm_entries})
+                    self._skill_dlc_keys = {int(e.get('key', 0)) for e in _dlc}
+                    dmm_entries = dmm_entries + _dlc
+                except Exception as _dlc_err:  # noqa: BLE001
+                    log.warning("DLC skills not loaded: %s", _dlc_err)
                 self._skill_entries = dmm_entries
                 self._skill_vanilla_entries = _copy_sk.deepcopy(dmm_entries)
                 self._skill_dmm_loaded = True
@@ -969,9 +981,11 @@ class SkillTreeTab(QWidget):
                 self._btn_skill_export.setEnabled(True)
                 self._btn_apply.setEnabled(True)
                 self._populate_skill_table()
+                _nd = len(self._skill_dlc_keys)
                 self._lbl_skill_status.setText(
-                    f"Loaded {len(self._skill_entries)} skills via dmm_parser "
-                    f"({len(pabgb):,} bytes)")
+                    f"Loaded {len(self._skill_entries) - _nd} skills via dmm_parser "
+                    f"({len(pabgb):,} bytes)"
+                    + (f" + {_nd} from the DLC (Field JSON only)" if _nd else ""))
                 self.status_message.emit(
                     f"Loaded {len(self._skill_entries)} skill entries (dmm_parser)")
             else:
@@ -1014,6 +1028,8 @@ class SkillTreeTab(QWidget):
         for row, e in enumerate(entries):
             # Name — dmm_parser uses 'string_key', skillinfo_parser uses 'name'
             display_name = e.get('name', e.get('string_key', str(e.get('key', row))))
+            if int(e.get('key', -1) or -1) in getattr(self, '_skill_dlc_keys', ()):
+                display_name = f"[DLC] {display_name}"
             item = QTableWidgetItem(display_name)
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             dn = e.get('dev_skill_name', b'')
@@ -1100,6 +1116,13 @@ class SkillTreeTab(QWidget):
         self._skill_table_updating = False
         self._lbl_skill_status.setText(
             f"{e.get('name', e.get('string_key', '?'))}: {'cooltime' if col == 2 else 'max_level'} = {val}")
+
+    def _skill_base_entries(self) -> list:
+        """The entries of the main skill table (without the DLC's own)."""
+        dlc = getattr(self, '_skill_dlc_keys', None)
+        if not dlc:
+            return self._skill_entries
+        return [e for e in self._skill_entries if int(e.get('key', 0) or 0) not in dlc]
 
     def _is_skill_entry_modified(self, idx: int) -> bool:
         """Check if skill entry at idx differs from vanilla."""
@@ -1292,7 +1315,7 @@ class SkillTreeTab(QWidget):
             if hit:
                 dirty_keys.add(entry.get('key', 0))
 
-        new_pabgb = bytes(dmm_parser.serialize_table('skill_info', self._skill_entries))
+        new_pabgb = bytes(dmm_parser.serialize_table('skill_info', self._skill_base_entries()))
         self._skill_pabgb = new_pabgb
 
         # # Keep dmm_parser items directly — do NOT re-parse with skillinfo_parser.
@@ -1438,6 +1461,10 @@ class SkillTreeTab(QWidget):
                 }
             ],
         }
+        _dlc = getattr(self, '_skill_dlc_keys', set())
+        if _dlc and all(int(i.get('key', 0) or 0) in _dlc for i in intents):
+            # Only DLC skills changed: DMM skips the mod without the DLC.
+            doc['modinfo']['requires_dlc'] = True
 
         try:
             with open(path, 'w', encoding='utf-8') as f:

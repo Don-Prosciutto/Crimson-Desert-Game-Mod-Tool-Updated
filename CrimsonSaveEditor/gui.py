@@ -14606,33 +14606,6 @@ QCheckBox::indicator {{
         self._know_learned_keys = set()
 
 
-    def _build_teleport_tab(self) -> None:
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
-        layout.setAlignment(Qt.AlignCenter)
-
-        title = QLabel("Teleporter")
-        f = title.font(); f.setPointSize(24); f.setBold(True); title.setFont(f)
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(f"color: {COLORS['accent']};")
-        layout.addWidget(title)
-
-        msg = QLabel(
-            "The in-editor teleporter has been removed.\n\n"
-            "Use Dameon's standalone Crimson Desert Teleporter tool instead — "
-            "it is maintained separately and offers a better experience."
-        )
-        msg.setAlignment(Qt.AlignCenter)
-        msg.setWordWrap(True)
-        f2 = msg.font(); f2.setPointSize(12); msg.setFont(f2)
-        layout.addWidget(msg)
-
-        layout.addStretch()
-        self._tabs.addTab(tab, "Teleport")
-
-
     def _know_scan(self) -> None:
         if not self._save_data:
             QMessageBox.warning(self, "Knowledge", "Load a save file first.")
