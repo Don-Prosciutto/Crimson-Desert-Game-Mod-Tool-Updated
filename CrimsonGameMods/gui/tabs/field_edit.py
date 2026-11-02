@@ -474,7 +474,8 @@ class FieldEditTab(QWidget):
         _tips = {
             4: "Movement speed (MoveSpeedRate): 100 = normal, 150 = half again as fast.\n"
                "Works for running and flying (tested: wyvern at 150 % flies much faster).",
-            5: "Swimming speed (SwimSpeedRate): 100 = normal. Possibly what sea mounts use.",
+            5: "Swimming speed (SwimSpeedRate): 100 = normal. This is the one for sea\n"
+               "mounts (tested: shark at 150 % swims clearly faster; Speed % does far less).",
             6: "Top speed level 0-5 (horses and a few others; 5 = the best).\n"
                "Shown: the value at the mount's highest level. A change sets it for all levels.",
             7: "Acceleration level 0-5 (horses and a few others).",
@@ -785,7 +786,7 @@ class FieldEditTab(QWidget):
         lay.addLayout(row)
         lay.addWidget(self._fe_hint(
             "Double-click a value to change it. Ctrl/Shift-click to select several mounts. "
-            "Times are in seconds, speed in % (100 = normal).", False))
+            "Times are in seconds, speed in % (100 = normal). Sea mounts: use Swim %.", False))
 
     def _fe_make_footer(self) -> QWidget:
         w = QWidget()
