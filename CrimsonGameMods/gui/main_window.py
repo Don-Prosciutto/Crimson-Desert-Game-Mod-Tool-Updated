@@ -125,6 +125,7 @@ from gui.tabs.world import (
 )
 from gui.tabs.field_edit import FieldEditTab
 from gui.tabs.bagspace import BagSpaceTab
+from gui.tabs.home import HomePage
 from gui.tabs.skill_tree import SkillTreeTab
 from gui.dialogs import (
     _FloatingTabWindow, DetachableTabWidget,
@@ -907,8 +908,21 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
         self._tabs = _real_tabs
         self._real_tabs = _real_tabs
+        # Start page (2.4.6): short info per page, status, what is new.
+        try:
+            from updater import APP_VERSION as _hv
+        except Exception:  # noqa: BLE001
+            _hv = ""
+        self._home_page = HomePage(_hv, goto=self._home_goto, status=self._home_status,
+                                   config=self._config, save_config=self._save_config,
+                                   support=self._create_support_package)
+        _real_tabs.insertTab(0, self._home_page, "Home")
         self._build_save_editor_area()
         self._build_nav_sidebar()
+        if self._config.get("home_at_start", True):
+            _real_tabs.setCurrentWidget(self._home_page)
+        else:
+            QTimer.singleShot(0, self._restore_last_page)
         self._update_experimental_tabs()
 
         # Register all tabs with the stacker for Pull All Edits
@@ -963,7 +977,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._se_host = host
         self._se_window = None
         self._se_area_widgets = ()
-        self._real_tabs.insertTab(1, host, "Save Editor")
+        self._real_tabs.insertTab(self._real_tabs.indexOf(self._mods_tabs) + 1, host, "Save Editor")
         self._real_tabs.currentChanged.connect(self._on_top_tab_changed_se)
         # main.py builds the Save Editor before the window is shown (behind the
         # splash screen). Building it after show froze the visible window for
@@ -1050,8 +1064,9 @@ class MainWindow(SelfTestMixin, QMainWindow):
         i = rt.indexOf(self._se_host)
         rt.removeTab(i)
         self._se_host.deleteLater()
-        rt.insertTab(1, save_page, "Save Editor")
-        rt.insertTab(2, world_page, "World")
+        _after_mods = rt.indexOf(self._mods_tabs) + 1
+        rt.insertTab(_after_mods, save_page, "Save Editor")
+        rt.insertTab(_after_mods + 1, world_page, "World")
         for w in others:
             rt.addTab(w, "Backup")
         rt.setTabToolTip(rt.indexOf(save_page), "Edits your SAVE FILE: inventory, equipment, sockets, dye ...")
@@ -1427,6 +1442,10 @@ class MainWindow(SelfTestMixin, QMainWindow):
         else:
             rt.setCurrentWidget(holder)
             holder.setCurrentWidget(widget)
+        try:
+            self._config["last_page"] = item.text(0)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _nav_sync(self) -> None:
         nav = getattr(self, "_nav", None)
@@ -2248,6 +2267,12 @@ class MainWindow(SelfTestMixin, QMainWindow):
         change_lang_act.triggered.connect(self._open_language_picker)
         help_menu.addAction(change_lang_act)
 
+        support_act = QAction("Create Support Package...", self)
+        support_act.setToolTip("A zip with versions, the log and settings to send when\n"
+                               "something goes wrong. No save files, no game files.")
+        support_act.triggered.connect(self._create_support_package)
+        help_menu.addAction(support_act)
+
         discord_act = QAction("💬 Discord (community help)", self)
         discord_act.setToolTip("Opens the Crimson Desert Modding Discord — "
                                "support, mod sharing, bug reports.")
@@ -2350,42 +2375,8 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._view_menu = view_menu
         self._tab_actions = []
 
-        guides_menu = menu_bar.addMenu("Guides")
-        for guide_name, guide_key in [
-            ("Inventory", "inventory"),
-            ("Item Swap", "swap"),
-            ("Repurchase (Vendor Swap)", "repurchase"),
-            ("Equipment (Enchanting)", "equipment"),
-            ("Sockets (Abyss Gear)", "sockets"),
-            ("Item Packs", "packs"),
-            ("Community Mapping", "community"),
-            ("ItemBuffs (Stat Editing)", "itembuffs"),
-            ("Nexus Gate Locations", "waypoint"),
-            ("Game Data Editor", "gamedata"),
-            ("Knowledge Editor", "knowledge"),
-        ]:
-            act = QAction(guide_name, self)
-            act.triggered.connect(lambda checked, k=guide_key: self._show_guide(k))
-            guides_menu.addAction(act)
-
-        guides_menu.addSeparator()
-
-        _video_guides = [
-            ("VIDEO: Drop Rate & Loot Table Editor + Packs Guide",
-             "https://www.youtube.com/watch?v=-yZ3EtZGFf4&t=3s"),
-            ("VIDEO: How to Change In-Game Drop Rate & Loot Table",
-             "https://www.youtube.com/watch?v=oMUQ1w0DZqk&t=5s"),
-            ("VIDEO: How to Modify Base Stats on Any Armor & Weapon",
-             "https://www.youtube.com/watch?v=Fxc3Wn2dImk"),
-            ("VIDEO: Item Editor — Mod Any Item",
-             "https://www.youtube.com/watch?v=nDOP6OKI1_E"),
-            ("VIDEO: How to Dye Any Color Without Unlocking",
-             "https://www.youtube.com/watch?v=W7S3YWWYspw"),
-        ]
-        for title, url in _video_guides:
-            act = QAction(title, self)
-            act.triggered.connect(lambda checked, u=url: __import__('webbrowser').open(u))
-            guides_menu.addAction(act)
+        # The "Guides" menu is gone (2.4.6): the start page and the ? buttons
+        # on the pages cover it. _show_guide stays for those buttons.
 
         self._experimental_action = QAction("Enable Experimental / Dev Mode", self)
         self._experimental_action.setCheckable(True)
@@ -4713,6 +4704,101 @@ QCheckBox {{
     def _open_discord(self) -> None:
         import webbrowser
         webbrowser.open("https://discord.gg/nBqSzunyFS")
+
+    # ── Start page ──────────────────────────────────────────────────
+    def _home_find(self, label: str):
+        """(holder, widget) of the page whose name starts with `label`."""
+        rt = self._real_tabs
+        want = label.lower()
+        for i in range(rt.count()):
+            if rt.tabText(i).lower().startswith(want):
+                return rt, rt.widget(i)
+        for i in range(rt.count()):
+            page = rt.widget(i)
+            if isinstance(page, QTabWidget):
+                for j in range(page.count()):
+                    if page.tabText(j).lower().startswith(want):
+                        return page, page.widget(j)
+        return None, None
+
+    def _home_goto(self, label: str) -> bool:
+        holder, widget = self._home_find(label)
+        if widget is None:
+            self._update_status(f"'{label}' is not available yet")
+            return False
+        rt = self._real_tabs
+        if holder is rt:
+            rt.setCurrentWidget(widget)
+        else:
+            rt.setCurrentWidget(holder)
+            holder.setCurrentWidget(widget)
+        return True
+
+    def _home_status(self) -> tuple:
+        game = (self._config.get("game_install_path") or "").strip()
+        version = ""
+        dlc = False
+        if game and os.path.isdir(game):
+            try:
+                from game_version import read_game_version
+                version = read_game_version(game) or ""
+            except Exception:  # noqa: BLE001
+                version = ""
+            dlc = os.path.isdir(os.path.join(game, "dlc"))
+        se = getattr(self, "_se_window", None)
+        save = (getattr(se, "_loaded_path", "") if se is not None else "") \
+            or getattr(self, "_loaded_path", "") or ""
+        return game, version, dlc, save
+
+    def _create_support_package(self) -> None:
+        """Zip with versions, the end of the log, the settings and the names
+        of the mods DMM has mounted - for bug reports. No saves, no game files."""
+        import time as _t
+        from PySide6.QtWidgets import QFileDialog
+        try:
+            from simple_report import desktop_dir
+            start = desktop_dir()
+        except Exception:  # noqa: BLE001
+            start = os.path.expanduser("~")
+        name = f"CrimsonGameMods_support_{_t.strftime('%Y%m%d_%H%M')}.zip"
+        path, _ = QFileDialog.getSaveFileName(self, "Create Support Package",
+                                              os.path.join(start, name), "Zip (*.zip)")
+        if not path:
+            return
+        try:
+            from updater import APP_VERSION as _v
+        except Exception:  # noqa: BLE001
+            _v = "?"
+        extra = []
+        try:
+            game, version, dlc, save = self._home_status()
+            extra.append(("Save loaded", "yes" if save else "no"))
+        except Exception:  # noqa: BLE001
+            pass
+        extra.append(("Experimental mode", "on" if getattr(self, "_experimental_mode", False) else "off"))
+        try:
+            import support_package
+            names = support_package.build_support_zip(
+                path, _v, (self._config.get("game_install_path") or "").strip(),
+                config_path=self._get_config_path() if hasattr(self, "_get_config_path") else None,
+                extra=extra)
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.critical(self, "Support Package", f"Could not create the zip:\n{e}")
+            return
+        QMessageBox.information(
+            self, "Support Package",
+            f"Created:\n{path}\n\nContains: {', '.join(names)}.\n"
+            "Your Windows user name is replaced by <user>. No save files, no game files.\n\n"
+            "Send this zip together with a short description of what went wrong.")
+
+    def _restore_last_page(self, tries: int = 0) -> None:
+        """Open the page used last (start page switched off). The Save
+        Editor pages arrive a moment after start - try again a few times."""
+        label = self._config.get("last_page") or ""
+        if not label or self._home_goto(label):
+            return
+        if tries < 10:
+            QTimer.singleShot(500, lambda: self._restore_last_page(tries + 1))
 
     def _show_about(self) -> None:
         QMessageBox.about(
