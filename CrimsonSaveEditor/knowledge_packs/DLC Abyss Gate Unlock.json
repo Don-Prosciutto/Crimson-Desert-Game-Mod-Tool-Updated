@@ -1,0 +1,193 @@
+{
+ "name": "Abyss Gate Unlock - DLC Charting the Unknown",
+ "type": "knowledge",
+ "count": 37,
+ "requires_dlc": "dlc_01",
+ "entries": [
+  {
+   "key": 1006663,
+   "name": "Knowledge_AbyssRuins_CD_0001_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006931,
+   "name": "Knowledge_AbyssRuins_CD_0002_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006932,
+   "name": "Knowledge_AbyssRuins_CD_0003_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006933,
+   "name": "Knowledge_AbyssRuins_CD_0004_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006934,
+   "name": "Knowledge_AbyssRuins_CD_0005_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006973,
+   "name": "Knowledge_AbyssRuins_CD_0006_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1007024,
+   "name": "Knowledge_AbyssRuins_CD_0007_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006668,
+   "name": "Knowledge_AbyssRuins_Ocean_0001_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006935,
+   "name": "Knowledge_AbyssRuins_Ocean_0002_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006936,
+   "name": "Knowledge_AbyssRuins_Ocean_0003_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006937,
+   "name": "Knowledge_AbyssRuins_Ocean_0004_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006938,
+   "name": "Knowledge_AbyssRuins_Ocean_0005_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006939,
+   "name": "Knowledge_AbyssRuins_Ocean_0006_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006940,
+   "name": "Knowledge_AbyssRuins_Ocean_0007_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006941,
+   "name": "Knowledge_AbyssRuins_Ocean_0008_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006942,
+   "name": "Knowledge_AbyssRuins_Ocean_0009_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006943,
+   "name": "Knowledge_AbyssRuins_Ocean_0010_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006944,
+   "name": "Knowledge_AbyssRuins_Ocean_0011_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006945,
+   "name": "Knowledge_AbyssRuins_Ocean_0012_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006946,
+   "name": "Knowledge_AbyssRuins_Ocean_0013_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006947,
+   "name": "Knowledge_AbyssRuins_Ocean_0014_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006948,
+   "name": "Knowledge_AbyssRuins_Ocean_0015_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006949,
+   "name": "Knowledge_AbyssRuins_Ocean_0016_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006950,
+   "name": "Knowledge_AbyssRuins_Ocean_0017_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006951,
+   "name": "Knowledge_AbyssRuins_Ocean_0018_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006952,
+   "name": "Knowledge_AbyssRuins_Ocean_0019_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006953,
+   "name": "Knowledge_AbyssRuins_Ocean_0020_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006954,
+   "name": "Knowledge_AbyssRuins_Ocean_0021_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006955,
+   "name": "Knowledge_AbyssRuins_Ocean_0022_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006956,
+   "name": "Knowledge_AbyssRuins_Ocean_0023_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006957,
+   "name": "Knowledge_AbyssRuins_Ocean_0024_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006958,
+   "name": "Knowledge_AbyssRuins_Ocean_0025_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006959,
+   "name": "Knowledge_AbyssRuins_Ocean_0026_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006960,
+   "name": "Knowledge_AbyssRuins_Ocean_0027_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006961,
+   "name": "Knowledge_AbyssRuins_Ocean_0028_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006962,
+   "name": "Knowledge_AbyssRuins_Ocean_0029_DLC01",
+   "display": "Abyss Nexus"
+  },
+  {
+   "key": 1006963,
+   "name": "Knowledge_AbyssRuins_Ocean_0030_DLC01",
+   "display": "Abyss Nexus"
+  }
+ ]
+}

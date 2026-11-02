@@ -13927,7 +13927,7 @@ QCheckBox::indicator {{
         info = QLabel(
             "MAP & ABYSS GATES\n\n"
             "Reveal Map — removes fog of war.\n"
-            "Unlock All Abyss Gates — injects 398 abyss gate knowledge entries.\n"
+            "Unlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\n"
             "Re-Fog Map — covers the map in fog again."
         )
         info.setWordWrap(True)
@@ -14143,14 +14143,37 @@ QCheckBox::indicator {{
             QMessageBox.critical(self, "Abyss Gates", f"Failed to load pack: {e}")
             return
 
-        reply = QMessageBox.question(
-            self, "Unlock All Abyss Gates",
+        # The Abyss Nexus points of the DLC "Charting the Unknown" (37, from
+        # knowledgeinfo.dlc_01) are a separate pack: only for saves with the DLC.
+        dlc_keys = []
+        dlc_path = os.path.join(os.path.dirname(pack_path), 'DLC Abyss Gate Unlock.json')
+        if os.path.isfile(dlc_path):
+            try:
+                with open(dlc_path, 'r', encoding='utf-8') as f:
+                    dlc_keys = [e['key'] for e in _json.load(f).get('entries', [])]
+            except Exception as e:  # noqa: BLE001
+                log.warning("DLC abyss pack not readable: %s", e)
+
+        box = QMessageBox(self)
+        box.setWindowTitle("Unlock All Abyss Gates")
+        box.setIcon(QMessageBox.Question)
+        box.setText(
             f"Inject {len(keys)} abyss gate knowledge entries?\n\n"
             f"This unlocks all abyss/nexus gates without revealing the map.\n"
-            f"Save (Ctrl+S) afterward.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
+            f"Save (Ctrl+S) afterward.")
+        btn_base = box.addButton(f"Unlock ({len(keys)})", QMessageBox.AcceptRole)
+        btn_dlc = None
+        if dlc_keys:
+            box.setInformativeText(
+                f"The DLC 'Charting the Unknown' adds {len(dlc_keys)} more Abyss Nexus points "
+                f"(sea and Crimson Desert). Only include them if you own the DLC.")
+            btn_dlc = box.addButton(f"Unlock + DLC ({len(keys) + len(dlc_keys)})", QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is btn_dlc and btn_dlc is not None:
+            keys = keys + [k for k in dlc_keys if k not in keys]
+        elif clicked is not btn_base:
             return
 
         self._update_status("Unlocking abyss gates...")
