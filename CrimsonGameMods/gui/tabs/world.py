@@ -3562,6 +3562,20 @@ class DropsetTab(QWidget):
 
             editor.load_item_names()
 
+            # Drop sets only the DLC has (sea creatures, islands ...). They
+            # are listed as "[DLC]" and go into Field JSON exports only.
+            self._dropset_dlc_items = set()
+            n_dlc = 0
+            try:
+                from item_db import dlc_only_records, dlc_only_item_keys
+                _dlc_recs = dlc_only_records(game_path, "dropsetinfo", "drop_set_info",
+                                             {int(r["key"]) for r in self._dropset_dmm})
+                n_dlc = editor.add_dlc_records(_dlc_recs)
+                self._dropset_dmm_vanilla.extend(_copy_ds.deepcopy(_dlc_recs))
+                self._dropset_dlc_items = dlc_only_item_keys(game_path)
+            except Exception as _dlc_err:  # noqa: BLE001
+                log.warning("DLC drop sets not loaded: %s", _dlc_err)
+
             self._dropset_editor = editor
             self._dropset_original_body = bytes(body_data)
             self._dropset_original_header = bytes(header_data)
@@ -3580,7 +3594,8 @@ class DropsetTab(QWidget):
             self._dropset_filter()
             self._dropset_scan_packs()
             self._dropset_status.setText(
-                f"Loaded {editor.record_count:,} drop sets")
+                f"Loaded {editor.record_count:,} drop sets"
+                + (f" + {n_dlc:,} from the DLC (Field JSON only)" if n_dlc else ""))
         except Exception as e:
             log.exception("Unhandled exception")
             self._dropset_status.setText(f"Error: {e}")
@@ -3602,7 +3617,8 @@ class DropsetTab(QWidget):
             filtered = [s for s in filtered if s["category"] == cat]
         if search:
             filtered = [s for s in filtered
-                        if search in s["name"].lower() or search in str(s["key"])]
+                        if search in s["name"].lower() or search in str(s["key"])
+                        or (search == "dlc" and s.get("dlc"))]
 
         self._dropset_list.setSortingEnabled(False)
         self._dropset_list.setRowCount(len(filtered))
@@ -3610,7 +3626,14 @@ class DropsetTab(QWidget):
             key_item = QTableWidgetItem()
             key_item.setData(Qt.DisplayRole, s["key"])
             self._dropset_list.setItem(row, 0, key_item)
-            self._dropset_list.setItem(row, 1, QTableWidgetItem(s["name"] or f"(key {s['key']})"))
+            _nm = s["name"] or f"(key {s['key']})"
+            if s.get("dlc"):
+                _nm = f"[DLC] {_nm}"
+            _ni = QTableWidgetItem(_nm)
+            if s.get("dlc"):
+                _ni.setToolTip("Only in the DLC. Edits go into 'Export Field JSON' "
+                               "(not into Apply / Export as Mod).")
+            self._dropset_list.setItem(row, 1, _ni)
             count_item = QTableWidgetItem()
             count_item.setData(Qt.DisplayRole, s["drop_count"])
             self._dropset_list.setItem(row, 2, count_item)
@@ -3741,6 +3764,21 @@ class DropsetTab(QWidget):
             drop.min_amt = int(val)
 
         self._dropset_mark_modified()
+
+    def _dropset_dlc_apply_note(self) -> str:
+        """Apply / Export as Mod write the main table only: say so when DLC
+        drop sets were edited."""
+        ed = self._dropset_editor
+        dlc = ed.dlc_keys if ed is not None and hasattr(ed, 'dlc_keys') else set()
+        if not dlc:
+            return ""
+        van = {int(r['key']): r for r in getattr(self, '_dropset_dmm_vanilla', None) or []
+               if int(r['key']) in dlc}
+        n = sum(1 for k in dlc if ed.record(k) != van.get(k))
+        if not n:
+            return ""
+        return (f"{n} edited DLC drop set(s) are not included here - "
+                f"use 'Export Field JSON' for them.\n\n")
 
     def _dropset_flush_dirty(self):
         if not self._dropset_editor or not self._dropset_dirty_keys:
@@ -4169,6 +4207,7 @@ class DropsetTab(QWidget):
                 f"Contents:\n"
                 f"  files/gamedata/binary__/client/bin/dropsetinfo.pabgb ({gb_size:,} bytes)\n"
                 f"  modinfo.json\n\n"
+                f"{self._dropset_dlc_apply_note()}"
                 f"To install:\n"
                 f"  Copy '{folder_name}' into your mod loader's mods/ directory")
 
@@ -4208,6 +4247,7 @@ class DropsetTab(QWidget):
             f"Overlay: {group_name}/\n\n"
             f"Original game files are NOT modified.\n"
             f"TIP: Use 'Export Field JSON v3' to get a DMM-compatible mod file instead.\n\n"
+            f"{self._dropset_dlc_apply_note()}"
             f"To undo: click Restore.\n"
             f"Restart the game for changes to take effect.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -4716,15 +4756,32 @@ class DropsetTab(QWidget):
         if not path:
             return
 
+        modinfo = {
+            'title':       'DropSets Mod',
+            'version':     '1.0',
+            'author':      'CrimsonGameMods DropSets',
+            'description': (f'{len(intents)} field-level intent(s) '
+                            f'from {len(modified_entries)} modified entries'),
+            'note':        'Format 3 — field names, survives game updates',
+        }
+        # Needs the DLC: only DLC sets edited, or a DLC item put into a set.
+        # A mixed mod stays usable without the DLC - DMM skips the DLC sets.
+        _dlc_sets = self._dropset_editor.dlc_keys
+        _dlc_items = getattr(self, '_dropset_dlc_items', set()) or set()
+        _only_dlc = bool(intents) and all(int(i['key']) in _dlc_sets for i in intents)
+        _dlc_item_used = False
+        for _it in intents:
+            if int(_it['key']) in _dlc_sets or not isinstance(_it.get('new'), list):
+                continue
+            for _d in _it['new']:
+                if isinstance(_d, dict) and int(_d.get('raw_at_120', 0) or 0) in _dlc_items:
+                    _dlc_item_used = True
+                    break
+        needs_dlc = _only_dlc or _dlc_item_used
+        if needs_dlc:
+            modinfo['requires_dlc'] = True
         doc = {
-            'modinfo': {
-                'title':       'DropSets Mod',
-                'version':     '1.0',
-                'author':      'CrimsonGameMods DropSets',
-                'description': (f'{len(intents)} field-level intent(s) '
-                                f'from {len(modified_entries)} modified entries'),
-                'note':        'Format 3 — field names, survives game updates',
-            },
+            'modinfo': modinfo,
             'format':  3,
             'target':  'dropsetinfo.pabgb',
             'intents': intents,
@@ -4736,9 +4793,17 @@ class DropsetTab(QWidget):
             f"Exported {len(intents)} intents "
             f"({len(modified_entries)} entries) "
             f"to {os.path.basename(path)}")
+        _n_dlc = sum(1 for k in modified_entries if k in _dlc_sets)
+        _dlc_txt = ""
+        if needs_dlc:
+            _dlc_txt = "The mod needs the DLC (DMM skips it without).\n\n"
+        elif _n_dlc:
+            _dlc_txt = (f"{_n_dlc} of them are DLC drop sets - players without "
+                        "the DLC get the rest.\n\n")
         QMessageBox.information(self, "Export Field JSON",
             f"Exported {len(intents)} field-level intents\n"
             f"from {len(modified_entries)} modified entries.\n\n"
+            f"{_dlc_txt}"
             f"File: {path}")
 
     def _dropset_import_field_json(self) -> None:

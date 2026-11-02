@@ -54,6 +54,10 @@ class DmmDropsetEditor(DropsetEditor):
         self._dmm = dmm
         self._recs: List[dict] = []
         self._by_key: Dict[int, dict] = {}
+        # Sets only a DLC has (dlc/<name>/). They are edited like the others
+        # and exported as Field JSON (DMM applies them to the DLC's table),
+        # but never written into the main table.
+        self._dlc_keys: set = set()
 
     # ── loading ──────────────────────────────────────────────────────
     def load(self, pabgh_path: str, pabgb_path: str):
@@ -68,8 +72,34 @@ class DmmDropsetEditor(DropsetEditor):
         self.body_bytes = bytearray(pabgb)
         self._recs = list(self._dmm.parse_table(TABLE, bytes(pabgb), bytes(pabgh)))
         self._by_key = {int(r["key"]): r for r in self._recs}
+        self._dlc_keys = set()
         self._read_index()
         self._parsed_sets.clear()
+
+    def add_dlc_records(self, recs: List[dict]) -> int:
+        """Add the sets only a DLC has (keys the main table lacks)."""
+        n = 0
+        for r in recs:
+            k = int(r["key"])
+            if k in self._by_key:
+                continue
+            self._recs.append(r)
+            self._by_key[k] = r
+            self._dlc_keys.add(k)
+            n += 1
+        return n
+
+    def is_dlc(self, key: int) -> bool:
+        return int(key) in self._dlc_keys
+
+    @property
+    def dlc_keys(self) -> set:
+        return set(self._dlc_keys)
+
+    def _base_recs(self) -> List[dict]:
+        if not self._dlc_keys:
+            return self._recs
+        return [r for r in self._recs if int(r["key"]) not in self._dlc_keys]
 
     def _read_index(self):
         self.record_count = struct.unpack_from("<H", self.header_bytes, 0)[0]
@@ -216,16 +246,17 @@ class DmmDropsetEditor(DropsetEditor):
             rec = self._record_for(ds)
             self._by_key[int(ds.key)].clear()
             self._by_key[int(ds.key)].update(rec)
-        out = self._dmm.serialize_table(TABLE, self._recs)
+        base = self._base_recs()
+        out = self._dmm.serialize_table(TABLE, base)
         body = bytes(out[0] if isinstance(out, tuple) else out)
         # dmm_parser reads this table without the index, but the game uses
         # the offsets in it; sets that got longer or shorter move the rest.
         from pabgh_index import rebuild_index
-        head = rebuild_index(TABLE, body, bytes(self.header_bytes), self._dmm, recs=self._recs)
+        head = rebuild_index(TABLE, body, bytes(self.header_bytes), self._dmm, recs=base)
         if head is None:
             raise RuntimeError("dropsetinfo: the index could not be rebuilt - not applied.")
         check = self._dmm.parse_table(TABLE, body, head)
-        if len(check) != len(self._recs):
+        if len(check) != len(base):
             raise RuntimeError("dropsetinfo did not read back after the change - not applied.")
         self.body_bytes = bytearray(body)
         self.header_bytes = head
@@ -241,6 +272,7 @@ class DmmDropsetEditor(DropsetEditor):
                 continue
             key = int(rec["key"])
             result.append({"key": key, "name": name,
+                           "dlc": key in self._dlc_keys,
                            "drop_count": len(rec.get("list") or []),
                            "category": self.categorize_by_name(name),
                            "offset": self._offsets.get(key, 0)})

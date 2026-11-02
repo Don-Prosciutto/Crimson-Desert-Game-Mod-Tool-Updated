@@ -496,6 +496,62 @@ def game_item_keys(game_path: str) -> set:
     return keys
 
 
+def dlc_only_item_keys(game_path: str) -> set:
+    """Item keys only an installed DLC has (not in the main table)."""
+    import struct
+    import dmm_parser
+    try:
+        from table_layout import INTERNAL_DIR
+    except ImportError:
+        INTERNAL_DIR = "gamedata/binarystaticinfo__/bin"
+
+    def _keys(h: bytes) -> set:
+        if len(h) < 2:
+            return set()
+        count = struct.unpack_from("<H", h, 0)[0]
+        step = (len(h) - 2) // count if count else 0
+        if step < 4:
+            return set()
+        return {struct.unpack_from("<I", h, 2 + i * step)[0] for i in range(count)}
+
+    try:
+        base = _keys(bytes(dmm_parser.extract_file(game_path, "0008", INTERNAL_DIR,
+                                                   "iteminfo.pabgh")))
+    except Exception:
+        return set()
+    dlc = set()
+    for root, d, name in _dlc_tables(dmm_parser, game_path, "0008",
+                                     "iteminfo.", ".staticinfoheader"):
+        try:
+            dlc |= _keys(bytes(dmm_parser.extract_file(root, "0008", d, name)))
+        except Exception:
+            continue
+    return dlc - base
+
+
+def dlc_only_records(game_path: str, stem: str, table: str, base_keys: set) -> list:
+    """Records of table `stem` that only an installed DLC has. Parsed with
+    dmm_parser (`table` = its table name); empty without a DLC."""
+    import dmm_parser
+    out = []
+    seen = set(int(k) for k in base_keys)
+    for root, d, hname in _dlc_tables(dmm_parser, game_path, "0008",
+                                      f"{stem}.", ".staticinfoheader"):
+        bname = hname[:-len(".staticinfoheader")] + ".staticinfobody"
+        try:
+            head = bytes(dmm_parser.extract_file(root, "0008", d, hname))
+            body = bytes(dmm_parser.extract_file(root, "0008", d, bname))
+            recs = dmm_parser.parse_table(table, body, head)
+        except Exception:
+            continue
+        for r in recs:
+            k = int(r.get("key") or 0)
+            if k and k not in seen:
+                seen.add(k)
+                out.append(r)
+    return out
+
+
 def _guess_item_category(internal_name: str) -> str:
     n = internal_name.lower()
     if n.startswith('money') or n.startswith('currency'):
