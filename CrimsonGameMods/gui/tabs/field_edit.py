@@ -3861,11 +3861,12 @@ class FieldEditTab(QWidget):
                     warn = False
                 elif sw.get('look_only'):
                     # Shark -> orca (different skeletons, similar body) worked,
-                    # shark -> Leviakan stayed invisible (Mesh Tests F/G/H).
+                    # shark -> sea turtle showed and steered but without its own
+                    # animation, shark -> Leviakan stayed invisible (Tests F-I).
                     a, b = self._ms_skeleton_of(tk), self._ms_skeleton_of(sk)
                     warn = bool(a and b and a != b)
                     line = (f"{_short(tk)}   →   {_short(sk)}   ·   look only   ·   size {sc:g}"
-                            + ("   ⚠ other body - works only if similar" if warn else ""))
+                            + ("   ⚠ other body - may not animate, or stay invisible" if warn else ""))
                 else:
                     a, b = self._ms_skeleton_of(tk), self._ms_skeleton_of(sk)
                     warn = bool(a and b and a != b)
@@ -3889,9 +3890,9 @@ class FieldEditTab(QWidget):
                          and self._ms_skeleton_of(sw['tgt']) and self._ms_skeleton_of(sw['src'])
                          and self._ms_skeleton_of(sw['tgt']) != self._ms_skeleton_of(sw['src']))
             if n_look:
-                notes.append(f"{n_look} look-only swap(s) onto another body – fine for similar "
-                             f"bodies (shark ↔ orca), invisible for very different ones "
-                             f"(shark → Leviakan)")
+                notes.append(f"{n_look} look-only swap(s) onto another body – similar bodies work "
+                             f"(shark ↔ orca), others may show without their own animation "
+                             f"(shark → turtle) or stay invisible (shark → Leviakan)")
             if notes:
                 text += f"<br><span style='color:{COLORS['warning']}'>" + " · ".join(notes) + "</span>"
             try:
