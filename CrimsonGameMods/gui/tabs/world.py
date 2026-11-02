@@ -1865,6 +1865,24 @@ class SpawnTab(QWidget):
 
             self._spawn_dmm = _dmp_spawn.parse_table('terrain_region_auto_spawn_info', body, schema)
             self._spawn_dmm_vanilla = _copy_spawn.deepcopy(self._spawn_dmm)
+            # Spawn regions only the DLC has (ocean, islands). Listed as
+            # "[DLC] ...", exported as Field JSON only - Apply and Export as
+            # Mod write the main tables.
+            self._spawn_dlc_dmm = []
+            self._spawn_fnode_dlc_dmm = []
+            try:
+                from item_db import dlc_only_records as _dlc_recs
+                self._spawn_dlc_dmm = _dlc_recs(
+                    game_path, "terrainregionautospawninfo", "terrain_region_auto_spawn_info",
+                    {int(r.get('key', 0)) for r in self._spawn_dmm})
+            except Exception as _dlc_err:  # noqa: BLE001
+                log.warning("DLC spawn regions not loaded: %s", _dlc_err)
+            self._spawn_dlc_dmm_vanilla = _copy_spawn.deepcopy(self._spawn_dlc_dmm)
+            _dlc_region_keys = {int(r.get('key', 0)) for r in self._spawn_dlc_dmm}
+
+            def _rname(rec, name=None):
+                n = rec.get('string_key', '') if name is None else name
+                return f"[DLC] {n}" if int(rec.get('key', 0)) in _dlc_region_keys else n
             self._spawn_data = bytearray(body)
             self._spawn_original = bytes(body)
             self._spawn_schema = schema
@@ -1873,9 +1891,9 @@ class SpawnTab(QWidget):
 
             elements = []
 
-            for region in self._spawn_dmm:
+            for region in self._spawn_dmm + self._spawn_dlc_dmm:
                 region_key = region.get('key', 0)
-                region_name = region.get('string_key', '')
+                region_name = _rname(region)
                 for spawn_entry in region.get('spawn_list', []):
                     for spline in spawn_entry.get('spline_list', []):
                         for inner in spline.get('inner_list', []):
@@ -1911,15 +1929,26 @@ class SpawnTab(QWidget):
                     if len(parts) == 2 and parts[1].isdigit():
                         name = parts[0]
                     self._spawn_char_names[ce['key']] = name.replace('_', ' ')
+                try:
+                    from item_db import dlc_only_records as _dlc_recs
+                    for ce in _dlc_recs(game_path, "characterinfo", "character_info",
+                                        {int(c['key']) for c in char_entries}):
+                        name = ce.get('string_key', '')
+                        parts = name.rsplit('_', 1)
+                        if len(parts) == 2 and parts[1].isdigit():
+                            name = parts[0]
+                        self._spawn_char_names[ce['key']] = "[DLC] " + name.replace('_', ' ')
+                except Exception as _dce:  # noqa: BLE001
+                    log.warning("DLC character names not loaded: %s", _dce)
                 log.info("Loaded %d character names via dmm_parser", len(self._spawn_char_names))
             except Exception as _ce:
                 log.warning(tr("Could not load character names: %s"), _ce)
 
             import ctypes as _ct_rates
             rate_count = 0
-            for region in self._spawn_dmm:
+            for region in self._spawn_dmm + self._spawn_dlc_dmm:
                 rkey = region.get('key', 0)
-                rname = region.get('string_key', '')
+                rname = _rname(region)
                 for se in region.get('spawn_list', []):
                     for sp in se.get('spline_list', []):
                         rate_u32 = sp.get('raw_g', 0)
@@ -1950,10 +1979,21 @@ class SpawnTab(QWidget):
                 self._spawn_fnode_ops_data = bytearray(fnode_body)
                 self._spawn_fnode_ops_original = fnode_body
                 self._spawn_fnode_ops_schema = fnode_gh
+                try:
+                    from item_db import dlc_only_records as _dlc_recs
+                    self._spawn_fnode_dlc_dmm = _dlc_recs(
+                        game_path, "factionnode", "faction_node_info",
+                        {int(r.get('key', 0)) for r in self._spawn_fnode_dmm})
+                except Exception as _dlc_err:  # noqa: BLE001
+                    log.warning("DLC faction nodes not loaded: %s", _dlc_err)
+                self._spawn_fnode_dlc_dmm_vanilla = _copy_spawn.deepcopy(self._spawn_fnode_dlc_dmm)
+                _dlc_node_keys = {int(r.get('key', 0)) for r in self._spawn_fnode_dlc_dmm}
 
                 fnode_ops_count = 0
-                for entry in self._spawn_fnode_dmm:
+                for entry in self._spawn_fnode_dmm + self._spawn_fnode_dlc_dmm:
                     node_name = entry.get('string_key', '').replace('Node_', '').replace('_', ' ')
+                    if int(entry.get('key', 0)) in _dlc_node_keys:
+                        node_name = f"[DLC] {node_name}"
                     fsl = entry.get('faction_schedule_list', [])
                     for si, sched in enumerate(fsl):
                         rde = sched.get('raw_data_ext', {})
@@ -2002,8 +2042,10 @@ class SpawnTab(QWidget):
             self._spawn_region_combo.blockSignals(False)
 
             self._spawn_filter()
+            _n_dlc = len(self._spawn_dlc_dmm) + len(self._spawn_fnode_dlc_dmm)
             self._spawn_status.setText(
-                f"Loaded {len(elements)} spawn definitions across {len(seen_regions)} regions")
+                f"Loaded {len(elements)} spawn definitions across {len(seen_regions)} regions"
+                + (f" ({_n_dlc} from the DLC - Field JSON only)" if _n_dlc else ""))
 
         except Exception as e:
             log.exception("Unhandled exception")
@@ -2671,6 +2713,9 @@ class SpawnTab(QWidget):
         import copy as _copy_reset
         if hasattr(self, '_spawn_dmm_vanilla') and self._spawn_dmm_vanilla:
             self._spawn_dmm = _copy_reset.deepcopy(self._spawn_dmm_vanilla)
+        for _attr in ('_spawn_dlc_dmm', '_spawn_fnode_dlc_dmm'):
+            if getattr(self, _attr + '_vanilla', None) is not None:
+                setattr(self, _attr, _copy_reset.deepcopy(getattr(self, _attr + '_vanilla')))
         if self._spawn_original:
             self._spawn_data = bytearray(self._spawn_original)
         if hasattr(self, '_spawn_node_original') and self._spawn_node_original:
@@ -2698,6 +2743,19 @@ class SpawnTab(QWidget):
         self._spawn_changes_label.setText("")
         self._spawn_filter()
         self._spawn_status.setText(tr("Reset to vanilla values"))
+
+    def _spawn_dlc_note(self) -> str:
+        """Apply / Export as Mod write the main tables only: say so when DLC
+        regions were edited."""
+        n = 0
+        for attr in ('_spawn_dlc_dmm', '_spawn_fnode_dlc_dmm'):
+            cur = getattr(self, attr, None) or []
+            van = getattr(self, attr + '_vanilla', None) or []
+            n += sum(1 for a, b in zip(cur, van) if a != b)
+        if not n:
+            return ""
+        return (f"{n} edited DLC region(s)/node(s) are not included here - "
+                f"use 'Export Field JSON v3' for them.\n\n")
 
     def _spawn_export_cdumm(self):
         if not self._spawn_data or not self._spawn_modified:
@@ -2899,9 +2957,26 @@ class SpawnTab(QWidget):
 
             targets = []
 
+            # Records only the DLC has: DMM applies these to the DLC's tables.
+            # A mod with nothing else in it needs the DLC.
+            dlc_intents = 0
+            base_intents = 0
+
+            def _with_dlc(base_list, dlc_attr):
+                nonlocal dlc_intents, base_intents
+                found = _struct_diff(*base_list)
+                base_intents += len(found)
+                dlc = getattr(self, dlc_attr, None) or []
+                dlc_van = getattr(self, dlc_attr + '_vanilla', None) or []
+                if dlc and dlc_van:
+                    extra = _struct_diff(dlc, dlc_van)
+                    dlc_intents += len(extra)
+                    found = found + extra
+                return found
+
             # terrainregionautospawninfo
             if has_terrain:
-                intents = _struct_diff(self._spawn_dmm, self._spawn_dmm_vanilla)
+                intents = _with_dlc((self._spawn_dmm, self._spawn_dmm_vanilla), '_spawn_dlc_dmm')
                 if intents:
                     targets.append({
                         'file': 'terrainregionautospawninfo.pabgb',
@@ -2910,7 +2985,8 @@ class SpawnTab(QWidget):
 
             # factionnode
             if has_fnode:
-                intents = _struct_diff(self._spawn_fnode_dmm, self._spawn_fnode_dmm_vanilla)
+                intents = _with_dlc((self._spawn_fnode_dmm, self._spawn_fnode_dmm_vanilla),
+                                    '_spawn_fnode_dlc_dmm')
                 if intents:
                     targets.append({
                         'file': 'factionnode.pabgb',
@@ -2920,6 +2996,7 @@ class SpawnTab(QWidget):
             # spawningpoolautospawninfo
             if has_life:
                 intents = _struct_diff(self._spawn_life_dmm, self._spawn_life_dmm_vanilla)
+                base_intents += len(intents)
                 if intents:
                     targets.append({
                         'file': 'spawningpoolautospawninfo.pabgb',
@@ -2956,6 +3033,8 @@ class SpawnTab(QWidget):
                 'format_minor': 1,
                 'targets':      targets,
             }
+            if dlc_intents and not base_intents:
+                doc['modinfo']['requires_dlc'] = True
 
             with open(path, 'w', encoding='utf-8') as _f:
                 import json as _json_out
@@ -2968,6 +3047,10 @@ class SpawnTab(QWidget):
                 f'{len(targets)} target(s):\n'
                 + '\n'.join(f'  \u2022 {t["file"]}: {len(t["intents"])} intent(s)'
                             for t in targets)
+                + (('\n\nOnly DLC regions edited - the mod needs the DLC.'
+                    if not base_intents else
+                    f'\n\n{dlc_intents} intent(s) are for DLC regions - players '
+                    'without the DLC get the rest.') if dlc_intents else '')
                 + f'\n\nFile: {path}')
 
         except Exception as _err:
@@ -2999,6 +3082,7 @@ class SpawnTab(QWidget):
             f"Deploy modified spawn data to the game?\n\n"
             f"Creates {mod_group}/ overlay. Restart game to take effect.\n"
             f"Original files are NOT modified. Use Restore to undo.\n\n"
+            f"{self._spawn_dlc_note()}"
             f"TIP: Use 'Export Field JSON v3' to get a DMM-compatible mod file instead.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply != QMessageBox.Yes:
