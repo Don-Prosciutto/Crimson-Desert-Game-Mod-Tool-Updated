@@ -15444,6 +15444,11 @@ QCheckBox::indicator {{
                 for entry in gm.get('characterinfo', []):
                     if isinstance(entry, dict) and '_key' in entry:
                         char_names[entry['_key']] = entry.get('_stringKey', '')
+                # game_map.json has the names under "characters"
+                # ("characterinfo" is not in it - the column stayed empty).
+                for k, v in gm.get('characters', {}).items():
+                    if isinstance(v, dict) and int(k) not in char_names:
+                        char_names[int(k)] = v.get('name', '')
         except Exception:
             pass
 
