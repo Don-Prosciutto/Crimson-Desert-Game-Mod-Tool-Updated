@@ -466,13 +466,23 @@ class FieldEditTab(QWidget):
         layout.addWidget(mlabel)
 
         self._mount_table = QTableWidget()
-        self._mount_table.setColumnCount(6)
+        self._mount_table.setColumnCount(11)
         self._mount_table.setHorizontalHeaderLabels([
-            "Mount", "Type", "Ride Time (s)", "Cooldown (s)", "Speed %", "Cool Type",
+            "Mount", "Type", "Ride Time (s)", "Cooldown (s)", "Speed %", "Swim %",
+            "Top speed", "Acceleration", "Turning", "Jump", "Cool Type",
         ])
-        self._mount_table.horizontalHeaderItem(4).setToolTip(
-            "Movement speed (MoveSpeedRate): 100 = normal, 150 = half again as fast.\n"
-            "Works for running and flying (tested: wyvern at 150 % flies much faster).")
+        _tips = {
+            4: "Movement speed (MoveSpeedRate): 100 = normal, 150 = half again as fast.\n"
+               "Works for running and flying (tested: wyvern at 150 % flies much faster).",
+            5: "Swimming speed (SwimSpeedRate): 100 = normal. Possibly what sea mounts use.",
+            6: "Top speed level 0-5 (horses and a few others; 5 = the best).\n"
+               "Shown: the value at the mount's highest level. A change sets it for all levels.",
+            7: "Acceleration level 0-5 (horses and a few others).",
+            8: "Turning level 0-5 (horses and a few others).",
+            9: "Jump level 0-5 (horses and a few others).",
+        }
+        for _c, _t in _tips.items():
+            self._mount_table.horizontalHeaderItem(_c).setToolTip(_t)
         self._mount_table.horizontalHeader().setStretchLastSection(True)
         self._mount_table.setSelectionBehavior(QTableWidget.SelectRows)
         self._mount_table.setAlternatingRowColors(True)
@@ -762,11 +772,15 @@ class FieldEditTab(QWidget):
         b4 = QPushButton("Set Speed...")
         b4.setToolTip("Movement speed in % for the selected mounts (100 = normal).")
         b4.clicked.connect(lambda: self._fe_bulk_set(4))
+        b5 = QPushButton("Max Levels")
+        b5.setToolTip("Top speed, acceleration, turning and jump to 5 for the selected\n"
+                      "mounts that have these levels (horses and a few others).")
+        b5.clicked.connect(self._fe_bulk_max_levels)
         b3 = QPushButton("Reset")
         b3.setStyleSheet(button_css("warn"))
         b3.setToolTip("Back to the game's values for the selected mounts.")
         b3.clicked.connect(self._fe_bulk_reset)
-        for b in (b1, b2, b4, b3):
+        for b in (b1, b2, b4, b5, b3):
             row.addWidget(b)
         lay.addLayout(row)
         lay.addWidget(self._fe_hint(
@@ -1854,52 +1868,93 @@ class FieldEditTab(QWidget):
                 item.setForeground(QColor(255, 100, 100))
             self._mount_table.setItem(row, 3, item)
             cd_ = e.get('dmm_ref') or {}
-            sp = self._fe_speed_of(cd_)
-            item = QTableWidgetItem("" if sp is None else str(sp))
-            if sp is None:
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                item.setToolTip("No speed value in the game data for this mount.")
-            else:
-                vsp = self._fe_speed_of(van_m or {})
-                if vsp is not None and sp != vsp:
-                    item.setBackground(QColor(60, 40, 20))
-                    item.setToolTip(f"Game value: {vsp} %")
-                if sp != 100:
-                    item.setForeground(QColor(120, 200, 255))
-            self._mount_table.setItem(row, 4, item)
+            has_lv = self._fe_has_levels(van_m or cd_)
+            for col, (idx, kind) in self._FE_STAT_COLS.items():
+                v = self._fe_stat_of(cd_, idx, kind)
+                vv = self._fe_stat_of(van_m or {}, idx, kind)
+                if kind == 'lv' and not has_lv:
+                    v = None
+                item = QTableWidgetItem("–" if v is None else str(v))
+                if v is None:
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    item.setForeground(QColor(COLORS['text_dim']))
+                    item.setToolTip("Not used by this mount." if kind == 'lv'
+                                    else "No value in the game data for this mount.")
+                else:
+                    if vv is not None and v != vv:
+                        item.setBackground(QColor(60, 40, 20))
+                        item.setToolTip(f"Game value: {vv}")
+                    if (kind == 'pct' and v != 100) or (kind == 'lv' and v == 5):
+                        item.setForeground(QColor(120, 200, 255))
+                self._mount_table.setItem(row, col, item)
             item = QTableWidgetItem(str(e.get('_mercenaryCoolTimeType', 0)))
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            self._mount_table.setItem(row, 5, item)
+            self._mount_table.setItem(row, 10, item)
         self._mount_table.resizeColumnsToContents()
         self._charinfo_editing = False
         if hasattr(self, '_fe_type_combo'):
             self._fe_after_mount_populate()
 
-    # Movement speed = MoveSpeedRate, index 10 of each level's
-    # stat_list_data_defined_static (1,000,000,000 = 100 %).
-    _FE_SPEED_IDX = 10
+    # Mount stats in each level's stat_list_data_defined_static (index =
+    # statusinfo.static_stat_type): 10 MoveSpeedRate, 12 SwimSpeedRate
+    # (1,000,000,000 = 100 %), 15 MoveSpeedLevel, 16 AccLevel,
+    # 17 RotationLevel, 18 JumpLevel (1000 per level, max 5000).
+    _FE_STAT_COLS = {4: (10, 'pct'), 5: (12, 'pct'), 6: (15, 'lv'), 7: (16, 'lv'),
+                     8: (17, 'lv'), 9: (18, 'lv')}
 
-    def _fe_speed_of(self, cd: dict):
+    def _fe_stat_of(self, cd: dict, idx: int, kind: str = 'pct'):
+        levels = [lv.get('stat_list_data_defined_static') or []
+                  for lv in cd.get('character_level_data_list') or []]
+        levels = [st for st in levels if len(st) > idx]
+        if not levels:
+            return None
+        st = levels[-1] if kind == 'lv' else levels[0]   # levels: the highest level
+        raw = int(st[idx].get('initial_stat', 0) or 0)
+        return int(round(raw / 10_000_000)) if kind == 'pct' else int(round(raw / 1000))
+
+    def _fe_has_levels(self, cd: dict) -> bool:
+        return any(int((st[i].get('initial_stat', 0) or 0)) > 0
+                   for lv in cd.get('character_level_data_list') or []
+                   for st in [lv.get('stat_list_data_defined_static') or []]
+                   for i in (15, 16, 17, 18) if len(st) > i)
+
+    def _fe_set_stat(self, cd: dict, idx: int, kind: str, value: int) -> None:
+        raw = int(value) * (10_000_000 if kind == 'pct' else 1000)
         for lv in cd.get('character_level_data_list') or []:
             st = lv.get('stat_list_data_defined_static') or []
-            if len(st) > self._FE_SPEED_IDX:
-                return int(round(int(st[self._FE_SPEED_IDX].get('initial_stat', 0) or 0) / 10_000_000))
-        return None
-
-    def _fe_set_speed(self, cd: dict, pct: int) -> None:
-        raw = int(pct) * 10_000_000
-        for lv in cd.get('character_level_data_list') or []:
-            st = lv.get('stat_list_data_defined_static') or []
-            if len(st) > self._FE_SPEED_IDX:
-                s_ = st[self._FE_SPEED_IDX]
+            if len(st) > idx:
+                s_ = st[idx]
                 s_['initial_stat'] = raw
                 if int(s_.get('max_stat', 0) or 0) < raw:
                     s_['max_stat'] = raw
 
+    def _fe_bulk_max_levels(self) -> None:
+        rows = self._fe_selected_mount_rows()
+        if not rows:
+            QMessageBox.information(self, "Mounts", "Select one or more mounts in the table first.")
+            return
+        n = 0
+        for r in rows:
+            e = self._charinfo_mount_entries[self._mount_table.item(r, 0).data(Qt.UserRole)]
+            cd = e.get('dmm_ref')
+            if cd is None or not self._fe_has_levels(self._fe_vanilla_of(e) or cd):
+                continue
+            for idx in (15, 16, 17, 18):
+                self._fe_set_stat(cd, idx, 'lv', 5)
+            n += 1
+        if n:
+            self._charinfo_dmm_dirty = True
+            self._field_edit_modified = True
+        self._mount_populate()
+        self._fe_refresh_summary()
+        self._field_edit_status.setText(
+            f"Levels set to 5 for {n} mount(s)" + ("" if n else
+            " - none of the selected mounts has these levels (horses and a few others do)"))
+
     def _mount_cell_changed(self, row, col):
         if self._charinfo_editing or not self._charinfo_mount_entries:
             return
-        if col not in (2, 3, 4):
+        if col not in (2, 3) and col not in self._FE_STAT_COLS:
             return
         item0 = self._mount_table.item(row, 0)
         if not item0: return
@@ -1915,14 +1970,16 @@ class FieldEditTab(QWidget):
             return
         new_val = max(0, new_val)
         cd = e.get('dmm_ref')
-        if col == 4:
-            if cd is None or self._fe_speed_of(cd) is None:
+        if col in self._FE_STAT_COLS:
+            idx, kind = self._FE_STAT_COLS[col]
+            if cd is None or self._fe_stat_of(cd, idx, kind) is None:
                 return
-            new_val = max(10, min(500, new_val))
-            self._fe_set_speed(cd, new_val)
+            new_val = max(10, min(500, new_val)) if kind == 'pct' else max(0, min(5, new_val))
+            self._fe_set_stat(cd, idx, kind, new_val)
             self._charinfo_dmm_dirty = True
             self._field_edit_modified = True
-            self._field_edit_status.setText(f"Modified {self._fe_mount_name(e)} speed={new_val} %")
+            name = self._mount_table.horizontalHeaderItem(col).text()
+            self._field_edit_status.setText(f"Modified {self._fe_mount_name(e)} {name} = {new_val}")
             self._fe_refresh_summary()
             return
         if col == 2:
