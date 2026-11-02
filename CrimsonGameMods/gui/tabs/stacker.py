@@ -1842,6 +1842,18 @@ class StackerTab(QWidget):
 
         # Bucket A — deep copy the parsed dict list so later ItemBuffs
         # edits don't mutate our capture.
+        # Items only the DLC has are loaded by ItemBuffs beside the main
+        # table. The Stacker merges and writes the MAIN table, so they stay
+        # out (they would be added to it). DLC item edits: ItemBuffs' own
+        # Field JSON export.
+        n_dlc_left_out = 0
+        try:
+            from gui.tabs.buffs_v319 import _without_dlc
+            _base_only = _without_dlc(items)
+            n_dlc_left_out = len(items) - len(_base_only)
+            items = _base_only
+        except Exception as _e:  # noqa: BLE001
+            log.warning("DLC item filter not available: %s", _e)
         snap_items = copy.deepcopy(items)
 
         # Bucket B — checkbox toggles. These are only applied to
@@ -1950,6 +1962,10 @@ class StackerTab(QWidget):
         self._mods.append(entry)
         self._refresh_mod_list()
         self._log_line(f"✓ Pulled from ItemBuffs: {summary}.")
+        if n_dlc_left_out:
+            self._log_line(f"  ℹ {n_dlc_left_out} DLC items left out (the Stacker writes the "
+                           "main item table). Export DLC item edits from ItemBuffs "
+                           "(Field JSON).")
 
     # ------------------------------------------------------------
     def register_tab(self, key: str, tab_obj) -> None:
@@ -4495,6 +4511,17 @@ class StackerTab(QWidget):
             ui_msg = (f"Exported {len(intents)} field-level intents.\n\n"
                       f"This file uses field names — it survives game updates.\n"
                       f"File: {path}")
+
+        # Buffs only the DLC has, put on an item: the mod needs the DLC.
+        try:
+            from client_names import dlc_refs as _dlc_refs
+            _b, _s = _dlc_refs([intents] + [t for _, t in (extra_targets or [])])
+            if _b or _s:
+                doc["modinfo"] = dict(doc["modinfo"])
+                doc["modinfo"]["requires_dlc"] = True
+                ui_msg += "\n\nUses buffs from the DLC - the mod needs the DLC."
+        except Exception as _e:  # noqa: BLE001
+            log.warning("DLC buff check failed: %s", _e)
 
         try:
             with open(path, 'w', encoding='utf-8') as f:
