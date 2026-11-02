@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import os
 import shutil
 import struct
@@ -30,6 +31,8 @@ from PySide6.QtWidgets import (
 from gui.theme import COLORS, button_css
 from gui.utils import make_scope_label
 from overlay_coordinator import safe_rmtree  # refuses to delete game data folders
+
+log = logging.getLogger(__name__)
 
 
 INTERNAL_DIR = "gamedata/binary__/client/bin"
@@ -330,6 +333,33 @@ class BagSpaceTab(QWidget):
                     "max_slots": int(ms) if ms is not None else 0,
                 })
                 seen_keys.add(it.get('key', 0))
+            # Storages only the DLC has (warehouses of the new towns). Kept
+            # apart: the main table written here must not get them; their
+            # edits go into Field JSON (DMM applies them to the DLC table).
+            self._dlc_items = []
+            try:
+                import copy as _copy_inv
+                from item_db import dlc_only_records
+                gp = self._game_path or self._config.get("game_install_path", "")
+                self._dlc_items = dlc_only_records(gp, "inventory", "inventory_info",
+                                                   {int(i.get('key', 0)) for i in dmm_items})
+            except Exception as _dlc_err:  # noqa: BLE001
+                log.warning("DLC inventories not loaded: %s", _dlc_err)
+                import copy as _copy_inv
+            self._dlc_vanilla = _copy_inv.deepcopy(self._dlc_items)
+            for it in self._dlc_items:
+                ds = it.get('default_slot_count')
+                ms = it.get('max_slot_count')
+                if ds is None and ms is None:
+                    continue
+                self._records.append({
+                    "key": it.get('key', 0),
+                    "name": f"[DLC] {it.get('string_key', '')}",
+                    "default_slots": int(ds) if ds is not None else 0,
+                    "max_slots": int(ms) if ms is not None else 0,
+                    "dlc": True,
+                })
+                seen_keys.add(it.get('key', 0))
             # Fill in blob entries using byte-level parser
             try:
                 from inventory_parser_108 import parse_inventory_entries
@@ -453,7 +483,13 @@ class BagSpaceTab(QWidget):
             self._status.setText("Invalid slot value. Use a number from 0 to 65535.")
             return
 
-        if self._dmm_items is not None:
+        _dlc_it = next((it for it in getattr(self, '_dlc_items', None) or []
+                        if it.get('key') == rec_key), None)
+        if _dlc_it is not None:
+            dmm_field = "default_slot_count" if "default" in field_name else "max_slot_count"
+            old_value = int(_dlc_it.get(dmm_field, 0) or 0)
+            _dlc_it[dmm_field] = value
+        elif self._dmm_items is not None:
             dmm_field = "default_slot_count" if "default" in field_name else "max_slot_count"
             for it in self._dmm_items:
                 if it.get('key') == rec_key:
@@ -875,6 +911,19 @@ class BagSpaceTab(QWidget):
                         'field': field, 'op': 'set', 'new': int(it[field]),
                     })
 
+        n_base = len(intents)
+        dlc_van = {it.get('key'): it for it in getattr(self, '_dlc_vanilla', None) or []}
+        for it in getattr(self, '_dlc_items', None) or []:
+            van = dlc_van.get(it.get('key'))
+            if not van:
+                continue
+            for field in ('default_slot_count', 'max_slot_count'):
+                if it.get(field) is not None and it.get(field) != van.get(field):
+                    intents.append({
+                        'entry': it.get('string_key', ''), 'key': it.get('key', 0),
+                        'field': field, 'op': 'set', 'new': int(it[field]),
+                    })
+
         if not intents:
             QMessageBox.information(self, "Export", "No changes to export.")
             return
@@ -898,6 +947,9 @@ class BagSpaceTab(QWidget):
             'target': 'inventory.pabgb',
             'intents': intents,
         }
+        if not n_base:
+            # Only DLC storages changed: DMM skips the mod without the DLC.
+            doc['modinfo']['requires_dlc'] = True
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(doc, f, indent=2, ensure_ascii=False, default=str)
         self._status.setText(
