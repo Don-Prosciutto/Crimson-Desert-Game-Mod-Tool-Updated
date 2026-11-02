@@ -287,7 +287,9 @@
    1000203,
    1000320,
    1000357,
-   1000107
+   1000107,
+   1000849,
+   1000883
   ]
  },
  {
@@ -319,7 +321,11 @@
    1000730,
    1000744,
    1000745,
-   1000733
+   1000733,
+   1000895,
+   1000898,
+   1000899,
+   1000965
   ]
  },
  {
@@ -961,5 +967,35 @@
   "is_dev": true,
   "is_blocked": false,
   "quests": []
+ },
+ {
+  "key": 1014,
+  "name": "StoryDLC",
+  "display": "[DLC] Journey",
+  "is_dev": false,
+  "is_blocked": false,
+  "quests": [
+   1000723,
+   1000716,
+   1000732
+  ],
+  "dlc": true
+ },
+ {
+  "key": 6009,
+  "name": "Challenge_Ocean",
+  "display": "[DLC] Charting the Unknown",
+  "is_dev": false,
+  "is_blocked": false,
+  "quests": [
+   1000865,
+   1000866,
+   1000830,
+   1000887,
+   1001280,
+   1000972,
+   1000764
+  ],
+  "dlc": true
  }
 ]

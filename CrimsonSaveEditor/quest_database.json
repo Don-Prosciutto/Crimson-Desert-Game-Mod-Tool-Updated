@@ -69667,6 +69667,1039 @@
   "gauges": []
  },
  {
+  "key": 1000865,
+  "name": "Challenge_Beyond_The_Horizon",
+  "display": "[DLC] Voyage",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 6009,
+  "missions": [
+   1004919,
+   1004997,
+   1004998,
+   1004999,
+   1005000,
+   1005001,
+   1005002,
+   1005003
+  ],
+  "stages": [],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000866,
+  "name": "Challenge_Underwater_Voyager",
+  "display": "[DLC] Swimming",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 6009,
+  "missions": [
+   1004920,
+   1005006,
+   1005007,
+   1005008,
+   1005009,
+   1005010,
+   1005011,
+   1005012,
+   1005013,
+   1005014
+  ],
+  "stages": [],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000830,
+  "name": "Challenge_Standstone_Adventure_II",
+  "display": "[DLC] Scenic View",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 6009,
+  "missions": [
+   1004698,
+   1004699,
+   1004700,
+   1004701,
+   1004702,
+   1004703,
+   1004704,
+   1004705,
+   1004706,
+   1004707,
+   1004708,
+   1004709,
+   1004710,
+   1004711,
+   1004712,
+   1004713,
+   1004714,
+   1004715,
+   1004716,
+   1004717
+  ],
+  "stages": [],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000887,
+  "name": "Challenge_Standstone_Puzzle_II",
+  "display": "[DLC] Ocean Ruins",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 6009,
+  "missions": [
+   1004951,
+   1004952,
+   1004953,
+   1004954,
+   1004955,
+   1004956,
+   1004957,
+   1004958,
+   1004959
+  ],
+  "stages": [],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1001280,
+  "name": "Challenge_LegendAnimal_Ocean",
+  "display": "[DLC] Sea Legends",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 6009,
+  "missions": [
+   1004927,
+   1004928,
+   1004929,
+   1005253
+  ],
+  "stages": [
+   1049901,
+   1049902,
+   1049903,
+   1051527
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000972,
+  "name": "Challenge_Management",
+  "display": "[DLC] Management",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 6009,
+  "missions": [
+   1005156,
+   1005300,
+   1005301,
+   1005302,
+   1005311,
+   1005312
+  ],
+  "stages": [],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000849,
+  "name": "Contents_MiniGame_CeeLo",
+  "display": "[DLC] Banker's Dice",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 5200,
+  "missions": [],
+  "stages": [
+   1050129
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000883,
+  "name": "Contents_MiniGame_CeeLo_I",
+  "display": "[DLC] Banker's Dice",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 5200,
+  "missions": [],
+  "stages": [
+   1050131
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000895,
+  "name": "Contents_WeatherChange_HeightFog_GreatOcean",
+  "display": "[DLC] Ocean Height Fog Weather Spawn Stage",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 1999,
+  "missions": [],
+  "stages": [
+   1050141,
+   1050142,
+   1050143
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000898,
+  "name": "Contents_WeatherChange_MieFog_GreatOcean",
+  "display": "[DLC] Ocean Mie Fog Weather Spawn Stage",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 1999,
+  "missions": [],
+  "stages": [
+   1050144,
+   1050145,
+   1050146
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000899,
+  "name": "Contents_WeatherChange_Precipitation_GreatOcean",
+  "display": "[DLC] Great Ocean Rainfall Weather Spawn Stage",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 1999,
+  "missions": [],
+  "stages": [
+   1050250,
+   1050251,
+   1050252,
+   1050253,
+   1050254
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000965,
+  "name": "Contents_WeatherChange_Cloud_GreatOcean",
+  "display": "[DLC] Ocean Cloud Weather Spawn Stage",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 1999,
+  "missions": [],
+  "stages": [
+   1050255,
+   1050256,
+   1050257,
+   1050258
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1001247,
+  "name": "Contents_BossRush_Complete",
+  "display": "[DLC] A Flower in the Breeze",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1005307
+  ],
+  "stages": [],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000464,
+  "name": "Quest_Graymane_BaseCamp_Pailune_After_Festival",
+  "display": "[DLC] Festivals",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1047561
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000465,
+  "name": "Quest_Faction_Graymane_BaseCamp_Festival",
+  "display": "[DLC] Base Camp",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1047098
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000762,
+  "name": "Quest_Faction_Graymane_KliffHouse_LivingTogether",
+  "display": "[DLC] Base Camp",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004915
+  ],
+  "stages": [
+   1049783,
+   1049784
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000853,
+  "name": "Quest_Faction_Graymane_LoveStory_Lyseleah",
+  "display": "[DLC] Brave Steps",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004743,
+   1004870,
+   1004871,
+   1004872
+  ],
+  "stages": [
+   1048983,
+   1048985,
+   1048984
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000854,
+  "name": "Quest_Faction_Graymane_LoveStory_Bari",
+  "display": "[DLC] Beyond the Words",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004744,
+   1004873,
+   1004874,
+   1004875
+  ],
+  "stages": [
+   1049323,
+   1049324,
+   1049443,
+   1049442
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000858,
+  "name": "Quest_Faction_Graymane_LoveStory_Areciel",
+  "display": "[DLC] Courage to Be Vulnerable",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004773,
+   1004876,
+   1004877,
+   1004878
+  ],
+  "stages": [
+   1049325,
+   1049326,
+   1049453,
+   1049452
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000859,
+  "name": "Quest_Faction_Graymane_LoveStory_Elowen",
+  "display": "[DLC] Missing Final Page",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004781,
+   1004879,
+   1004880,
+   1004881
+  ],
+  "stages": [
+   1049327,
+   1049328,
+   1050267,
+   1049478,
+   1049477
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000826,
+  "name": "Quest_Faction_Graymane_CastleCeremony_DragonKillCastle",
+  "display": "[DLC] Shield of Hernand",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004681,
+   1005350
+  ],
+  "stages": [
+   1049390,
+   1049391
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000824,
+  "name": "Quest_Faction_Graymane_CastleCeremony_FlameKnights",
+  "display": "[DLC] A Memory Beyond Ashes",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004680,
+   1005351
+  ],
+  "stages": [
+   1049389
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000967,
+  "name": "Quest_Faction_Graymane_Management_TimberhamSawmill",
+  "display": "[DLC] Renewed Vitality",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1005144,
+   1005145
+  ],
+  "stages": [],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000998,
+  "name": "Quest_Node_Ocean_GhostShip",
+  "display": "[DLC] Fog of the Ocean",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1005268
+  ],
+  "stages": [
+   1050310,
+   1051648
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000966,
+  "name": "Quest_Node_Ocean_Wanted",
+  "display": "[DLC] Outlaws of the Ocean",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1005250,
+   1005089,
+   1005090,
+   1005091,
+   1005092,
+   1005093,
+   1005094,
+   1005095,
+   1005096,
+   1005124,
+   1005125,
+   1005126,
+   1005127,
+   1005146
+  ],
+  "stages": [
+   1050270,
+   1050271,
+   1050272,
+   1050273,
+   1050274,
+   1050275,
+   1050276,
+   1050277,
+   1050278,
+   1050281,
+   1050282,
+   1050283,
+   1050284,
+   1050291
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000901,
+  "name": "Quest_Node_Ocean_AuronuiIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Auronui Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050164
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000979,
+  "name": "Quest_Node_Ocean_CarcanoIsland_Block",
+  "display": "[DLC] Carcano Island Blockage Schedule",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050302
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000911,
+  "name": "Quest_Node_Ocean_CarcanoIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Carcano Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050165
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000913,
+  "name": "Quest_Node_Ocean_ClovenHoofIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Cloven Hoof Isle",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050166
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000914,
+  "name": "Quest_Node_Ocean_EstraIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Estra Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050167
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000916,
+  "name": "Quest_Node_Ocean_IliyaIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Iliya Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050168
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000919,
+  "name": "Quest_Node_Ocean_Island_House_Dragnar_Development",
+  "display": "[DLC] Schedule After Pioneering Drangar Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050169
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000932,
+  "name": "Quest_Node_Ocean_Island_House_Spagnola_Development",
+  "display": "[DLC] Schedule After Pioneering Spagnola Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050170
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000951,
+  "name": "Quest_Node_Ocean_Island_House_Xamaca_Development",
+  "display": "[DLC] Schedule After Pioneering Xamaca Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050171
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000955,
+  "name": "Quest_Node_Ocean_NirakanIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Nirakan Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050172
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000956,
+  "name": "Quest_Node_Ocean_NavraIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Navrah Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050173
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000957,
+  "name": "Quest_Node_Ocean_OculaIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Ocula Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050174
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000958,
+  "name": "Quest_Node_Ocean_PragmaIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Phragma Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050175
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000959,
+  "name": "Quest_Node_Ocean_RazanuiIsland_development",
+  "display": "[DLC] Schedule After Pioneering Razanui Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050176,
+   1051521
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000962,
+  "name": "Quest_Node_Ocean_SatyrosIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Satyros Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050179
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000960,
+  "name": "Quest_Node_Ocean_SamoraIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Samora Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050177
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000961,
+  "name": "Quest_Node_Ocean_SaeonIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Saeon Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050178
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000964,
+  "name": "Quest_Node_Ocean_VergelIsland_Development",
+  "display": "[DLC] Schedule After Pioneering Bergel Island",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1050180
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1001026,
+  "name": "Quest_BossRush_Guide",
+  "display": "[DLC] Garden of Trials",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1005224,
+   1005342
+  ],
+  "stages": [
+   1050980,
+   1050981
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000746,
+  "name": "Quest_OceanStory_Stolen_Relic",
+  "display": "[DLC] Mistbound Sea",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004557,
+   1004558,
+   1004559,
+   1004560
+  ],
+  "stages": [
+   1048531,
+   1049767,
+   1049768,
+   1050269,
+   1048533,
+   1049769,
+   1049770,
+   1048534,
+   1051520,
+   1048535
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000832,
+  "name": "Quest_OceanStory_SatyrosIsland_Satyros",
+  "display": "[DLC] Isolated Island Chief",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004782,
+   1005270
+  ],
+  "stages": [
+   1048648,
+   1051582,
+   1051583,
+   1051584,
+   1051585,
+   1051587,
+   1051589,
+   1051591,
+   1051592,
+   1051593
+  ],
+  "gauges": [
+   1000519,
+   1000520,
+   1000521
+  ],
+  "dlc": true
+ },
+ {
+  "key": 1000833,
+  "name": "Quest_OceanStory_RazanuiIsland_Imp",
+  "display": "[DLC] Predator of the Abandoned Island",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004783
+  ],
+  "stages": [
+   1048649,
+   1051801
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000834,
+  "name": "Quest_OceanStory_VergelIsland_RohanCooper",
+  "display": "[DLC] Cave of Sorrow",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004784
+  ],
+  "stages": [
+   1048650,
+   1051802
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1001182,
+  "name": "Quest_Node_Ocean_RazanuiIsland_Block",
+  "display": "[DLC] Land of the Black Flag",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1005271,
+   1005272
+  ],
+  "stages": [
+   1051594,
+   1051595,
+   1051597,
+   1051599,
+   1051601,
+   1051603,
+   1051604,
+   1051605
+  ],
+  "gauges": [
+   1000522,
+   1000523,
+   1000524,
+   1000525
+  ],
+  "dlc": true
+ },
+ {
+  "key": 1000889,
+  "name": "Quest_OceanStory_CitizenStory",
+  "display": "[DLC] Tales of the Ocean Residents",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004978,
+   1004911,
+   1005236,
+   1004843,
+   1004844,
+   1004845,
+   1005237
+  ],
+  "stages": [
+   1051481,
+   1051482,
+   1051532,
+   1049732,
+   1049733,
+   1049734,
+   1049735,
+   1051483,
+   1051484
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000763,
+  "name": "Quest_OceanStory_BackGroundStage",
+  "display": "[DLC] Great Ocean Backdrop Stage",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [],
+  "stages": [
+   1048577,
+   1048654,
+   1050295,
+   1051571,
+   1048643,
+   1049708,
+   1049709,
+   1049710,
+   1049711,
+   1049712,
+   1049713,
+   1049714,
+   1049715,
+   1049727,
+   1049728,
+   1050137,
+   1050138,
+   1050139,
+   1050120
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1000848,
+  "name": "Quest_OceanStory_CrimDungeon_VoidKnight",
+  "display": "[DLC] Vestiges of the Void",
+  "category": 12,
+  "category_name": "Regional",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1004785
+  ],
+  "stages": [
+   1048651,
+   1051803
+  ],
+  "gauges": [],
+  "dlc": true
+ },
+ {
+  "key": 1001248,
+  "name": "Func_GameplayVariable_Ocean",
+  "display": "[DLC] GameplayVariable Check Quest",
+  "category": 0,
+  "category_name": "Side",
+  "quest_type": 2,
+  "quest_group": 0,
+  "missions": [
+   1005313,
+   1005314,
+   1005315,
+   1005316,
+   1005317
+  ],
+  "stages": [],
+  "gauges": [],
+  "dlc": true
+ },
+ {
   "key": 1000414,
   "name": "LevelSequencerSpawn",
   "display": "LevelSequencerSpawn",

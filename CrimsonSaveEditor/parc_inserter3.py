@@ -2645,7 +2645,9 @@ def _load_all_knowledge_keys() -> List[int]:
             if os.path.isfile(p):
                 with open(p, 'r') as f:
                     data = json.load(f)
-                return [e['key'] for e in data if isinstance(e.get('key'), int)]
+                # DLC knowledge ("dlc": true) is left out: a save without the DLC
+                # must not get it. It can be picked by hand in the Knowledge tab.
+                return [e['key'] for e in data if isinstance(e.get('key'), int) and not e.get('dlc')]
     except Exception:
         pass
     return []
