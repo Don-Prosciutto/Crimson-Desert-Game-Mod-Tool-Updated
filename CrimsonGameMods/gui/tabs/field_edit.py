@@ -171,12 +171,18 @@ class FieldEditTab(QWidget):
         adv_scroll.setWidget(adv_inner)
         adv_l = QVBoxLayout(adv_inner)
         self._fe_pages.addTab(quick_w, tr("Quick"))
+        ml_w = QWidget()
+        ml_l = QVBoxLayout(ml_w)
+        self._fe_pages.addTab(ml_w, tr("Mounts"))
+        self._fe_pages.setTabToolTip(1, "Only the 58 mounts you can ride (as on crimsondesert.gg/mounts).")
         self._fe_pages.addTab(mounts_w, tr("Mounts one by one"))
+        self._fe_pages.setTabToolTip(2, "Every record with a mount type: also wild animals, wagons, ships, cannons ...")
         self._fe_pages.addTab(adv_scroll, tr("Advanced"))
         outer.addWidget(self._fe_pages, 1)
         outer.addWidget(self._fe_make_footer())
 
         self._fe_build_quick(quick_l)
+        self._ml_build(ml_l)
         self._fe_build_mount_filters(mounts_l)
         adv_note = QLabel("For tinkerers: the raw game tables behind Quick. "
                           "Double-click a cell to change it. Changes land in the same mod.")
@@ -924,6 +930,223 @@ class FieldEditTab(QWidget):
         self._fe_dlc_only.setEnabled(has_dlc)
         self._fe_update_group_counts()
         self._fe_apply_mount_filter()
+        if hasattr(self, '_ml_table'):
+            self._ml_populate()
+
+    # ── "Mounts" page: only the mounts you can ride ──────────────────
+    _ML_COLS = ["Mount", "Group", "Ride Time (s)", "Cooldown (s)", "Speed %", "Swim %",
+                "Top speed", "Acceleration", "Turning", "Jump"]
+    _ML_STAT = {4: (10, 'pct'), 5: (12, 'pct'), 6: (15, 'lv'), 7: (16, 'lv'),
+                8: (17, 'lv'), 9: (18, 'lv')}
+
+    def _ml_build(self, lay) -> None:
+        import mount_list
+        row = QHBoxLayout()
+        self._ml_search = QLineEdit()
+        self._ml_search.setPlaceholderText("Search (Royler, shark ...)")
+        self._ml_search.setFixedWidth(220)
+        self._ml_search.textChanged.connect(lambda _t: self._ml_filter())
+        row.addWidget(self._ml_search)
+        row.addWidget(QLabel("Group:"))
+        self._ml_group = QComboBox()
+        self._ml_group.addItem("All")
+        self._ml_group.addItems([g for g, _n in mount_list.GROUPS])
+        self._ml_group.currentIndexChanged.connect(lambda _i: self._ml_filter())
+        row.addWidget(self._ml_group)
+        row.addStretch()
+        row.addWidget(QLabel("Selected:"))
+        for label, fn, tip in (
+                ("Set Speed...", lambda: self._ml_bulk(4), "Speed in % (100 = normal) for land and flying mounts."),
+                ("Set Swim...", lambda: self._ml_bulk(5), "Swim speed in % (100 = normal) - the one for sea mounts."),
+                ("Max Levels", self._ml_max_levels, "Top speed, acceleration, turning and jump to 5 (horses, ibex)."),
+                ("Reset", self._ml_reset, "Back to the game's values.")):
+            b = QPushButton(label)
+            b.setToolTip(tip)
+            if label == "Reset":
+                b.setStyleSheet(button_css("warn"))
+            b.clicked.connect(fn)
+            row.addWidget(b)
+        lay.addLayout(row)
+        self._ml_table = QTableWidget()
+        self._ml_table.setColumnCount(len(self._ML_COLS))
+        self._ml_table.setHorizontalHeaderLabels(self._ML_COLS)
+        self._ml_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self._ml_table.setSelectionMode(QTableWidget.ExtendedSelection)
+        self._ml_table.setAlternatingRowColors(True)
+        self._ml_table.verticalHeader().setVisible(False)
+        self._ml_table.horizontalHeader().setStretchLastSection(True)
+        self._ml_table.cellChanged.connect(self._ml_cell_changed)
+        lay.addWidget(self._ml_table, 1)
+        lay.addWidget(self._fe_hint(
+            "The mounts you can ride. A change applies to every copy of that mount in the game data "
+            "(e.g. each wild Brianto horse is its own copy). Land and flying: Speed %. Sea: Swim %. "
+            "Levels only for horses and ibex.", False))
+        self._ml_rows = []
+
+    def _ml_records(self, name: str) -> list:
+        import mount_list
+        return mount_list.records_for(name, self._charinfo_mount_entries or [], self._fe_mount_name)
+
+    def _ml_populate(self) -> None:
+        import mount_list
+        t = self._ml_table
+        self._ml_busy = True
+        t.setRowCount(0)
+        self._ml_rows = []
+        for group, names in mount_list.GROUPS:
+            for name in names:
+                recs = self._ml_records(name)
+                if not recs:
+                    continue
+                self._ml_rows.append((name, group, recs))
+        t.setRowCount(len(self._ml_rows))
+        for r, (name, group, recs) in enumerate(self._ml_rows):
+            e = recs[0]
+            cd = e.get('dmm_ref') or {}
+            van = self._fe_vanilla_of(e) or {}
+            dlc = bool(e.get('_dlc'))
+            it = QTableWidgetItem(("[DLC] " if dlc else "") + name)
+            it.setFlags(it.flags() & ~Qt.ItemIsEditable)
+            it.setToolTip(f"{len(recs)} cop{'y' if len(recs) == 1 else 'ies'} in the game data: "
+                          + ", ".join(x.get('name', '?') for x in recs[:6])
+                          + (" ..." if len(recs) > 6 else ""))
+            if dlc:
+                it.setForeground(QColor(COLORS['accent']))
+            t.setItem(r, 0, it)
+            g = QTableWidgetItem(group)
+            g.setFlags(g.flags() & ~Qt.ItemIsEditable)
+            t.setItem(r, 1, g)
+            for col, fld in ((2, 'call_mercenary_spawn_duration'), (3, 'call_mercenary_cool_time')):
+                v = int(cd.get(fld, 0) or 0)
+                c = QTableWidgetItem(str(v))
+                if v != int(van.get(fld, v) or 0):
+                    c.setBackground(QColor(60, 40, 20))
+                t.setItem(r, col, c)
+            has_lv = self._fe_has_levels(van or cd)
+            for col, (idx, kind) in self._ML_STAT.items():
+                v = self._fe_stat_of(cd, idx, kind)
+                vv = self._fe_stat_of(van, idx, kind)
+                if kind == 'lv' and not has_lv:
+                    v = None
+                c = QTableWidgetItem("–" if v is None else str(v))
+                if v is None:
+                    c.setFlags(c.flags() & ~Qt.ItemIsEditable)
+                    c.setForeground(QColor(COLORS['text_dim']))
+                else:
+                    if vv is not None and v != vv:
+                        c.setBackground(QColor(60, 40, 20))
+                        c.setToolTip(f"Game value: {vv}")
+                    if (kind == 'pct' and v != 100) or (kind == 'lv' and v == 5):
+                        c.setForeground(QColor(120, 200, 255))
+                t.setItem(r, col, c)
+        t.resizeColumnsToContents()
+        self._ml_busy = False
+        self._ml_filter()
+
+    def _ml_filter(self) -> None:
+        t = getattr(self, '_ml_table', None)
+        if t is None:
+            return
+        q = self._ml_search.text().strip().lower()
+        grp = self._ml_group.currentText()
+        for r, (name, group, _recs) in enumerate(self._ml_rows):
+            t.setRowHidden(r, bool((q and q not in name.lower()) or (grp != "All" and group != grp)))
+
+    def _ml_apply(self, r: int, col: int, val: int) -> None:
+        """Write a value into every record of row r."""
+        _name, _group, recs = self._ml_rows[r]
+        for e in recs:
+            cd = e.get('dmm_ref')
+            if cd is None:
+                continue
+            if col == 2:
+                cd['call_mercenary_spawn_duration'] = max(0, val)
+                e['_callMercenarySpawnDuration'] = max(0, val)
+            elif col == 3:
+                cd['call_mercenary_cool_time'] = max(0, val)
+                e['_callMercenaryCoolTime'] = max(0, val)
+            elif col in self._ML_STAT:
+                idx, kind = self._ML_STAT[col]
+                if self._fe_stat_of(cd, idx, kind) is None:
+                    continue
+                v = max(10, min(500, val)) if kind == 'pct' else max(0, min(5, val))
+                self._fe_set_stat(cd, idx, kind, v)
+        self._charinfo_dmm_dirty = True
+        self._field_edit_modified = True
+
+    def _ml_cell_changed(self, r: int, col: int) -> None:
+        if getattr(self, '_ml_busy', False) or r >= len(self._ml_rows):
+            return
+        if col not in (2, 3) and col not in self._ML_STAT:
+            return
+        try:
+            val = int(self._ml_table.item(r, col).text())
+        except (ValueError, AttributeError):
+            return
+        self._ml_apply(r, col, val)
+        self._field_edit_status.setText(f"Modified {self._ml_rows[r][0]}: "
+                                        f"{self._ML_COLS[col]} = {val}")
+        self._fe_refresh_summary()
+        QTimer.singleShot(0, self._mount_populate)    # both tables show the new value
+
+    def _ml_selected(self) -> list:
+        t = self._ml_table
+        return sorted({i.row() for i in t.selectedIndexes() if not t.isRowHidden(i.row())})
+
+    def _ml_bulk(self, col: int) -> None:
+        rows = self._ml_selected()
+        if not rows:
+            QMessageBox.information(self, "Mounts", "Select one or more mounts first.")
+            return
+        what = "Speed" if col == 4 else "Swim speed"
+        val, ok = QInputDialog.getInt(self, what, f"{what} in % for {len(rows)} mount(s) "
+                                      f"(100 = normal):", 150, 10, 500)
+        if not ok:
+            return
+        for r in rows:
+            self._ml_apply(r, col, val)
+        self._fe_refresh_summary()
+        self._mount_populate()
+
+    def _ml_max_levels(self) -> None:
+        rows = self._ml_selected()
+        if not rows:
+            QMessageBox.information(self, "Mounts", "Select one or more mounts first.")
+            return
+        n = 0
+        for r in rows:
+            recs = self._ml_rows[r][2]
+            if not any(self._fe_has_levels(self._fe_vanilla_of(e) or {}) for e in recs):
+                continue
+            for col in (6, 7, 8, 9):
+                self._ml_apply(r, col, 5)
+            n += 1
+        self._fe_refresh_summary()
+        self._mount_populate()
+        self._field_edit_status.setText(f"Levels set to 5 for {n} mount(s)"
+                                        + ("" if n else " - only horses and ibex have them"))
+
+    def _ml_reset(self) -> None:
+        import copy as _cp
+        rows = self._ml_selected()
+        if not rows:
+            QMessageBox.information(self, "Mounts", "Select one or more mounts first.")
+            return
+        for r in rows:
+            for e in self._ml_rows[r][2]:
+                van = self._fe_vanilla_of(e) or {}
+                cd = e.get('dmm_ref')
+                if cd is None:
+                    continue
+                for fld, attr in (('call_mercenary_spawn_duration', '_callMercenarySpawnDuration'),
+                                  ('call_mercenary_cool_time', '_callMercenaryCoolTime')):
+                    if fld in van:
+                        cd[fld] = van[fld]
+                        e[attr] = van[fld]
+                if 'character_level_data_list' in van:
+                    cd['character_level_data_list'] = _cp.deepcopy(van['character_level_data_list'])
+        self._fe_refresh_summary()
+        self._mount_populate()
 
     def _fe_set_group(self, gid: str) -> None:
         self._fe_group = gid
