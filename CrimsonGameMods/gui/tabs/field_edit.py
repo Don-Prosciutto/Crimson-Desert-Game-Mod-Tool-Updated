@@ -936,9 +936,9 @@ class FieldEditTab(QWidget):
 
     # ── "Mounts" page: only the mounts you can ride ──────────────────
     _ML_COLS = ["Mount", "Group", "Ride Time (s)", "Cooldown (s)", "Speed %", "Swim %",
-                "Top speed", "Acceleration", "Turning", "Jump"]
+                "Top speed", "Acceleration", "Turning", "Jump", "Attack"]
     _ML_STAT = {4: (10, 'pct'), 5: (12, 'pct'), 6: (15, 'lv'), 7: (16, 'lv'),
-                8: (17, 'lv'), 9: (18, 'lv')}
+                8: (17, 'lv'), 9: (18, 'lv'), 10: (0, 'atk')}
 
     def _ml_build(self, lay) -> None:
         import mount_list
@@ -960,6 +960,7 @@ class FieldEditTab(QWidget):
                 ("Set Speed...", lambda: self._ml_bulk(4), "Speed in % (100 = normal) for land and flying mounts."),
                 ("Set Swim...", lambda: self._ml_bulk(5), "Swim speed in % (100 = normal) - the one for sea mounts."),
                 ("Max Levels", self._ml_max_levels, "Top speed, acceleration, turning and jump to 5 (horses, ibex)."),
+                ("Set Attack...", lambda: self._ml_bulk(10), "Attack power (at the highest mount level)."),
                 ("Reset", self._ml_reset, "Back to the game's values.")):
             b = QPushButton(label)
             b.setToolTip(tip)
@@ -981,7 +982,8 @@ class FieldEditTab(QWidget):
         lay.addWidget(self._fe_hint(
             "The mounts you can ride. A change applies to every copy of that mount in the game data "
             "(e.g. each wild Brianto horse is its own copy). Land and flying: Speed %. Sea: Swim %. "
-            "Levels only for horses and ibex.", False))
+            "Levels only for horses and ibex. Attack = the mount's attack power at its highest level "
+            "(tested: wyvern x10, its wind balls kill).", False))
         self._ml_rows = []
 
     def _ml_records(self, name: str) -> list:
@@ -1070,7 +1072,12 @@ class FieldEditTab(QWidget):
                 idx, kind = self._ML_STAT[col]
                 if self._fe_stat_of(cd, idx, kind) is None:
                     continue
-                v = max(10, min(500, val)) if kind == 'pct' else max(0, min(5, val))
+                if kind == 'pct':
+                    v = max(10, min(500, val))
+                elif kind == 'atk':
+                    v = max(1, min(100000, val))
+                else:
+                    v = max(0, min(5, val))
                 self._fe_set_stat(cd, idx, kind, v)
         self._charinfo_dmm_dirty = True
         self._field_edit_modified = True
@@ -1099,9 +1106,14 @@ class FieldEditTab(QWidget):
         if not rows:
             QMessageBox.information(self, "Mounts", "Select one or more mounts first.")
             return
-        what = "Speed" if col == 4 else "Swim speed"
-        val, ok = QInputDialog.getInt(self, what, f"{what} in % for {len(rows)} mount(s) "
-                                      f"(100 = normal):", 150, 10, 500)
+        if col == 10:
+            val, ok = QInputDialog.getInt(
+                self, "Attack", f"Attack power for {len(rows)} mount(s) at their highest level\n"
+                "(the wyvern has 40; lower levels are scaled the same way):", 400, 1, 100000)
+        else:
+            what = "Speed" if col == 4 else "Swim speed"
+            val, ok = QInputDialog.getInt(self, what, f"{what} in % for {len(rows)} mount(s) "
+                                          f"(100 = normal):", 150, 10, 500)
         if not ok:
             return
         for r in rows:
@@ -2214,7 +2226,7 @@ class FieldEditTab(QWidget):
         levels = [st for st in levels if len(st) > idx]
         if not levels:
             return None
-        st = levels[-1] if kind == 'lv' else levels[0]   # levels: the highest level
+        st = levels[-1] if kind in ('lv', 'atk') else levels[0]   # the highest level
         raw = int(st[idx].get('initial_stat', 0) or 0)
         return int(round(raw / 10_000_000)) if kind == 'pct' else int(round(raw / 1000))
 
@@ -2226,6 +2238,21 @@ class FieldEditTab(QWidget):
 
     def _fe_set_stat(self, cd: dict, idx: int, kind: str, value: int) -> None:
         raw = int(value) * (10_000_000 if kind == 'pct' else 1000)
+        levels = [lv.get('stat_list_data_defined_static') or []
+                  for lv in cd.get('character_level_data_list') or []]
+        levels = [st for st in levels if len(st) > idx]
+        if kind == 'atk' and levels:
+            # Attack grows with the mount's level (wyvern 30/35/40): scale
+            # every level by the same factor as the highest one.
+            top = int(levels[-1][idx].get('initial_stat', 0) or 0)
+            for st in levels:
+                s_ = st[idx]
+                cur = int(s_.get('initial_stat', 0) or 0)
+                new = int(round(cur * raw / top)) if top > 0 else raw
+                s_['initial_stat'] = new
+                if int(s_.get('max_stat', 0) or 0) < new:
+                    s_['max_stat'] = new
+            return
         for lv in cd.get('character_level_data_list') or []:
             st = lv.get('stat_list_data_defined_static') or []
             if len(st) > idx:
