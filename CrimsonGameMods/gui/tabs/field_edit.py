@@ -786,7 +786,8 @@ class FieldEditTab(QWidget):
         lay.addLayout(row)
         lay.addWidget(self._fe_hint(
             "Double-click a value to change it. Ctrl/Shift-click to select several mounts. "
-            "Times are in seconds, speed in % (100 = normal). Sea mounts: use Swim %.", False))
+            "Times are in seconds, speed in % (100 = normal). Sea mounts: use Swim %. "
+            "Same name several times: the one starting with Riding_ is usually the mount you ride.", False))
 
     def _fe_make_footer(self) -> QWidget:
         w = QWidget()
@@ -1832,9 +1833,17 @@ class FieldEditTab(QWidget):
         entries = self._charinfo_mount_entries
         self._mount_table.setRowCount(len(entries))
         dlc_van = {v['key']: v for v in getattr(self, '_charinfo_dlc_vanilla', None) or []}
+        # Several mounts share one in-game name (e.g. 5x "Wyvern": wild ones,
+        # a vision, and Riding_Wyvern_1000 - the one you ride). Those get
+        # the internal name behind the in-game name.
+        from collections import Counter as _Counter
+        _name_count = _Counter(self._fe_mount_name(x) for x in entries)
         for row, e in enumerate(entries):
             is_dlc = bool(e.get('_dlc'))
-            item = QTableWidgetItem(("[DLC] " if is_dlc else "") + self._fe_mount_name(e))
+            _shown = self._fe_mount_name(e)
+            if _name_count[_shown] > 1 and e.get('name') and e.get('name') != _shown:
+                _shown = f"{_shown}  ·  {e.get('name')}"
+            item = QTableWidgetItem(("[DLC] " if is_dlc else "") + _shown)
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setData(Qt.UserRole, row)
             item.setToolTip(e.get('name', '?'))
