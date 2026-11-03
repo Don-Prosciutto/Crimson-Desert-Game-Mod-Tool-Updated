@@ -363,13 +363,22 @@ class SkillTreeTab(QWidget):
         self._original_grp_pabgb = bytes(grp_gb)
 
         from skilltreeinfo_parser import parse_all, parse_groups
+        # The table and the swap use dmm_parser (2.04: the old byte reader
+        # misreads the records - garbage names, only one row shown).
         try:
-            self._records = parse_all(self._original_pabgh, self._original_pabgb)
+            import dmm_parser as _dmp_st
+            self._tree_recs = list(_dmp_st.parse_table(
+                'skilltreeinfo', self._original_pabgb, self._original_pabgh))
         except Exception as e:  # noqa: BLE001
             log.exception("skilltreeinfo not readable")
             QMessageBox.critical(self, "Extract failed",
                                  f"The skill tree table could not be read:\n{e}")
             return
+        try:
+            self._records = parse_all(self._original_pabgh, self._original_pabgb)
+        except Exception as e:  # noqa: BLE001
+            log.warning("old skilltreeinfo reader failed (not needed for the swap): %s", e)
+            self._records = []
         # skilltreegroupinfo: the old reader fails on 2.04 (the button then
         # did nothing at all). Nothing on this page needs the groups, so a
         # failure is only logged.
@@ -386,7 +395,7 @@ class SkillTreeTab(QWidget):
         self._btn_apply.setEnabled(True)
         if self._btn_swap_export is not None:
             self._btn_swap_export.setEnabled(True)
-        n = len(self._records)
+        n = len(self._tree_recs)
         if hasattr(self, '_lbl_swap_status'):
             self._lbl_swap_status.setText(
                 f"{n} skill tree entries loaded — use combo boxes to redirect movesets.")
@@ -395,72 +404,73 @@ class SkillTreeTab(QWidget):
             f"({len(self._original_pabgb)} bytes)"
         )
 
+    _TREE_CHAR = {1: "Kliff", 4: "Damiane", 6: "Oongka", 2: "Yahn"}
+    _ROOT_IDS = {13001, 13101, 13201}
+
+    @staticmethod
+    def _root_paths(rec: dict, roots) -> list:
+        """(dot path, value) of every melee-root package id in a record."""
+        out = []
+
+        def walk(o, path):
+            if isinstance(o, dict):
+                for k, v in o.items():
+                    if k != 'key':
+                        walk(v, f"{path}.{k}" if path else k)
+            elif isinstance(o, list):
+                for i, v in enumerate(o):
+                    walk(v, f"{path}[{i}]")
+            elif isinstance(o, int) and not isinstance(o, bool) and o in roots:
+                out.append((path, o))
+        walk(rec, "")
+        return out
+
     def _populate_table(self) -> None:
         if self._table is None:
             return
-        from skilltreeinfo_parser import ROOT_PACKAGES, CHAR_MELEE_ROOT, MAIN_TREE_KEYS
-
-        # Sort: main tree entries (50/51/52) first so combo boxes are immediately visible
-        self._records = sorted(
-            self._records,
-            key=lambda r: (0 if r.key in MAIN_TREE_KEYS else 1, r.key)
-        )
-
-        self._table.setRowCount(len(self._records))
+        from skilltreeinfo_parser import ROOT_PACKAGES, MAIN_TREE_KEYS
+        recs = sorted(getattr(self, '_tree_recs', None) or [],
+                      key=lambda r: (0 if r.get('key') in MAIN_TREE_KEYS else 1, r.get('key', 0)))
+        self._tree_recs = recs
+        self._table.setRowCount(len(recs))
         self._root_combos: dict[int, QComboBox] = {}
-
         pkg_labels = {v: k for k, v in ROOT_PACKAGES.items()}
-
-        for row, rec in enumerate(self._records):
-            # Key
-            item_key = QTableWidgetItem(str(rec.key))
+        for row, rec in enumerate(recs):
+            key = int(rec.get('key', 0))
+            sk = str(rec.get('string_key', ''))
+            item_key = QTableWidgetItem(str(key))
             item_key.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(row, 0, item_key)
-
-            # Name -- display localized name with internal name in tooltip
-            item_name = QTableWidgetItem(rec.display_name)
-            item_name.setToolTip(rec.name)
-            self._table.setItem(row, 1, item_name)
-
-            # Character
-            item_char = QTableWidgetItem(rec.character)
+            self._table.setItem(row, 1, QTableWidgetItem(sk))
+            ch = self._TREE_CHAR.get(int(rec.get('character_info', 0) or 0), "")
+            item_char = QTableWidgetItem(ch)
             item_char.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(row, 2, item_char)
-
-            # Category
-            item_cat = QTableWidgetItem(rec.category)
+            cat = ("Main tree" if key in MAIN_TREE_KEYS else
+                   sk.split('_')[0].replace('Skill', ' skill').replace('Tree', ' tree').strip())
+            item_cat = QTableWidgetItem(cat)
             item_cat.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(row, 3, item_cat)
-
-            # Size
-            item_size = QTableWidgetItem(f"{len(rec.to_bytes())}B")
-            item_size.setTextAlignment(Qt.AlignmentFlag.AlignRight |
-                                       Qt.AlignmentFlag.AlignVCenter)
+            item_size = QTableWidgetItem(f"{len(rec.get('skill_node_list') or [])} nodes")
+            item_size.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self._table.setItem(row, 4, item_size)
-
-            # Melee Root -- combo for main trees, text for others
-            pkgs = rec.find_root_packages()
-            if rec.is_main_tree and pkgs:
+            pkgs = self._root_paths(rec, self._ROOT_IDS)
+            if key in MAIN_TREE_KEYS and pkgs:
                 combo = QComboBox()
                 for label, pkg_id in ROOT_PACKAGES.items():
-                    combo.addItem(f"{label} (0x{pkg_id:04X})", pkg_id)
-                # Set current to whatever the record has
-                current_root = pkgs[0][1]
+                    combo.addItem(f"{label} ({pkg_id})", pkg_id)
                 for i in range(combo.count()):
-                    if combo.itemData(i) == current_root:
+                    if combo.itemData(i) == pkgs[0][1]:
                         combo.setCurrentIndex(i)
                         break
                 self._table.setCellWidget(row, 5, combo)
-                self._root_combos[rec.key] = combo
+                self._root_combos[key] = combo
             elif pkgs:
-                labels = [f"{pkg_labels.get(v, '?')} @0x{o:X}" for o, v in pkgs]
-                self._table.setItem(row, 5,
-                                    QTableWidgetItem("; ".join(labels)))
+                self._table.setItem(row, 5, QTableWidgetItem(
+                    "; ".join(sorted({pkg_labels.get(v, str(v)) for _p, v in pkgs}))))
             else:
                 self._table.setItem(row, 5, QTableWidgetItem("--"))
-
         self._table.resizeColumnsToContents()
-        # Re-stretch name and root columns
         hh = self._table.horizontalHeader()
         hh.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         hh.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
@@ -517,21 +527,9 @@ class SkillTreeTab(QWidget):
             parse_all, serialize_all, CHAR_MELEE_ROOT
         )
 
-        # Parse vanilla records from the original bytes
-        vanilla_records = parse_all(
-            self._original_pabgh, self._original_pabgb)
-        van_by_key = {r.key: r for r in vanilla_records}
-
-        # Build modified records by applying current combo selections
-        import copy as _copy
-        mod_records = parse_all(
-            self._original_pabgh, self._original_pabgb)
-        mod_by_key = {r.key: r for r in mod_records}
-
         intents = []
         changed = 0
 
-        # Build the full set of swaps from the current combo selections
         # {native_root: new_root} for each character whose combo changed
         root_swaps: dict[int, int] = {}
         for char_key, combo in self._root_combos.items():
@@ -549,29 +547,17 @@ class SkillTreeTab(QWidget):
                 "Select a different moveset from the combo boxes first.")
             return
 
-        # Patch ALL records that contain any of the native root package IDs
-        # (not just the main tree entry — weapon/martial art/special skill
-        # entries also reference the melee root and need to be updated too)
-        for van_rec, mod_rec in zip(vanilla_records, mod_records):
-            van_bytes = van_rec.to_bytes()
-            patched = False
-            for native_root, new_root in root_swaps.items():
-                count = mod_rec.patch_root_package(native_root, new_root)
-                if count > 0:
-                    patched = True
-            if not patched:
-                continue
-            mod_bytes = mod_rec.to_bytes()
-            if van_bytes == mod_bytes:
-                continue
-            intents.append({
-                'entry': mod_rec.name,
-                'key': mod_rec.key,
-                'field': '_buff_data_raw',
-                'old': van_bytes.hex(),
-                'new': mod_bytes.hex(),
-            })
-            changed += 1
+        # Every record that holds a swapped root package id (main trees and
+        # e.g. WeaponSkill_Kliff_Sword), one field intent per value. The DLC
+        # versions of the main trees hold them at the same places, so the
+        # same intents fit both copies.
+        for rec in getattr(self, '_tree_recs', None) or []:
+            hits = [(p, v) for p, v in self._root_paths(rec, set(root_swaps)) if v in root_swaps]
+            for path, v in hits:
+                intents.append({'entry': rec.get('string_key', ''), 'key': int(rec['key']),
+                                'field': path, 'op': 'set', 'new': root_swaps[v]})
+            if hits:
+                changed += 1
 
         doc = {
             'modinfo': {
@@ -579,12 +565,10 @@ class SkillTreeTab(QWidget):
                 'version': '1.0',
                 'author': 'CrimsonGameMods SkillTree',
                 'description': f'{changed} skilltreeinfo entry swap(s)',
-                'note': 'Format 3 — _buff_data_raw byte-replace via dmmski dispatcher',
+                'note': 'Format 3 field intents (dmm_parser field names)',
             },
             'format': 3,
             'format_minor': 1,
-            'target': 'skilltreeinfo.pabgb',
-            'intents': intents,
             'targets': [{'file': 'skilltreeinfo.pabgb', 'intents': intents}],
         }
 
