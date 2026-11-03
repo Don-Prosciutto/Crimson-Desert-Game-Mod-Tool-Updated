@@ -181,6 +181,9 @@ def parse_entry(data, offset, end):
 
 MOUNT_VEHICLE_TYPES = {
     16960: 'Horse',
+    16968: 'Lion',
+    16969: 'Tiger',
+    16984: 'Dragon',
     16961: 'Cannon',
     16962: 'Boar',
     16963: 'Ballista',

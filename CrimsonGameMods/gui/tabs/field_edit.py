@@ -749,7 +749,42 @@ class FieldEditTab(QWidget):
             "'Mounts one by one' stay, unless an option here sets the same value.", False))
         lay.addStretch()
 
+    # Groups of the "Mounts one by one" table (by mount type name).
+    _FE_GROUPS = [
+        ("land", "🐎 Land", {"Horse", "Boar", "GolemHorse", "Wolf", "Camel", "Bear", "Deer",
+                             "Elephant", "Iguana", "AlpineIbex", "Domestic", "MachineBear",
+                             "Lion", "Tiger"}),
+        ("air", "🪽 Air", {"Wyvern", "Dragon", "Cucubird", "Birdsaurus", "MachineBird"}),
+        ("sea", "🌊 Sea", {"Shark", "Orca", "SunFish", "Seal", "Turtle", "MantaRay", "Dolphin"}),
+        ("vehicles", "🛞 Vehicles", None),      # everything else: wagons, ships, cannons ...
+        ("all", "All", None),
+    ]
+
+    def _fe_group_of(self, type_name: str) -> str:
+        for gid, _label, names in self._FE_GROUPS[:3]:
+            if type_name in names:
+                return gid
+        return "vehicles"
+
     def _fe_build_mount_filters(self, lay) -> None:
+        # Group bar: Land / Air / Sea / Vehicles / All (default Land).
+        grow = QHBoxLayout()
+        grow.setSpacing(0)
+        self._fe_group = self._config.get("mounts_group", "land")
+        self._fe_group_btns = {}
+        for gid, label, _names in self._FE_GROUPS:
+            b = QPushButton(label)
+            b.setCheckable(True)
+            b.setChecked(gid == self._fe_group)
+            b.setStyleSheet(
+                f"QPushButton {{ padding: 6px 14px; border: 1px solid {COLORS['border']}; "
+                f"border-radius: 0; background: {COLORS['header']}; }}"
+                f"QPushButton:checked {{ background: {COLORS['accent']}; color: #111; font-weight: bold; }}")
+            b.clicked.connect(lambda _c=False, g=gid: self._fe_set_group(g))
+            grow.addWidget(b)
+            self._fe_group_btns[gid] = b
+        grow.addStretch()
+        lay.addLayout(grow)
         row = QHBoxLayout()
         self._fe_search = QLineEdit()
         self._fe_search.setPlaceholderText("Search mounts (orca, horse ...)")
@@ -887,10 +922,36 @@ class FieldEditTab(QWidget):
         has_dlc = any(e.get('_dlc') for e in self._charinfo_mount_entries)
         self._fe_quick['dlc'].setEnabled(has_dlc)
         self._fe_dlc_only.setEnabled(has_dlc)
+        self._fe_update_group_counts()
         self._fe_apply_mount_filter()
+
+    def _fe_set_group(self, gid: str) -> None:
+        self._fe_group = gid
+        for g, b in getattr(self, '_fe_group_btns', {}).items():
+            b.setChecked(g == gid)
+        try:
+            self._config["mounts_group"] = gid
+            self.config_save_requested.emit()
+        except Exception:  # noqa: BLE001
+            pass
+        self._fe_apply_mount_filter()
+
+    def _fe_update_group_counts(self) -> None:
+        btns = getattr(self, '_fe_group_btns', None)
+        if not btns:
+            return
+        from characterinfo_full_parser import MOUNT_VEHICLE_TYPES
+        n = {g: 0 for g, _l, _s in self._FE_GROUPS}
+        for e in self._charinfo_mount_entries or []:
+            vt = e.get('_vehicleInfo', 0)
+            n[self._fe_group_of(MOUNT_VEHICLE_TYPES.get(vt, str(vt)))] += 1
+            n["all"] += 1
+        for gid, label, _s in self._FE_GROUPS:
+            btns[gid].setText(f"{label}  {n[gid]}")
 
     def _fe_apply_mount_filter(self) -> None:
         t = self._mount_table
+        grp = getattr(self, '_fe_group', 'all')
         q = self._fe_search.text().strip().lower()
         typ = self._fe_type_combo.currentText()
         dlc_only = self._fe_dlc_only.isChecked()
@@ -908,6 +969,8 @@ class FieldEditTab(QWidget):
             if typ != "All" and (it1 is None or it1.text() != typ):
                 show = False
             if dlc_only and not e.get('_dlc'):
+                show = False
+            if grp != "all" and it1 is not None and self._fe_group_of(it1.text()) != grp:
                 show = False
             t.setRowHidden(row, not show)
 
