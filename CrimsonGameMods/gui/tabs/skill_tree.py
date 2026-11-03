@@ -200,6 +200,13 @@ class SkillTreeTab(QWidget):
         self._lbl_swap_status = swap_status
 
         root.addWidget(swap_grp)
+        # Hidden in 2.4.6: tested in game (03.11.2026) the swap is applied by
+        # DMM but changes nothing - neither the moves nor Kliff's skill menu.
+        # Movesets of another character: Characters > Runtime Packages.
+        # The code stays for a later look.
+        swap_grp.setVisible(False)
+        self._btn_extract.setVisible(False)
+        self._btn_swap_export.setVisible(False)
 
         # ═══════════════════════════════════════════════════════════════
         # Skill Editor — Stamina & Cooldown Mods  (skill.pabgb)
