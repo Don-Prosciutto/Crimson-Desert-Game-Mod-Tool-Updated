@@ -14005,6 +14005,20 @@ QCheckBox::indicator {{
         layout.addWidget(abyss_group)
         layout.addStretch()
         self._waypoint_tab_widget = tab
+        # Fill the list whenever the page is shown. It used to fill only when
+        # the World page switched to this tab - in the Game Mod Tool the
+        # navigation list often opens it without such a switch, so the list
+        # stayed empty even with a save loaded.
+        _owner = self
+
+        class _WaypointShowFilter(QObject):
+            def eventFilter(self, obj, ev):  # noqa: N802
+                if ev.type() == QEvent.Show:
+                    QTimer.singleShot(0, _owner._populate_waypoints)
+                return False
+
+        self._waypoint_show_filter = _WaypointShowFilter(tab)
+        tab.installEventFilter(self._waypoint_show_filter)
         self._tabs.addTab(tab, "Abyss Gates")
 
     _WAYPOINT_KEY_NAMES = {
@@ -32593,6 +32607,10 @@ QCheckBox::indicator {{
     def _scan_and_populate(self) -> None:
         if not self._save_data:
             return
+        # A save loaded while the Abyss Gates page is open: refresh it too.
+        _wp = getattr(self, '_waypoint_tab_widget', None)
+        if _wp is not None and _wp.isVisible():
+            QTimer.singleShot(0, self._populate_waypoints)
 
         self._quest_entries = []
         self._mission_entries = []
