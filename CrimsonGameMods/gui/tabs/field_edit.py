@@ -2046,7 +2046,12 @@ class FieldEditTab(QWidget):
                 k = cd.get('key')
                 vi = cd.get('vehicle_info', 0)
                 sk = cd.get('string_key', '')
-                if k in seen or k in base_mounts or not (vi != 0 or sk.startswith('Riding_')):
+                try:
+                    from mount_list import EXTRA_RECORDS as _extra_mounts
+                except Exception:  # noqa: BLE001
+                    _extra_mounts = set()
+                if k in seen or k in base_mounts or not (
+                        vi != 0 or sk.startswith('Riding_') or sk in _extra_mounts):
                     continue
                 seen.add(k)
                 self._charinfo_dlc_items.append(cd)

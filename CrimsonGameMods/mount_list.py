@@ -36,6 +36,12 @@ GROUPS = [
 ]
 
 
+# Mounts the game data does not mark with a mount type (vehicle_info 0, not
+# callable), listed anyway: the Giant Manta Ray is ridden in the wild
+# (crimsondesert.gg lists it with speed/accel/handling/jump).
+EXTRA_RECORDS = {"Animal_Giant_MantaRay_Wild_1"}
+
+
 def records_for(name: str, entries: list, name_of) -> list:
     """The mount entries that stand for `name` (rules above).
     `name_of(entry)` gives the in-game name of an entry."""
