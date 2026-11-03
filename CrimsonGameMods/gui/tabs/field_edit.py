@@ -887,7 +887,8 @@ class FieldEditTab(QWidget):
         """In-game name of a mount (DLC names from the DLC texts)."""
         if e.get('_dlc'):
             n = getattr(self, '_charinfo_dlc_names', {}).get(int(e.get('_key', 0)))
-            return n or e.get('name', '?')
+            if n:
+                return n
         names = getattr(self, '_fe_names', None)
         if names is None:
             names = {}
@@ -900,7 +901,7 @@ class FieldEditTab(QWidget):
             except Exception:  # noqa: BLE001
                 pass
             self._fe_names = names
-        return names.get(e.get('name', ''), '') or e.get('name', '?')
+        return (names.get(e.get('name', ''), '') or e.get('name', '?')).replace('[DLC] ', '')
 
     def _fe_vanilla_of(self, e: dict):
         if e.get('_dlc'):
@@ -2060,7 +2061,11 @@ class FieldEditTab(QWidget):
                     b = bytes(_dmp.unwrap_paloc_container(b))
                 strings = {int(e['string_key']): e['string_value']
                            for e in _dmp.parse_paloc_bytes(b) if str(e['string_key']).isdigit()}
-                for c in self._charinfo_dlc_all:
+                # Also the DLC versions of base records (e.g. 4 of the 5 sea
+                # turtles exist in the base table without a mount type and
+                # only become mounts in the DLC): they are not in
+                # _charinfo_dlc_all, and showed their internal name.
+                for c in list(self._charinfo_dlc_all) + list(self._charinfo_dlc_items):
                     n = strings.get((int(c['key']) << 32) | 0x30)
                     if n:
                         self._charinfo_dlc_names[int(c['key'])] = n
