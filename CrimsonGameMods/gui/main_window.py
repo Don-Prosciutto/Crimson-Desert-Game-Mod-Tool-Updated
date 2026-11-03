@@ -4776,12 +4776,50 @@ QCheckBox {{
         except Exception:  # noqa: BLE001
             pass
         extra.append(("Experimental mode", "on" if getattr(self, "_experimental_mode", False) else "off"))
+        import support_package
+        game = (self._config.get("game_install_path") or "").strip()
+        # DMM's own log: from the folder chosen before, else found through
+        # DMM's mount list in the game folder, else ask once.
+        dmm_dir = self._config.get("dmm_folder") or ""
+        if not support_package.dmm_log_path(dmm_dir):
+            dmm_dir = support_package.guess_dmm_dir(game)
+        if not support_package.dmm_log_path(dmm_dir):
+            ans = QMessageBox.question(
+                self, "Support Package",
+                "Add DMM's log too? It shows mount errors and skipped edits.\n\n"
+                "Pick the folder DMM is installed in (the one with the 'logs' and "
+                "'mods' folders). Only its log is read.",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if ans == QMessageBox.Yes:
+                d = QFileDialog.getExistingDirectory(self, "DMM folder", os.path.expanduser("~"))
+                if d and support_package.dmm_log_path(d):
+                    dmm_dir = d
+                elif d:
+                    QMessageBox.information(self, "Support Package",
+                                            "No DMM log (logs\\activity.json) in that folder - "
+                                            "the package is made without it.")
+                    dmm_dir = ""
+        if support_package.dmm_log_path(dmm_dir):
+            self._config["dmm_folder"] = dmm_dir
+            try:
+                self._save_config()
+            except Exception:  # noqa: BLE001
+                pass
+        # The mod with the problem, so the report shows what is in it.
+        mod_files = []
+        ans = QMessageBox.question(
+            self, "Support Package",
+            "Add the mod file(s) with the problem (e.g. the .field.json you made)?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        if ans == QMessageBox.Yes:
+            mod_files, _f = QFileDialog.getOpenFileNames(
+                self, "Mod files for the support package", start,
+                "Mod files (*.json *.field.json *.zip);;All files (*)")
         try:
-            import support_package
             names = support_package.build_support_zip(
-                path, _v, (self._config.get("game_install_path") or "").strip(),
+                path, _v, game,
                 config_path=self._get_config_path() if hasattr(self, "_get_config_path") else None,
-                extra=extra)
+                extra=extra, dmm_dir=dmm_dir, mod_files=list(mod_files or []))
         except Exception as e:  # noqa: BLE001
             QMessageBox.critical(self, "Support Package", f"Could not create the zip:\n{e}")
             return

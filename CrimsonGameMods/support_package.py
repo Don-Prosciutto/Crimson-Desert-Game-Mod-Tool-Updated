@@ -7,6 +7,12 @@ Contents (the Windows user name is replaced by <user> everywhere):
                         token, key or password is left out)
     dmm_mods.txt        names of the mods DMM has mounted (from the game's
                         bin64/dmm/manifest.tsv), not the files themselves
+    dmm_activity.json   DMM's own log (logs/activity.json in the DMM folder:
+                        mount errors, "N edit(s) skipped" ...), if the DMM
+                        folder is known. Nothing else is read from that
+                        folder (its login file stays untouched).
+    mods/<name>         mod files the user chose to add (the one with the
+                        problem), so the report shows exactly what is in it
 No save files, no game files. No Qt in here.
 """
 
@@ -22,6 +28,7 @@ import zipfile
 from typing import List, Optional, Tuple
 
 LOG_TAIL_BYTES = 2_000_000
+MOD_FILE_MAX = 20_000_000        # per added mod file
 _SECRET = re.compile(r"(?i)(token|secret|password|passwd|api[_-]?key|auth|cookie|session)")
 
 
@@ -87,10 +94,35 @@ def _dmm_mods(game_path: str) -> str:
     return "\n".join(lines)
 
 
+def guess_dmm_dir(game_path: str) -> str:
+    """The DMM folder, read from DMM's mount list in the game folder: its
+    lines name the mod files as <DMM folder>\\mods\\<mod>\\... . "" if unknown."""
+    man = os.path.join(game_path or "", "bin64", "dmm", "manifest.tsv")
+    try:
+        with open(man, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) >= 3 and parts[0] == "file":
+                    src = parts[2]
+                    m = re.search(r"(?i)^(.*?)[\\/]mods[\\/]", src)
+                    if m and os.path.isfile(os.path.join(m.group(1), "logs", "activity.json")):
+                        return m.group(1)
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
+
+
+def dmm_log_path(dmm_dir: str) -> str:
+    p = os.path.join(dmm_dir or "", "logs", "activity.json")
+    return p if dmm_dir and os.path.isfile(p) else ""
+
+
 def build_support_zip(out_path: str, app_version: str, game_path: str,
                       config_path: Optional[str] = None,
                       log_path: Optional[str] = None,
-                      extra: Optional[List[Tuple[str, str]]] = None) -> List[str]:
+                      extra: Optional[List[Tuple[str, str]]] = None,
+                      dmm_dir: Optional[str] = None,
+                      mod_files: Optional[List[str]] = None) -> List[str]:
     """Write the zip. Returns the names of the files in it."""
     game_path = game_path or ""
     log_path = log_path or os.path.join(_app_dir(), "logs.txt")
@@ -135,4 +167,24 @@ def build_support_zip(out_path: str, app_version: str, game_path: str,
                 names.append("editor_config.txt")
         z.writestr("dmm_mods.txt", _mask(_dmm_mods(game_path)))
         names.append("dmm_mods.txt")
+        dlog = dmm_log_path(dmm_dir or "")
+        if dlog:
+            z.writestr("dmm_activity.json", _mask(_tail(dlog, LOG_TAIL_BYTES)))
+            names.append("dmm_activity.json")
+        for i, mf in enumerate(mod_files or []):
+            try:
+                if os.path.getsize(mf) > MOD_FILE_MAX:
+                    z.writestr(f"mods/{i}_TOO_BIG.txt", _mask(f"{mf}: larger than "
+                                                           f"{MOD_FILE_MAX // 1_000_000} MB, left out"))
+                    continue
+                arc = f"mods/{os.path.basename(mf)}"
+                with open(mf, "rb") as f:
+                    data = f.read()
+                if mf.lower().endswith((".json", ".txt", ".tsv", ".ini", ".xml")):
+                    z.writestr(arc, _mask(data.decode("utf-8", errors="replace")))
+                else:
+                    z.writestr(arc, data)
+                names.append(arc)
+            except Exception as e:  # noqa: BLE001
+                z.writestr(f"mods/{i}_NOT_READABLE.txt", _mask(f"{mf}: {e}"))
     return names

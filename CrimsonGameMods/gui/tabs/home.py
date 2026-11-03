@@ -151,8 +151,9 @@ class HomePage(QWidget):
             sp = QLabel(f"<a href='support' style='color:{COLORS['accent']}'>Problems? "
                         "Create a support package…</a>")
             sp.setTextFormat(Qt.RichText)
-            sp.setToolTip("A zip with versions, the log and settings that you can send\n"
-                          "when something goes wrong. No save files, no game files.")
+            sp.setToolTip("A zip with versions, the tool's and DMM's log, the settings and\n"
+                          "(if you want) the mod with the problem - to send when something\n"
+                          "goes wrong. No save files, no game files.")
             sp.linkActivated.connect(lambda _l: self._support())
             st_lay.addWidget(sp)
         row.addWidget(st_box, 1)
