@@ -363,10 +363,22 @@ class SkillTreeTab(QWidget):
         self._original_grp_pabgb = bytes(grp_gb)
 
         from skilltreeinfo_parser import parse_all, parse_groups
-        self._records = parse_all(self._original_pabgh, self._original_pabgb)
-        self._group_records = parse_groups(
-            self._original_grp_pabgh, self._original_grp_pabgb
-        )
+        try:
+            self._records = parse_all(self._original_pabgh, self._original_pabgb)
+        except Exception as e:  # noqa: BLE001
+            log.exception("skilltreeinfo not readable")
+            QMessageBox.critical(self, "Extract failed",
+                                 f"The skill tree table could not be read:\n{e}")
+            return
+        # skilltreegroupinfo: the old reader fails on 2.04 (the button then
+        # did nothing at all). Nothing on this page needs the groups, so a
+        # failure is only logged.
+        try:
+            self._group_records = parse_groups(
+                self._original_grp_pabgh, self._original_grp_pabgb)
+        except Exception as e:  # noqa: BLE001
+            log.warning("skilltreegroupinfo not readable (not needed here): %s", e)
+            self._group_records = []
         self._loaded = True
         self._populate_table()
         for btn in self._preset_btns:
