@@ -1693,7 +1693,7 @@ class FieldEditTab(QWidget):
                 self._mount_populate()
                 log.info("Loaded %d mount entries from dmm_parser", len(mount_entries))
 
-                player_names = ('Kliff', 'Damiane', 'Oongka')
+                player_names = ('Kliff', 'Damian', 'Damiane', 'Oongka')   # the game's record is 'Damian'
                 self._charinfo_player_entries = []
                 for cd in self._charinfo_dmm_items:
                     sk = cd.get('string_key', '')
