@@ -1,5 +1,5 @@
 {
-  "version": "2.4.6",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.4.6/CrimsonGameMods.exe",
-  "notes": "Game 2.04.05 \u2014 Home page, Mounts tab, speed/attack per mount, Mesh Swap Look only, DLC Vendor, DLC in every tab"
+  "version": "2.4.7",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.4.7/CrimsonGameMods.exe",
+  "notes": "Game 2.04.08 \u2014 items, DLC items and stores load again (new parser)"
 }

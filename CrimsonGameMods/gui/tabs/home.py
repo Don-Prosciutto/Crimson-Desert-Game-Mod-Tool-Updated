@@ -23,10 +23,10 @@ RELEASES_URL = "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-U
 
 # Shown under "New in this version". Keep it to a few lines.
 WHATS_NEW = [
-    'Mesh Swap "Look only" (transmog)',
-    "Stores: DLC Vendor",
-    "The DLC is read in every tab",
-    "Mounts tab, much simpler",
+    "Works with game 2.04.08",
+    "Items, DLC items and stores load again",
+    "Clearer warning after a game hotfix",
+    'From 2.4.6: Mounts tab, Mesh Swap "Look only", DLC Vendor',
 ]
 
 # (page label as in the navigation, short description). The label is matched
