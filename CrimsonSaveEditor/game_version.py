@@ -12,8 +12,11 @@ letting it surface at the third damaged mod.
 
 Experience from the 2.03.00 -> 2.03.01 update: a hotfix that moves only the
 third number brought content growth in five tables, but no layout change.
-That is why this check only warns on a differing major or minor version and
-merely mentions a differing hotfix.
+That is why a differing major or minor version gets the hard warning.
+
+Experience from the 2.04.05 -> 2.04.08 update: hotfix 2.04.06 changed the
+layout of iteminfo, and the old parser could no longer read it. So a newer
+hotfix gets a real warning too, only a softer one.
 """
 
 from __future__ import annotations
@@ -25,7 +28,7 @@ log = logging.getLogger(__name__)
 
 # The game version the bundled parser was built for.
 # Raise this together with a parser update.
-PARSER_TARGET = "2.04.05"
+PARSER_TARGET = "2.04.08"
 
 
 def read_game_version(game_path: str) -> str | None:
@@ -74,15 +77,23 @@ def check(game_path: str) -> tuple[str, str] | None:
             f"write to game tables."
         )
 
-    if game[2] != parser[2]:
+    if game[2] > parser[2]:
         return (
-            "Different hotfix",
+            "Newer game hotfix",
             f"Installed game version: {installed}\n"
             f"The parser targets: {PARSER_TARGET}\n\n"
-            f"Only the last number differs. Experience says hotfixes do not "
-            f"change the data layout, so the tool should work normally.\n\n"
-            f"If tables do stop being read correctly, this is the first place "
-            f"to look."
+            f"Only the last number differs. Hotfixes can still change the "
+            f"data layout (2.04.06 did). If item lists stay empty or a page "
+            f"reports a read error, wait for a tool update before building "
+            f"mods.\n\n"
+            f"The Update menu shows whether one is out."
+        )
+    if game[2] < parser[2]:
+        return (
+            "Older game hotfix",
+            f"Installed game version: {installed}\n"
+            f"The parser targets: {PARSER_TARGET}\n\n"
+            f"Your game is older than this tool. Update the game in Steam."
         )
 
     return None
