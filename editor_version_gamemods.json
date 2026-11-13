@@ -1,5 +1,5 @@
 {
-  "version": "2.4.8",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.4.8/CrimsonGameMods.exe",
-  "notes": "Game 2.05.00 \u2014 new parser, stores/characters/drop sets read correctly again, Save Editor: add mounts (57, incl. DLC)"
+  "version": "2.4.9",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.4.9/CrimsonGameMods.exe",
+  "notes": "Save Editor: add pets (84) next to mounts; new Map Colors page for the world map; DLC items in every shop"
 }
