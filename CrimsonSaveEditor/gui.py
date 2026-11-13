@@ -8176,49 +8176,64 @@ QCheckBox::indicator {{
         # from old game versions (the Dragon one marked WORK IN PROGRESS).
         # "Add Mounts" (2.4.8) works differently: it copies an entry of this
         # very save and only changes which character it is (mount_unlock.py).
-        from mount_unlock import MOUNTS as _MOUNTS, DLC_GROUPS as _DLC_GROUPS
-        from PySide6.QtWidgets import QListWidget, QListWidgetItem, QListView
+        from mount_unlock import (MOUNTS as _MOUNTS, DLC_GROUPS as _DLC_GROUPS,
+                                  AREA as _AREA, portrait_path as _portrait)
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem, QListView, QButtonGroup
         mount_grp = QGroupBox("Add Mounts")
         mount_lay = QVBoxLayout(mount_grp)
         mount_lay.setSpacing(4)
         mount_note = QLabel(
-            "Tick mounts and click Add Selected Mounts, then save the file - they show up in game "
-            "in the inventory with your special mounts (horses with your horses). Tested in game 2.05 "
-            "with all of them. [DLC] = needs Charting the Unknown. Blackstar comes with its quest. "
-            "Mounts this save already has are greyed out after Refresh List. Keep a backup of your save.")
+            "Tick the mounts you want, click Add Selected Mounts, then save the file - they show up "
+            "in game with your special mounts (horses with your horses). Tested in game 2.05 with all "
+            "of them. [DLC] = needs Charting the Unknown. Greyed out = this save has it already "
+            "(after Refresh List). Blackstar comes with its quest. Keep a backup of your save.")
         mount_note.setWordWrap(True)
         mount_note.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px; padding: 2px;")
         mount_lay.addWidget(mount_note)
+        area_row = QHBoxLayout()
+        self._mount_area_group = QButtonGroup(mount_grp)
+        self._mount_area_group.setExclusive(True)
+        for _label in ("All", "Land", "Sea [DLC]", "Air"):
+            _b = QPushButton(_label)
+            _b.setCheckable(True)
+            _b.setChecked(_label == "All")
+            _b.clicked.connect(lambda _c=False, a=_label.split()[0]: self._mount_filter(a))
+            self._mount_area_group.addButton(_b)
+            area_row.addWidget(_b)
+        area_row.addStretch()
+        mount_lay.addLayout(area_row)
         self._mount_list = QListWidget()
-        self._mount_list.setFlow(QListView.Flow.TopToBottom)
-        self._mount_list.setWrapping(True)
+        self._mount_list.setViewMode(QListView.ViewMode.IconMode)
+        self._mount_list.setIconSize(QSize(64, 64))
+        self._mount_list.setGridSize(QSize(128, 104))
         self._mount_list.setResizeMode(QListView.ResizeMode.Adjust)
-        self._mount_list.setMinimumHeight(190)
-        _group = None
+        self._mount_list.setMovement(QListView.Movement.Static)
+        self._mount_list.setWordWrap(True)
+        self._mount_list.setMinimumHeight(250)
         for _key, _name, _grp in _MOUNTS:
-            if _grp != _group:
-                _group = _grp
-                _hdr = QListWidgetItem(_grp.upper())
-                _hdr.setFlags(Qt.NoItemFlags)
-                _f = _hdr.font()
-                _f.setBold(True)
-                _hdr.setFont(_f)
-                _hdr.setForeground(QColor(COLORS['accent']))
-                self._mount_list.addItem(_hdr)
-            _it = QListWidgetItem(_name + ("  [DLC]" if _grp in _DLC_GROUPS else ""))
+            _it = QListWidgetItem(_name + (" [DLC]" if _grp in _DLC_GROUPS else ""))
             _it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
             _it.setCheckState(Qt.Unchecked)
+            _it.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
             _it.setData(Qt.UserRole, _key)
+            _it.setData(Qt.UserRole + 1, _AREA.get(_grp, "Land"))
+            _pic = _portrait(_key)
+            if _pic:
+                _it.setIcon(QIcon(_pic))
             self._mount_list.addItem(_it)
-        mount_lay.addWidget(self._mount_list)
+        self._mount_list.itemChanged.connect(lambda _it: self._mount_update_count())
+        mount_lay.addWidget(self._mount_list, 1)
         mount_row = QHBoxLayout()
         _all_btn = QPushButton("All")
+        _all_btn.setToolTip("Tick every mount shown")
         _all_btn.clicked.connect(lambda: self._mount_check_all(True))
         mount_row.addWidget(_all_btn)
         _none_btn = QPushButton("None")
         _none_btn.clicked.connect(lambda: self._mount_check_all(False))
         mount_row.addWidget(_none_btn)
         mount_row.addStretch()
+        self._mount_count = QLabel("")
+        mount_row.addWidget(self._mount_count)
         add_mount_btn = QPushButton("Add Selected Mounts")
         add_mount_btn.setObjectName("accentBtn")
         add_mount_btn.clicked.connect(self._merc_add_mounts)
@@ -8264,12 +8279,23 @@ QCheckBox::indicator {{
         lw = getattr(self, "_mount_list", None)
         if lw is None:
             return []
-        return [lw.item(i) for i in range(lw.count()) if lw.item(i).data(Qt.UserRole)]
+        return [lw.item(i) for i in range(lw.count())]
+
+    def _mount_filter(self, area: str) -> None:
+        for it in self._mount_items():
+            it.setHidden(area != "All" and it.data(Qt.UserRole + 1) != area)
 
     def _mount_check_all(self, on: bool) -> None:
         for it in self._mount_items():
-            if it.flags() & Qt.ItemIsEnabled:
+            if not it.isHidden() and it.flags() & Qt.ItemIsEnabled:
                 it.setCheckState(Qt.Checked if on else Qt.Unchecked)
+        self._mount_update_count()
+
+    def _mount_update_count(self) -> None:
+        n = sum(1 for it in self._mount_items()
+                if it.checkState() == Qt.Checked and it.flags() & Qt.ItemIsEnabled)
+        if hasattr(self, "_mount_count"):
+            self._mount_count.setText(f"{n} selected  " if n else "")
 
     def _mount_mark_owned(self) -> None:
         """Grey out the mounts the loaded save already has."""
@@ -8282,15 +8308,18 @@ QCheckBox::indicator {{
         except Exception:  # noqa: BLE001
             log.exception("Add Mounts: reading the mercenary list failed")
             return
+        normal = self._mount_list.palette().color(self._mount_list.foregroundRole())
         for it in items:
-            base = it.text().replace("  (owned)", "")
             if it.data(Qt.UserRole) in owned:
-                it.setText(base + "  (owned)")
                 it.setCheckState(Qt.Unchecked)
                 it.setFlags(Qt.ItemIsUserCheckable)
+                it.setForeground(QColor(COLORS['text_dim']))
+                it.setToolTip("Already in this save")
             else:
-                it.setText(base)
                 it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
+                it.setForeground(normal)
+                it.setToolTip("")
+        self._mount_update_count()
 
     def _merc_add_mounts(self) -> None:
         if not self._save_data:
@@ -8342,7 +8371,8 @@ QCheckBox::indicator {{
         log.info("Add Mounts: %s", added)
         done = ", ".join(names[k] for k, _ in added)
         self._merc_status.setText(f"Added: {done} - save the file to keep them")
-        self._mount_check_all(False)
+        for _it in self._mount_items():
+            _it.setCheckState(Qt.Unchecked)
         self._mount_mark_owned()
         try:
             self._scan_and_populate()

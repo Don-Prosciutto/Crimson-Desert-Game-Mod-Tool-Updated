@@ -19,7 +19,9 @@ changed. No Qt in here.
 from __future__ import annotations
 
 import copy
+import os
 import struct
+import sys
 from typing import Dict, Iterable, List, Tuple
 
 # (characterKey, name, group) - the rideable mounts as listed on
@@ -100,6 +102,22 @@ MOUNTS: List[Tuple[int, str, str]] = [
     (1002043, 'Skystreaker', 'Flying'),
 ]
 DLC_GROUPS = {"Aquatic", "Mechanical"}
+# Filter buttons on the page: group -> area
+AREA = {"Horses": "Land", "Predators": "Land", "Bears": "Land", "Camels": "Land",
+        "Boars": "Land", "Deer": "Land", "Ibex": "Land", "Birds": "Land",
+        "Reptiles": "Land", "Mechanical": "Sea", "Aquatic": "Sea", "Flying": "Air"}
+
+
+def portrait_path(key: int):
+    """Path of the mount's picture (mount_portraits/<key>.webp, 128 px, made
+    from the game's own portrait textures), or None."""
+    name = f"{int(key)}.webp"
+    for base in (getattr(sys, "_MEIPASS", None), os.path.dirname(os.path.abspath(__file__))):
+        if base:
+            p = os.path.join(base, "mount_portraits", name)
+            if os.path.isfile(p):
+                return p
+    return None
 
 _PLAIN = {"_characterKey", "_mercenaryNo", "_levelData", "_lastPaidTime", "_lastBreedingTime",
           "_spawnPosition", "_spawnYaw", "_spawnFieldInfoKey", "_isInitialize"}
