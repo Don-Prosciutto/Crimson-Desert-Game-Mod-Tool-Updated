@@ -105,3 +105,24 @@ def price_list_with(item: dict, currency: int, price: int) -> list:
     pl.append({"key": int(currency),
                "price": {"price": int(price), "sym_no": 0, "item_info_wrapper": int(currency)}})
     return pl
+
+
+def enchant_buy_with(item: dict, currency: int, price: int) -> list:
+    """[(level, buy_price_list)] with `price` in `currency` for every
+    refinement level that has a buy price. Shops sell weapons and armour at
+    a level of their own and take that level's buy price - the plain
+    price_list alone left them at their old prices (13.11.2026)."""
+    out = []
+    for i, lvl in enumerate(item.get("enchant_data_list") or []):
+        bl = lvl.get("buy_price_list") if isinstance(lvl, dict) else None
+        if not bl:
+            continue
+        new = copy.deepcopy(bl)
+        hit = False
+        for p in new:
+            if int(p.get("key") or 0) == currency:
+                p.setdefault("price", {})["price"] = int(price)
+                hit = True
+        if hit:
+            out.append((i, new))
+    return out

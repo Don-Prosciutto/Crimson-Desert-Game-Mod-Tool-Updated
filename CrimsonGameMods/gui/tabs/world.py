@@ -1154,7 +1154,8 @@ class StoreEditorTab(QWidget):
             self._store_added_ids.add(id(entry))
             if set_price:
                 edits[k] = {'entry': it.get('string_key', ''),
-                            'price_list': dv.price_list_with(it, dv.SILVER, item_raw)}
+                            'price_list': dv.price_list_with(it, dv.SILVER, item_raw),
+                            'enchant_buy': dv.enchant_buy_with(it, dv.SILVER, item_raw)}
                 if isinstance(cache, dict):
                     cache.setdefault(k, {})[dv.SILVER] = item_raw
         for i, s_ in enumerate(stock_list):
@@ -1662,10 +1663,15 @@ class StoreEditorTab(QWidget):
                    'note': 'Format 3 field JSON for storeinfo.pabgb'}
         # Item prices set by "DLC Vendor" (items only the DLC has: DMM writes
         # them into the DLC's item table).
-        price_intents = [
-            {'entry': e['entry'], 'key': k, 'field': 'price_list', 'op': 'set',
-             'new': e['price_list']}
-            for k, e in sorted((getattr(self, '_store_item_price_edits', None) or {}).items())]
+        price_intents = []
+        for k, e in sorted((getattr(self, '_store_item_price_edits', None) or {}).items()):
+            price_intents.append({'entry': e['entry'], 'key': k, 'field': 'price_list',
+                                  'op': 'set', 'new': e['price_list']})
+            # weapons/armour: the buy price of each refinement level
+            for lvl, bl in e.get('enchant_buy') or []:
+                price_intents.append({'entry': e['entry'], 'key': k,
+                                      'field': f'enchant_data_list[{lvl}].buy_price_list',
+                                      'op': 'set', 'new': bl})
         if price_intents:
             needs_dlc = True
         if needs_dlc:
