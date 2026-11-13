@@ -192,6 +192,7 @@ class IconCache:
 
     def _download(self, item_key: int) -> bool:
         target = os.path.join(self._local_dir, f"{item_key}.webp")
+        last_error = None
         for base in (_GITHUB_ICON_BASE, _GITHUB_ICON_FALLBACK):
             try:
                 req = Request(f"{base}/{item_key}.webp", headers={"User-Agent": "CrimsonGameMods"})
@@ -206,6 +207,16 @@ class IconCache:
                 return True
             except Exception as e:  # noqa: BLE001 - offline, 404, ...
                 log.debug("Icon %s from %s: %s", item_key, base, e)
+                last_error = e
+        # A 404 only means there is no picture for this item. Anything else
+        # (no connection, blocked by a firewall, GitHub throttling, folder
+        # not writable) is reported once per session, so it shows up in
+        # logs.txt and in the support package.
+        if last_error is not None and "404" not in str(last_error) \
+                and not getattr(IconCache, "_warned", False):
+            IconCache._warned = True
+            log.warning("Item icons can't be downloaded (%s); cache folder: %s",
+                        last_error, self._local_dir)
         return False
 
     def _enqueue(self, item_key: int) -> None:
