@@ -23,9 +23,9 @@ RELEASES_URL = "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-U
 
 # Shown under "New in this version". Keep it to a few lines.
 WHATS_NEW = [
-    "Works with game 2.04.08",
-    "Items, DLC items and stores load again",
-    "Clearer warning after a game hotfix",
+    "Works with game 2.05.00",
+    "Stores, characters and drop sets read correctly again",
+    "Quest, mission and character names updated (incl. DLC)",
     'From 2.4.6: Mounts tab, Mesh Swap "Look only", DLC Vendor',
 ]
 
