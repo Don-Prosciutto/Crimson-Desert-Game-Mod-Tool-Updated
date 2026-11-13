@@ -1,6 +1,5 @@
 {
-  "version": 6,
-  "gameVersion": "2.04.05.1",
+  "version": 7,
   "items": [
     {
       "itemKey": 1,
@@ -13270,14 +13269,14 @@
     {
       "itemKey": 1000186,
       "name": "Goldleaves' Cloth Armor",
-      "internalName": "Goblin_Merchant_Fabric_Armor_Ⅲ",
+      "internalName": "Goblin_Merchant_Fabric_Armor_���",
       "category": "Material",
       "maxStack": 1
     },
     {
       "itemKey": 1000187,
       "name": "Nibrak Cloth Armor",
-      "internalName": "Goblin_Merchant_Fabric_Armor_Ⅳ",
+      "internalName": "Goblin_Merchant_Fabric_Armor_���",
       "category": "Material",
       "maxStack": 1
     },
@@ -13291,7 +13290,7 @@
     {
       "itemKey": 1000189,
       "name": "Goldleaves' Cloth Armor",
-      "internalName": "Goblin_Merchant_Fabric_Armor_Ⅵ",
+      "internalName": "Goblin_Merchant_Fabric_Armor_���",
       "category": "Material",
       "maxStack": 1
     },
@@ -13949,14 +13948,14 @@
     {
       "itemKey": 1000283,
       "name": "Goldleaves' Cloth Cloak",
-      "internalName": "Goblin_Merchant_Fabric_Cloak_Ⅳ",
+      "internalName": "Goblin_Merchant_Fabric_Cloak_���",
       "category": "Material",
       "maxStack": 1
     },
     {
       "itemKey": 1000284,
       "name": "Goldleaves' Cloth Cloak",
-      "internalName": "Goblin_Merchant_Fabric_Cloak_Ⅵ",
+      "internalName": "Goblin_Merchant_Fabric_Cloak_���",
       "category": "Material",
       "maxStack": 1
     },
@@ -26234,64 +26233,64 @@
     {
       "itemKey": 1002039,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0142",
+      "category": "Misc",
       "maxStack": 1
     },
     {
       "itemKey": 1002040,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0143",
+      "category": "Misc",
       "maxStack": 1
     },
     {
       "itemKey": 1002041,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0144",
+      "category": "Misc",
       "maxStack": 1
     },
     {
       "itemKey": 1002042,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0145",
+      "category": "Misc",
       "maxStack": 1
     },
     {
       "itemKey": 1002043,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0146",
+      "category": "Misc",
       "maxStack": 1
     },
     {
       "itemKey": 1002044,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0147",
+      "category": "Misc",
       "maxStack": 1
     },
     {
       "itemKey": 1002045,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0148",
+      "category": "Misc",
       "maxStack": 1
     },
     {
       "itemKey": 1002046,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0149",
+      "category": "Misc",
       "maxStack": 1
     },
     {
       "itemKey": 1002047,
       "name": "Sealed Abyss Artifact",
-      "category": "Misc",
       "internalName": "Sealed_Abyss_Artifact_0150",
+      "category": "Misc",
       "maxStack": 1
     },
     {
@@ -26640,15 +26639,15 @@
     {
       "itemKey": 1002097,
       "name": "Puppy Cloth Hat",
-      "category": "Material",
       "internalName": "PetArmor_Fabric_Helm_Dog",
+      "category": "Material",
       "maxStack": 1
     },
     {
       "itemKey": 1002098,
       "name": "Puppy Cloth Outfit",
-      "category": "Material",
       "internalName": "PetArmor_Fabric_Armor_Dog",
+      "category": "Material",
       "maxStack": 1
     },
     {
@@ -54960,6 +54959,54 @@
       "maxStack": 5
     },
     {
+      "itemKey": 1007054,
+      "name": "Ranek Cloth Cap",
+      "internalName": "Ranek_Fabric_Helm",
+      "category": "Misc"
+    },
+    {
+      "itemKey": 1007055,
+      "name": "Devron Cloth Cap",
+      "internalName": "Deberon_Fabric_Helm",
+      "category": "Misc"
+    },
+    {
+      "itemKey": 1007074,
+      "name": "Large Red Stone Staircase",
+      "internalName": "Item_me_00_str_mod_castle_stair_000_0001_index0002",
+      "category": "DLC"
+    },
+    {
+      "itemKey": 1007075,
+      "name": "Goldleaves' Cloth Armor",
+      "internalName": "Goblin_Merchant_Fabric_Armor_III_Emergency",
+      "category": "Equipment"
+    },
+    {
+      "itemKey": 1007076,
+      "name": "Goldleaves' Cloth Cloak",
+      "internalName": "Goblin_Merchant_Fabric_Cloak_IV_Emergency",
+      "category": "Misc"
+    },
+    {
+      "itemKey": 1007077,
+      "name": "Goldleaves' Cloth Armor",
+      "internalName": "Goblin_Merchant_Fabric_Armor_VI_Emergency",
+      "category": "Equipment"
+    },
+    {
+      "itemKey": 1007078,
+      "name": "Goldleaves' Cloth Cloak",
+      "internalName": "Goblin_Merchant_Fabric_Cloak_VI_Emergency",
+      "category": "Misc"
+    },
+    {
+      "itemKey": 1007079,
+      "name": "Nibrak Cloth Armor",
+      "internalName": "Goblin_Merchant_Fabric_Armor_IV_Emergency",
+      "category": "Equipment"
+    },
+    {
       "itemKey": 1163002,
       "name": "Hernandian Attire",
       "internalName": "Optionary_Hernand_Party_Cloth",
@@ -58697,5 +58744,6 @@
       "category": "Misc",
       "maxStack": 1
     }
-  ]
+  ],
+  "gameVersion": "2.05.00"
 }
