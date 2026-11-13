@@ -84,7 +84,7 @@ class StoreEditorTab(QWidget):
         info = QLabel(
             "Edit vendor inventories — swap items, change purchase limits, "
             "then Export Field JSON v3 and load it in DMM. "
-            "DLC items only show up in shops marked [DLC shop] or [DLC items OK]; prices come "
+            "DLC items can be added to any shop (needs the DLC in game); prices come "
             "from each item's price in the shop's currency. Added offers "
             "appear in game after the shop restocks."
         )
@@ -172,17 +172,9 @@ class StoreEditorTab(QWidget):
         store_search_row.addWidget(self._store_search, 1)
         store_vlayout.addLayout(store_search_row)
 
-        # DLC items only show up in shops whose record the DLC ships
-        # (dlc/<name>/storeinfo). In a base-game shop they stay an empty slot.
-        self._store_dlc_only_cb = QCheckBox("Only shops that can sell DLC items")
-        self._store_dlc_only_cb.setToolTip(
-            "[DLC shop]      shop that only exists with the DLC\n"
-            "[DLC items OK]  base-game shop the DLC ships its own version of\n"
-            "Shops without a mark (e.g. the black markets) cannot show DLC items -\n"
-            "the game leaves those slots empty.")
-        self._store_dlc_only_cb.toggled.connect(
-            lambda _c: self._store_populate_list(self._store_search.text()))
-        store_vlayout.addWidget(self._store_dlc_only_cb)
+        # The "Only shops that can sell DLC items" filter is gone (2.4.8): DLC
+        # items work in every shop when the offer is written like the DLC
+        # writes its own (flag_a = 1, no sub_data) - see _store_dlc_offer.
 
         self._store_list = QTableWidget()
         self._store_list.setColumnCount(5)
@@ -291,7 +283,7 @@ class StoreEditorTab(QWidget):
         dlc_vendor_btn.setToolTip(
             "Turn the selected shop into a DLC vendor: adds the DLC's weapons,\n"
             "armor, materials, blueprints ... as new offers, optionally all at\n"
-            "one price in Silver. Needs a shop marked [DLC shop] / [DLC items OK].")
+            "one price in Silver. Works in every shop (needs the DLC in game).")
         dlc_vendor_btn.clicked.connect(self._store_dlc_vendor)
         edit_row.addWidget(dlc_vendor_btn)
 
@@ -381,9 +373,12 @@ class StoreEditorTab(QWidget):
     # ── DLC shops ([DLC shop] / [DLC items OK]) ──────────────────────────────────────────────────────
     # Since game 2.04 the DLC ships its own shop table (dlc/<name>/storeinfo):
     # new shops, and its own version of many base-game shops. Tested in game
-    # (01.11.2026): DLC items show only in shops of that table; in a base-game
-    # shop (e.g. the black markets) the slot stays empty with price 0, and
-    # changing the slot type makes the game crash when the shop opens.
+    # (01.11.2026): a DLC item in a base-game shop stayed an empty slot with
+    # price 0 - the offer was a copy of a base-game offer (flag_a 0). Written
+    # like the DLC's own offers (flag_a 1, no sub_data, slot type 0) it shows
+    # with its price in any shop (13.11.2026, Alden/Store_Her_General; the
+    # same way AerowynX's "Expanded Vendor Inventory - DLC Items" does it).
+    # Changing the slot type makes the game crash when the shop opens.
     # The game uses the DLC version of a shop when it has one, so that is the
     # version shown and edited here. DMM applies a shop edit (by key and
     # position) to both copies.
@@ -473,6 +468,13 @@ class StoreEditorTab(QWidget):
     def _store_can_sell_dlc(self, key: int) -> bool:
         return getattr(self, '_store_origin', {}).get(int(key), "base") != "base"
 
+    def _store_dlc_offer(self, offer: dict, item_key: int) -> None:
+        """A DLC item's offer gets flag_a = 1, as in the DLC's own shops.
+        With the base-game value 0 the game shows the slot empty with
+        price 0 (tested 01.11. and 13.11.2026)."""
+        if int(item_key) in getattr(self, '_store_dlc_items', set()):
+            offer['flag_a'] = 1
+
     def _store_currency_name(self, store) -> str:
         cur = int(store.get('exchange_item_info_for_buy', 0) or 0)
         if not cur:
@@ -539,9 +541,6 @@ class StoreEditorTab(QWidget):
         stores = [self._store_record(s.get('key')) or s for s in self._store_dmm]
         stores += [s for s in getattr(self, '_store_dlc', None) or []
                    if self._store_origin.get(int(s.get('key', 0))) == "dlc_only"]
-        cb = getattr(self, '_store_dlc_only_cb', None)
-        if cb is not None and cb.isChecked():
-            stores = [s for s in stores if self._store_can_sell_dlc(s.get('key', 0))]
         if q:
             stores = [s for s in stores
                       if q in s.get('string_key', '').lower()
@@ -572,7 +571,7 @@ class StoreEditorTab(QWidget):
                 "dlc_only": "\nOnly exists with the DLC - can sell DLC items.",
                 "dlc_plus": "\nThe DLC ships its own version of this shop - can sell DLC items.\n"
                             "Shown and edited here: the DLC version.",
-            }.get(origin, "\nBase-game shop - DLC items stay an EMPTY slot here."))
+            }.get(origin, "\nBase-game shop."))
             if origin != "base":
                 name_item.setForeground(QBrush(QColor(COLORS['accent'])))
             table.setItem(row, 1, name_item)
@@ -856,14 +855,6 @@ class StoreEditorTab(QWidget):
         new_name = self._store_get_item_name(new_key)
 
         skey = int(store.get('key', 0))
-        if new_key in getattr(self, '_store_dlc_items', set()) and not self._store_can_sell_dlc(skey):
-            QMessageBox.warning(
-                self, "DLC item in a base-game shop",
-                f"{new_name} is a DLC item, and {store.get('string_key', '')} is a "
-                f"base-game shop.\n\nThe game does not show DLC items there - the slot "
-                f"would stay empty with price 0.\n\nPick a shop marked [DLC shop] or [DLC items OK] "
-                f"(tick 'Only shops that can sell DLC items' to list them).")
-            return
         currency = int(store.get('exchange_item_info_for_buy', 0) or 0)
         if currency:
             price = self._store_item_price(new_key, currency)
@@ -886,6 +877,7 @@ class StoreEditorTab(QWidget):
                     p = v.get('payload')
                     if isinstance(p, dict):
                         p['body'] = new_key
+                    self._store_dlc_offer(stock, new_key)
                     swapped += 1
                     self._store_update_change_count()
 
@@ -997,14 +989,6 @@ class StoreEditorTab(QWidget):
         new_name = self._store_get_item_name(new_key)
 
         skey = int(store.get('key', 0))
-        if new_key in getattr(self, '_store_dlc_items', set()) and not self._store_can_sell_dlc(skey):
-            QMessageBox.warning(
-                self, "DLC item in a base-game shop",
-                f"{new_name} is a DLC item, and {store.get('string_key', '')} is a "
-                f"base-game shop.\n\nThe game does not show DLC items there.\n\n"
-                f"Pick a shop marked [DLC shop] or [DLC items OK] "
-                f"(tick 'Only shops that can sell DLC items' to list them).")
-            return
         currency = int(store.get('exchange_item_info_for_buy', 0) or 0)
         if currency:
             price = self._store_item_price(new_key, currency)
@@ -1032,6 +1016,7 @@ class StoreEditorTab(QWidget):
         entry['sub_data'] = None          # no mission / trust lock
         entry['effect_list'] = []
         entry['lookup_a'] = skey
+        self._store_dlc_offer(entry, new_key)
         stock_list.insert(pos, entry)
         for i, s_ in enumerate(stock_list):
             s_['raw_d'] = i               # slot number = position
@@ -1059,13 +1044,6 @@ class StoreEditorTab(QWidget):
             return
         skey = int(store.get('key', 0))
         sname = store.get('string_key', '')
-        if not self._store_can_sell_dlc(skey):
-            QMessageBox.warning(
-                self, "DLC Vendor",
-                f"{sname} is a base-game shop - the game does not show DLC items there.\n\n"
-                f"Pick a shop marked [DLC shop] or [DLC items OK] "
-                f"(tick 'Only shops that can sell DLC items').")
-            return
         stock_list = store.setdefault('stock_data_list', [])
         plain = [s_ for i, s_ in enumerate(stock_list) if self._store_is_buy_offer(store, i)]
         if not plain:
@@ -1116,8 +1094,9 @@ class StoreEditorTab(QWidget):
         price_row.addStretch()
         lay.addLayout(price_row)
         hint = QLabel(
-            "Sets each item's own Silver price, so other vendors also pay only\n"
-            "that much for it. Stock per offer: the 'Set Limit' value."
+            "Sets each item's own Silver price so this shop shows exactly that\n"
+            "(no discount label); other vendors pay a bit less for it.\n"
+            "Stock per offer: the 'Set Limit' value."
             if currency == dv.SILVER else
             "This shop does not sell for Silver - the items keep their own prices.")
         hint.setStyleSheet(f"color: {COLORS['text_dim']};")
@@ -1143,7 +1122,11 @@ class StoreEditorTab(QWidget):
         target_raw = int(price_spin.value()) * 100       # 10 Silver -> 1000 (shown 10.00)
         factors = store.get('price_increase_percent_list') or []
         shop_raw = int(factors[0]) if factors and 0 < int(factors[0]) < 10**9 else 1_000_000
-        raw_a = int(round(10**12 / shop_raw)) if set_price else None
+        # The shop shows item price x shop factor (offer factor raw_a 1.0).
+        # Changing raw_a shows the price with a discount label (e.g. "-18 %",
+        # tested 03.11.2026); so the offer keeps 1.0 and the item's own price
+        # is set to target / shop factor instead (13.11.2026).
+        item_raw = max(1, int(round(target_raw * 1_000_000 / shop_raw)))
 
         edits = getattr(self, '_store_item_price_edits', None)
         if edits is None:
@@ -1165,16 +1148,15 @@ class StoreEditorTab(QWidget):
             entry['sub_data'] = None
             entry['effect_list'] = []
             entry['lookup_a'] = skey
-            if raw_a is not None:
-                entry['raw_a'] = raw_a
+            self._store_dlc_offer(entry, k)
             stock_list.insert(pos, entry)
             pos += 1
             self._store_added_ids.add(id(entry))
             if set_price:
                 edits[k] = {'entry': it.get('string_key', ''),
-                            'price_list': dv.price_list_with(it, dv.SILVER, target_raw)}
+                            'price_list': dv.price_list_with(it, dv.SILVER, item_raw)}
                 if isinstance(cache, dict):
-                    cache.setdefault(k, {})[dv.SILVER] = target_raw
+                    cache.setdefault(k, {})[dv.SILVER] = item_raw
         for i, s_ in enumerate(stock_list):
             s_['raw_d'] = i
         store['buyable_stock_count'] = int(store.get('buyable_stock_count', 0) or 0) + len(chosen)
@@ -1628,6 +1610,10 @@ class StoreEditorTab(QWidget):
                     else:
                         new = _store_field_diff(skey, ikey, field, van.get(field), rec[field])
                     intents.extend(new)
+                    # A DLC item in any shop (also a base-game one, 2.4.8):
+                    # the mod needs the DLC.
+                    if _store_intents_use(new, dlc_items):
+                        needs_dlc = True
                     if not is_dlc_version:
                         continue
                     # DMM applies a shop edit by key and position to both copies
@@ -1710,6 +1696,31 @@ def _store_format_price(numerator: int, denominator: int = 1) -> str:
     Rounded half up like the game (45 x 70 % = 31.5 -> 32)."""
     v = (2 * int(numerator) + int(denominator)) // (2 * int(denominator))
     return str(v) if v < 100 else f"{v / 100:.2f}"
+
+
+def _store_intents_use(intents, item_keys) -> bool:
+    """True if any intent writes one of item_keys as an offer's item
+    (raw_q / payload body, or a plain 'new' value)."""
+    if not item_keys:
+        return False
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in ("raw_q", "body") and isinstance(v, int) and v in item_keys:
+                    return True
+                if walk(v):
+                    return True
+        elif isinstance(o, list):
+            return any(walk(v) for v in o)
+        return False
+
+    for it in intents:
+        if isinstance(it.get('new'), int) and it['new'] in item_keys:
+            return True
+        if walk(it.get('new')) or walk(it.get('value')):
+            return True
+    return False
 
 
 def _store_field_diff(entry, key, path, a, b):
