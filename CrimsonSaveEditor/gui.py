@@ -8174,6 +8174,32 @@ QCheckBox::indicator {{
 
         # "Unlock Dragon" and "Unlock Mounts" removed (2.03.02): hex templates
         # from old game versions (the Dragon one marked WORK IN PROGRESS).
+        # "Add Mounts" (2.4.8) works differently: it copies an entry of this
+        # very save and only changes which character it is (mount_unlock.py).
+        from mount_unlock import MOUNTS as _MOUNTS
+        mount_grp = QGroupBox("Add Mounts")
+        mount_lay = QVBoxLayout(mount_grp)
+        mount_lay.setSpacing(4)
+        mount_note = QLabel(
+            "Adds the ticked mounts to this save - they show up in game "
+            "in the inventory with your special mounts. Tested in game 2.05: call, ride, save, load. "
+            "Nothing is written until you save the file; keep a backup of your save.")
+        mount_note.setWordWrap(True)
+        mount_note.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px; padding: 2px;")
+        mount_lay.addWidget(mount_note)
+        mount_row = QHBoxLayout()
+        self._mount_checks = []
+        for _key, _name in _MOUNTS:
+            _cb = QCheckBox(_name)
+            mount_row.addWidget(_cb)
+            self._mount_checks.append((_key, _cb))
+        mount_row.addStretch()
+        add_mount_btn = QPushButton("Add Selected Mounts")
+        add_mount_btn.setObjectName("accentBtn")
+        add_mount_btn.clicked.connect(self._merc_add_mounts)
+        mount_row.addWidget(add_mount_btn)
+        mount_lay.addLayout(mount_row)
+        layout.addWidget(mount_grp)
 
         self._merc_status = QLabel("")
         self._merc_status.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
@@ -8208,6 +8234,70 @@ QCheckBox::indicator {{
 
         self._tabs.addTab(tab, tr("tab.mercenary"))
         self._merc_entries = []
+
+    def _merc_add_mounts(self) -> None:
+        if not self._save_data:
+            QMessageBox.warning(self, "Add Mounts", "Load a save file first.")
+            return
+        keys = [k for k, cb in getattr(self, "_mount_checks", []) if cb.isChecked()]
+        if not keys:
+            QMessageBox.information(self, "Add Mounts", "Tick at least one mount.")
+            return
+        import mount_unlock as mu
+        names = dict(mu.MOUNTS)
+        raw = bytes(self._save_data.decompressed_blob)
+        try:
+            owned = mu.owned_keys(raw)
+        except Exception as e:  # noqa: BLE001
+            log.exception("Add Mounts: reading the mercenary list failed")
+            QMessageBox.critical(self, "Add Mounts", f"Could not read the mount list of this save:\n{e}")
+            return
+        todo = [k for k in keys if k not in owned]
+        have = [names[k] for k in keys if k in owned]
+        if not todo:
+            QMessageBox.information(self, "Add Mounts",
+                                    "This save already has: " + ", ".join(have))
+            return
+        text = "Add these mounts to the loaded save?\n\n" + "\n".join(f"  - {names[k]}" for k in todo)
+        if have:
+            text += "\n\nAlready in the save (skipped): " + ", ".join(have)
+        text += ("\n\nNothing is written to disk until you save the file. "
+                 "Keep a backup of your save.")
+        if QMessageBox.question(self, "Add Mounts", text,
+                                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            new_blob, added = mu.add_mounts(raw, todo)
+        except mu.MountError as e:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(self, "Add Mounts", f"Nothing was changed.\n\n{e}")
+            return
+        except Exception as e:  # noqa: BLE001
+            QApplication.restoreOverrideCursor()
+            log.exception("Add Mounts failed")
+            QMessageBox.critical(self, "Add Mounts", f"Nothing was changed.\n\n{e}")
+            return
+        QApplication.restoreOverrideCursor()
+        self._save_data.decompressed_blob = bytearray(new_blob)
+        self._dirty = True
+        log.info("Add Mounts: %s", added)
+        done = ", ".join(names[k] for k, _ in added)
+        self._merc_status.setText(f"Added: {done} - save the file to keep them")
+        for _k, cb in self._mount_checks:
+            cb.setChecked(False)
+        try:
+            self._scan_and_populate()
+        except Exception:  # noqa: BLE001
+            log.exception("Add Mounts: refresh after insert failed")
+        try:
+            self._merc_refresh()
+        except Exception:  # noqa: BLE001
+            pass
+        QMessageBox.information(
+            self, "Add Mounts",
+            f"Added: {done}\n\nSave the file, then load it in game - they appear in the "
+            "inventory with your special mounts.")
 
     def _merc_refresh(self) -> None:
         if not self._save_data:
