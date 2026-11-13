@@ -8245,28 +8245,9 @@ QCheckBox::indicator {{
         self._merc_status.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
         layout.addWidget(self._merc_status)
 
-        dlc_grp = QGroupBox("DLC / Entitlements")
-        dlc_layout = QVBoxLayout(dlc_grp)
-        dlc_layout.setSpacing(4)
-        dlc_note = QLabel(
-            "Remove DLC entitlements from your save if you accidentally added DLC items you don't own."
-        )
-        dlc_note.setWordWrap(True)
-        dlc_note.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px; padding: 2px;")
-        dlc_layout.addWidget(dlc_note)
-        dlc_btn_row = QHBoxLayout()
-        view_dlc_btn = QPushButton("View Entitlements")
-        view_dlc_btn.setToolTip("Show which DLC entitlements are active in this save")
-        view_dlc_btn.clicked.connect(self._view_entitlements)
-        dlc_btn_row.addWidget(view_dlc_btn)
-        remove_dlc_btn = QPushButton("Remove All Entitlements")
-        remove_dlc_btn.setObjectName("accentBtn")
-        remove_dlc_btn.setToolTip("Set all DLC entitlement states to 0 (not entitled)")
-        remove_dlc_btn.clicked.connect(self._remove_entitlements)
-        dlc_btn_row.addWidget(remove_dlc_btn)
-        dlc_btn_row.addStretch()
-        dlc_layout.addLayout(dlc_btn_row)
-        layout.addWidget(dlc_grp)
+        # "DLC / Entitlements" removed (2.4.8): "Remove All Entitlements" set
+        # every DLC/bonus entitlement of the save to 0, also the ones the player
+        # owns - not worth the risk for a button few need.
 
         credits = QLabel("Credits to Tooltip for the mercenary name parser and rename engine.")
         credits.setStyleSheet("color: #ff3333; font-size: 12px; font-weight: bold; padding: 4px;")
@@ -8846,91 +8827,6 @@ QCheckBox::indicator {{
                 self._merc_no_counter = 10000
             self._merc_no_counter += 1
             return self._merc_no_counter
-
-    def _view_entitlements(self) -> None:
-        if not self._save_data:
-            QMessageBox.warning(self, "Entitlements", "Load a save file first.")
-            return
-        try:
-            sys_path = __import__('sys').path
-            if 'Communitydump/desktopeditor' not in sys_path:
-                sys_path.insert(0, 'Communitydump/desktopeditor')
-            import save_parser as sp
-            raw = bytes(self._save_data.decompressed_blob)
-            result = sp.build_result_from_raw(raw, {'input_kind': 'raw_blob'})
-            lines = []
-            found = False
-            for obj in result['objects']:
-                if obj.class_name != 'EntitlementSaveData':
-                    continue
-                found = True
-                for f in obj.fields:
-                    if f.name == '_entitlementElementSaveData' and f.list_elements:
-                        for i, elem in enumerate(f.list_elements):
-                            key_val = "?"
-                            state_val = "?"
-                            for cf in (elem.child_fields or []):
-                                if cf.name == '_platformEntitlementKey' and cf.present:
-                                    key_val = cf.value_repr
-                                elif cf.name == '_platformEntitlementState' and cf.present:
-                                    state_val = cf.value_repr
-                            state_str = "Active" if str(state_val) == "2" else f"Inactive ({state_val})"
-                            lines.append(f"  [{i}] Key={key_val}  State={state_str}")
-            if not found:
-                QMessageBox.information(self, "Entitlements", "No EntitlementSaveData found in this save.")
-                return
-            msg = f"{len(lines)} entitlement(s):\n\n" + "\n".join(lines)
-            QMessageBox.information(self, "Entitlements", msg)
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            QMessageBox.critical(self, "Entitlements", str(e))
-
-    def _remove_entitlements(self) -> None:
-        if not self._save_data:
-            QMessageBox.warning(self, "Entitlements", "Load a save file first.")
-            return
-        reply = QMessageBox.warning(
-            self, "Remove Entitlements",
-            "This will set all DLC entitlement states to 0 (not entitled).\n\n"
-            "Only do this if you accidentally added DLC items you don't own.\n\n"
-            "Continue?",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-        try:
-            sys_path = __import__('sys').path
-            if 'Communitydump/desktopeditor' not in sys_path:
-                sys_path.insert(0, 'Communitydump/desktopeditor')
-            import save_parser as sp
-            raw = bytes(self._save_data.decompressed_blob)
-            result = sp.build_result_from_raw(raw, {'input_kind': 'raw_blob'})
-            blob = bytearray(raw)
-            cleared = 0
-            for obj in result['objects']:
-                if obj.class_name != 'EntitlementSaveData':
-                    continue
-                for f in obj.fields:
-                    if f.name == '_entitlementElementSaveData' and f.list_elements:
-                        for elem in f.list_elements:
-                            for cf in (elem.child_fields or []):
-                                if cf.name == '_platformEntitlementState' and cf.present:
-                                    old = blob[cf.start_offset]
-                                    if old != 0:
-                                        blob[cf.start_offset] = 0
-                                        cleared += 1
-            if cleared == 0:
-                QMessageBox.information(self, "Entitlements",
-                    "No active entitlements found — nothing to remove.")
-                return
-            self._save_data.decompressed_blob = bytearray(blob)
-            self._dirty = True
-            self._merc_status.setText(f"Cleared {cleared} entitlement(s). Save with Ctrl+S.")
-            QMessageBox.information(self, "Entitlements",
-                f"Cleared {cleared} entitlement(s).\n\nSave with Ctrl+S to apply.")
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            QMessageBox.critical(self, "Entitlements", str(e))
 
     def _unlock_character(self, char_key: int) -> None:
         if not self._save_data:
