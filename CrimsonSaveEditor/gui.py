@@ -8176,70 +8176,12 @@ QCheckBox::indicator {{
         # from old game versions (the Dragon one marked WORK IN PROGRESS).
         # "Add Mounts" (2.4.8) works differently: it copies an entry of this
         # very save and only changes which character it is (mount_unlock.py).
-        from mount_unlock import (MOUNTS as _MOUNTS, DLC_GROUPS as _DLC_GROUPS,
-                                  AREA as _AREA, portrait_path as _portrait)
-        from PySide6.QtWidgets import QListWidget, QListWidgetItem, QListView, QButtonGroup
-        mount_grp = QGroupBox("Add Mounts")
-        mount_lay = QVBoxLayout(mount_grp)
-        mount_lay.setSpacing(4)
-        mount_note = QLabel(
-            "Tick the mounts you want, click Add Selected Mounts, then save the file - they show up "
-            "in game with your special mounts (horses with your horses). Tested in game 2.05 with all "
-            "of them. [DLC] = needs Charting the Unknown. Greyed out = this save has it already "
-            "(after Refresh List). Blackstar comes with its quest. Keep a backup of your save.")
-        mount_note.setWordWrap(True)
-        mount_note.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px; padding: 2px;")
-        mount_lay.addWidget(mount_note)
-        area_row = QHBoxLayout()
-        self._mount_area_group = QButtonGroup(mount_grp)
-        self._mount_area_group.setExclusive(True)
-        for _label in ("All", "Land", "Sea [DLC]", "Air"):
-            _b = QPushButton(_label)
-            _b.setCheckable(True)
-            _b.setChecked(_label == "All")
-            _b.clicked.connect(lambda _c=False, a=_label.split()[0]: self._mount_filter(a))
-            self._mount_area_group.addButton(_b)
-            area_row.addWidget(_b)
-        area_row.addStretch()
-        mount_lay.addLayout(area_row)
-        self._mount_list = QListWidget()
-        self._mount_list.setViewMode(QListView.ViewMode.IconMode)
-        self._mount_list.setIconSize(QSize(64, 64))
-        self._mount_list.setGridSize(QSize(128, 104))
-        self._mount_list.setResizeMode(QListView.ResizeMode.Adjust)
-        self._mount_list.setMovement(QListView.Movement.Static)
-        self._mount_list.setWordWrap(True)
-        self._mount_list.setMinimumHeight(250)
-        for _key, _name, _grp in _MOUNTS:
-            _it = QListWidgetItem(_name + (" [DLC]" if _grp in _DLC_GROUPS else ""))
-            _it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
-            _it.setCheckState(Qt.Unchecked)
-            _it.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
-            _it.setData(Qt.UserRole, _key)
-            _it.setData(Qt.UserRole + 1, _AREA.get(_grp, "Land"))
-            _pic = _portrait(_key)
-            if _pic:
-                _it.setIcon(QIcon(_pic))
-            self._mount_list.addItem(_it)
-        self._mount_list.itemChanged.connect(lambda _it: self._mount_update_count())
-        mount_lay.addWidget(self._mount_list, 1)
-        mount_row = QHBoxLayout()
-        _all_btn = QPushButton("All")
-        _all_btn.setToolTip("Tick every mount shown")
-        _all_btn.clicked.connect(lambda: self._mount_check_all(True))
-        mount_row.addWidget(_all_btn)
-        _none_btn = QPushButton("None")
-        _none_btn.clicked.connect(lambda: self._mount_check_all(False))
-        mount_row.addWidget(_none_btn)
-        mount_row.addStretch()
-        self._mount_count = QLabel("")
-        mount_row.addWidget(self._mount_count)
-        add_mount_btn = QPushButton("Add Selected Mounts")
-        add_mount_btn.setObjectName("accentBtn")
-        add_mount_btn.clicked.connect(self._merc_add_mounts)
-        mount_row.addWidget(add_mount_btn)
-        mount_lay.addLayout(mount_row)
-        layout.addWidget(mount_grp)
+        # "Add Pets" (2.4.9) is the same: pets live in the same list.
+        from PySide6.QtWidgets import QTabWidget as _QTabWidget
+        _pick_tabs = _QTabWidget()
+        _pick_tabs.addTab(self._build_picker("mount"), "Add Mounts")
+        _pick_tabs.addTab(self._build_picker("pet"), "Add Pets")
+        layout.addWidget(_pick_tabs, 1)
 
         self._merc_status = QLabel("")
         self._merc_status.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
@@ -8256,82 +8198,183 @@ QCheckBox::indicator {{
         self._tabs.addTab(tab, tr("tab.mercenary"))
         self._merc_entries = []
 
-    def _mount_items(self) -> list:
-        lw = getattr(self, "_mount_list", None)
+    # ── Add Mounts / Add Pets (mount_unlock.py) ─────────────────────────────
+
+    def _picker_spec(self, kind: str) -> dict:
+        import mount_unlock as mu
+        if kind == "pet":
+            return {
+                "title": "Add Pets", "noun": "pets", "one": "pet",
+                "entries": mu.PETS, "filters": ("All",) + tuple(mu.PET_GROUPS),
+                "area": lambda g: g, "dlc": set(),
+                "note": ("Tick the pets you want, click Add Selected Pets, then save the file - they "
+                         "show up in game with your pets, with full trust. Tested in game 2.05 with all "
+                         "of them. Greyed out = this save has it already (after Refresh List). Abyss "
+                         "Heuklang comes with its quest. Keep a backup of your save."),
+                "where": "with your pets",
+            }
+        return {
+            "title": "Add Mounts", "noun": "mounts", "one": "mount",
+            "entries": mu.MOUNTS, "filters": ("All", "Land", "Sea [DLC]", "Air"),
+            "area": lambda g: mu.AREA.get(g, "Land"), "dlc": mu.DLC_GROUPS,
+            "note": ("Tick the mounts you want, click Add Selected Mounts, then save the file - they show up "
+                     "in game with your special mounts (horses with your horses). Tested in game 2.05 with all "
+                     "of them. [DLC] = needs Charting the Unknown. Greyed out = this save has it already "
+                     "(after Refresh List). Blackstar comes with its quest. Keep a backup of your save."),
+            "where": "with your special mounts",
+        }
+
+    def _build_picker(self, kind: str) -> QWidget:
+        """A ticked picture list of mounts or pets plus filter buttons."""
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem, QListView, QButtonGroup
+        from mount_unlock import portrait_path as _portrait
+        spec = self._picker_spec(kind)
+        box = QWidget()
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(4, 4, 4, 4)
+        lay.setSpacing(4)
+        note = QLabel(spec["note"])
+        note.setWordWrap(True)
+        note.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px; padding: 2px;")
+        lay.addWidget(note)
+        row = QHBoxLayout()
+        grp = QButtonGroup(box)
+        grp.setExclusive(True)
+        for label in spec["filters"]:
+            b = QPushButton(label)
+            b.setCheckable(True)
+            b.setChecked(label == "All")
+            b.clicked.connect(lambda _c=False, a=label.split()[0], k=kind: self._pick_filter(k, a))
+            grp.addButton(b)
+            row.addWidget(b)
+        row.addStretch()
+        lay.addLayout(row)
+        lw = QListWidget()
+        lw.setViewMode(QListView.ViewMode.IconMode)
+        lw.setIconSize(QSize(64, 64))
+        lw.setGridSize(QSize(128, 104))
+        lw.setResizeMode(QListView.ResizeMode.Adjust)
+        lw.setMovement(QListView.Movement.Static)
+        lw.setWordWrap(True)
+        lw.setMinimumHeight(250)
+        for key, name, g in spec["entries"]:
+            it = QListWidgetItem(name + (" [DLC]" if g in spec["dlc"] else ""))
+            it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
+            it.setCheckState(Qt.Unchecked)
+            it.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
+            it.setData(Qt.UserRole, key)
+            it.setData(Qt.UserRole + 1, spec["area"](g))
+            pic = _portrait(key)
+            if pic:
+                it.setIcon(QIcon(pic))
+            lw.addItem(it)
+        lw.itemChanged.connect(lambda _it, k=kind: self._pick_update_count(k))
+        lay.addWidget(lw, 1)
+        row = QHBoxLayout()
+        b = QPushButton("All")
+        b.setToolTip(f"Tick every {spec['one']} shown")
+        b.clicked.connect(lambda _c=False, k=kind: self._pick_check_all(k, True))
+        row.addWidget(b)
+        b = QPushButton("None")
+        b.clicked.connect(lambda _c=False, k=kind: self._pick_check_all(k, False))
+        row.addWidget(b)
+        row.addStretch()
+        count = QLabel("")
+        row.addWidget(count)
+        add = QPushButton(f"Add Selected {spec['noun'].title()}")
+        add.setObjectName("accentBtn")
+        add.clicked.connect(lambda _c=False, k=kind: self._pick_add(k))
+        row.addWidget(add)
+        lay.addLayout(row)
+        if not hasattr(self, "_pickers"):
+            self._pickers = {}
+        self._pickers[kind] = {"list": lw, "count": count}
+        return box
+
+    def _pick_items(self, kind: str) -> list:
+        lw = getattr(self, "_pickers", {}).get(kind, {}).get("list")
         if lw is None:
             return []
         return [lw.item(i) for i in range(lw.count())]
 
-    def _mount_filter(self, area: str) -> None:
-        for it in self._mount_items():
+    def _pick_filter(self, kind: str, area: str) -> None:
+        for it in self._pick_items(kind):
             it.setHidden(area != "All" and it.data(Qt.UserRole + 1) != area)
 
-    def _mount_check_all(self, on: bool) -> None:
-        for it in self._mount_items():
+    def _pick_check_all(self, kind: str, on: bool) -> None:
+        for it in self._pick_items(kind):
             if not it.isHidden() and it.flags() & Qt.ItemIsEnabled:
                 it.setCheckState(Qt.Checked if on else Qt.Unchecked)
-        self._mount_update_count()
+        self._pick_update_count(kind)
 
-    def _mount_update_count(self) -> None:
-        n = sum(1 for it in self._mount_items()
+    def _pick_update_count(self, kind: str) -> None:
+        n = sum(1 for it in self._pick_items(kind)
                 if it.checkState() == Qt.Checked and it.flags() & Qt.ItemIsEnabled)
-        if hasattr(self, "_mount_count"):
-            self._mount_count.setText(f"{n} selected  " if n else "")
+        lbl = getattr(self, "_pickers", {}).get(kind, {}).get("count")
+        if lbl is not None:
+            lbl.setText(f"{n} selected  " if n else "")
 
     def _mount_mark_owned(self) -> None:
-        """Grey out the mounts the loaded save already has."""
-        items = self._mount_items()
-        if not items or not self._save_data:
+        """Grey out the mounts and pets the loaded save already has."""
+        pickers = getattr(self, "_pickers", {})
+        if not pickers or not self._save_data:
             return
         try:
             import mount_unlock as mu
             owned = mu.owned_keys(bytes(self._save_data.decompressed_blob))
         except Exception:  # noqa: BLE001
-            log.exception("Add Mounts: reading the mercenary list failed")
+            log.exception("Add Mounts/Pets: reading the mercenary list failed")
             return
-        normal = self._mount_list.palette().color(self._mount_list.foregroundRole())
-        for it in items:
-            if it.data(Qt.UserRole) in owned:
-                it.setCheckState(Qt.Unchecked)
-                it.setFlags(Qt.ItemIsUserCheckable)
-                it.setForeground(QColor(COLORS['text_dim']))
-                it.setToolTip("Already in this save")
-            else:
-                it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
-                it.setForeground(normal)
-                it.setToolTip("")
-        self._mount_update_count()
+        for kind, w in pickers.items():
+            lw = w["list"]
+            normal = lw.palette().color(lw.foregroundRole())
+            for it in self._pick_items(kind):
+                if it.data(Qt.UserRole) in owned:
+                    it.setCheckState(Qt.Unchecked)
+                    it.setFlags(Qt.ItemIsUserCheckable)
+                    it.setForeground(QColor(COLORS['text_dim']))
+                    it.setToolTip("Already in this save")
+                else:
+                    it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
+                    it.setForeground(normal)
+                    it.setToolTip("")
+            self._pick_update_count(kind)
 
-    def _merc_add_mounts(self) -> None:
+    def _pick_add(self, kind: str) -> None:
+        spec = self._picker_spec(kind)
+        title, noun = spec["title"], spec["noun"]
         if not self._save_data:
-            QMessageBox.warning(self, "Add Mounts", "Load a save file first.")
+            QMessageBox.warning(self, title, "Load a save file first.")
             return
-        keys = [it.data(Qt.UserRole) for it in self._mount_items()
+        keys = [it.data(Qt.UserRole) for it in self._pick_items(kind)
                 if it.checkState() == Qt.Checked and it.flags() & Qt.ItemIsEnabled]
         if not keys:
-            QMessageBox.information(self, "Add Mounts", "Tick at least one mount.")
+            QMessageBox.information(self, title, f"Tick at least one {spec['one']}.")
             return
         import mount_unlock as mu
-        names = {k: n for k, n, _g in mu.MOUNTS}
+        names = {k: n for k, n, _g in spec["entries"]}
         raw = bytes(self._save_data.decompressed_blob)
         try:
             owned = mu.owned_keys(raw)
         except Exception as e:  # noqa: BLE001
-            log.exception("Add Mounts: reading the mercenary list failed")
-            QMessageBox.critical(self, "Add Mounts", f"Could not read the mount list of this save:\n{e}")
+            log.exception("%s: reading the mercenary list failed", title)
+            QMessageBox.critical(self, title, f"Could not read the {noun} of this save:\n{e}")
             return
         todo = [k for k in keys if k not in owned]
         have = [names[k] for k in keys if k in owned]
         if not todo:
-            QMessageBox.information(self, "Add Mounts",
-                                    "This save already has: " + ", ".join(have))
+            QMessageBox.information(self, title, "This save already has: " + ", ".join(have))
             return
-        text = "Add these mounts to the loaded save?\n\n" + "\n".join(f"  - {names[k]}" for k in todo)
+        shown = [names[k] for k in todo]
+        listing = "\n".join(f"  - {n}" for n in shown[:25])
+        if len(shown) > 25:
+            listing += f"\n  ... and {len(shown) - 25} more"
+        text = f"Add these {len(todo)} {noun} to the loaded save?\n\n" + listing
         if have:
-            text += "\n\nAlready in the save (skipped): " + ", ".join(have)
+            text += f"\n\nAlready in the save (skipped): {len(have)}"
         text += ("\n\nNothing is written to disk until you save the file. "
                  "Keep a backup of your save.")
-        if QMessageBox.question(self, "Add Mounts", text,
+        if QMessageBox.question(self, title, text,
                                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
             return
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -8339,34 +8382,36 @@ QCheckBox::indicator {{
             new_blob, added = mu.add_mounts(raw, todo)
         except mu.MountError as e:
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, "Add Mounts", f"Nothing was changed.\n\n{e}")
+            QMessageBox.critical(self, title, f"Nothing was changed.\n\n{e}")
             return
         except Exception as e:  # noqa: BLE001
             QApplication.restoreOverrideCursor()
-            log.exception("Add Mounts failed")
-            QMessageBox.critical(self, "Add Mounts", f"Nothing was changed.\n\n{e}")
+            log.exception("%s failed", title)
+            QMessageBox.critical(self, title, f"Nothing was changed.\n\n{e}")
             return
         QApplication.restoreOverrideCursor()
         self._save_data.decompressed_blob = bytearray(new_blob)
         self._dirty = True
-        log.info("Add Mounts: %s", added)
+        log.info("%s: %s", title, added)
         done = ", ".join(names[k] for k, _ in added)
-        self._merc_status.setText(f"Added: {done} - save the file to keep them")
-        for _it in self._mount_items():
-            _it.setCheckState(Qt.Unchecked)
+        self._merc_status.setText(f"Added {len(added)} {noun} - save the file to keep them")
+        for it in self._pick_items(kind):
+            it.setCheckState(Qt.Unchecked)
         self._mount_mark_owned()
         try:
             self._scan_and_populate()
         except Exception:  # noqa: BLE001
-            log.exception("Add Mounts: refresh after insert failed")
+            log.exception("%s: refresh after insert failed", title)
         try:
             self._merc_refresh()
         except Exception:  # noqa: BLE001
             pass
+        if len(added) > 25:
+            done = f"{len(added)} {noun}"
         QMessageBox.information(
-            self, "Add Mounts",
-            f"Added: {done}\n\nSave the file, then load it in game - they appear in the "
-            "inventory with your special mounts.")
+            self, title,
+            f"Added: {done}\n\nSave the file, then load it in game - they appear "
+            f"{spec['where']}.")
 
     def _merc_refresh(self) -> None:
         if not self._save_data:

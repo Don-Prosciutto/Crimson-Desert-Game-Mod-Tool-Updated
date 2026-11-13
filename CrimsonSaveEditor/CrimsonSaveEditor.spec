@@ -12,6 +12,7 @@ a = Analysis(
     datas=[
         ('parc_parser.dll', '.'),
         ('mount_portraits', 'mount_portraits'),
+        ('pet_portraits', 'pet_portraits'),
         ('item_names.json', '.'),
         ('store_names.json', '.'),
         ('item_templates.json', '.'),

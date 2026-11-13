@@ -1,4 +1,4 @@
-"""Add mounts to a save - by copying an entry of the same save, no foreign templates.
+"""Add mounts and pets to a save - by copying an entry of the same save, no foreign templates.
 
 Why this way: the old "Unlock Mounts" inserted hex blocks taken from someone
 else's save of an older game version and guessed internal numbers. This copies
@@ -8,7 +8,8 @@ The game fills in the rest itself on the next save (owner, HP, position).
 
 Tested in game 2.05.00 (13.11.2026): first White Bear, Silver Fang, Snowwhite
 Deer and Rock Tusk (call, ride, attack, save, restart, load, play on, load
-again), then all 57 mounts below in one save.
+again), then all 57 mounts below in one save, then all 84 pets in one save.
+Mounts and pets live in the same list, so add_mounts() adds either.
 
 Every result is checked before it is returned: list count, the new entries,
 the old entries, every other block decoded identically and not a single byte
@@ -108,15 +109,114 @@ AREA = {"Horses": "Land", "Predators": "Land", "Bears": "Land", "Camels": "Land"
         "Reptiles": "Land", "Mechanical": "Sea", "Aquatic": "Sea", "Flying": "Air"}
 
 
+# (characterKey, name, group) - the pets as listed on crimsondesert.gg/pets,
+# the tameable ("Domestic") record where there is one. Abyss Heuklang is left
+# out: it comes with its quest. Tested in game 2.05.00, 13.11.2026: all 84 in
+# one save - call, follow, pick up; they come with full trust.
+PETS: List[Tuple[int, str, str]] = [
+    # Birds
+    (1004087, 'Kuku Bird Chick', 'Birds'),
+    (1000306, 'Crow', 'Birds'),
+    (1000302, 'Eagle', 'Birds'),
+    (31423, 'Goose', 'Birds'),
+    (30071, 'Sparrow', 'Birds'),
+    (32352, 'Kentish Plover', 'Birds'),
+    (32367, 'Meadow Bunting', 'Birds'),
+    (1003779, 'Long-Tailed Tit', 'Birds'),
+    (1003916, 'Hyacinth Macaw', 'Birds'),
+    (1000798, 'Iron Eagle', 'Birds'),
+    (32288, 'Common Tern', 'Birds'),
+    (32285, 'Smew', 'Birds'),
+    (1003814, 'Condor', 'Birds'),
+    (30079, 'Blue Jay', 'Birds'),
+    (32381, 'Sand Grouse', 'Birds'),
+    (30084, 'Seagull', 'Birds'),
+    (1003813, 'Citron-Crested Cockatoo', 'Birds'),
+    (1003812, 'Ringneck Parrot', 'Birds'),
+    (1003811, 'Little Blue Macaw', 'Birds'),
+    (32883, 'Grey Parrot', 'Birds'),
+    (1003810, 'Sun Conure', 'Birds'),
+    (1003809, 'Eclectus Parrot', 'Birds'),
+    (1003808, 'Parrot', 'Birds'),
+    (32395, 'Eastern Sparrowhawk', 'Birds'),
+    (32380, 'Red-Footed Falcon', 'Birds'),
+    (31420, 'Steppe Eagle', 'Birds'),
+    (31416, 'Gyrfalcon', 'Birds'),
+    (30059, 'Hawk', 'Birds'),
+    (1001889, 'Desert Goose', 'Birds'),
+    (1000780, 'Partridge', 'Birds'),
+    (32411, 'Collared Dove', 'Birds'),
+    (30081, 'Pigeon', 'Birds'),
+    (30020, 'Wild Duck', 'Birds'),
+    (32266, 'Yellow-Billed Loon', 'Birds'),
+    (32038, 'Cuckoo', 'Birds'),
+    (30009, 'White-Winged Redstart', 'Birds'),
+    (30060, 'Owl', 'Birds'),
+    (1001618, 'Phoenix', 'Birds'),
+    # Cats
+    (31467, 'Short-Haired Cat', 'Cats'),
+    (30024, 'Cat', 'Cats'),
+    (1000317, 'Loafy Cat', 'Cats'),
+    (1000323, 'Slim Cat', 'Cats'),
+    (31468, 'Short-Haired Kitten', 'Cats'),
+    (31511, 'Kitten', 'Cats'),
+    (32033, 'Desert Cat', 'Cats'),
+    (30007, 'Long-Haired Cat', 'Cats'),
+    # Dogs
+    (30046, 'Fox', 'Dogs'),
+    (30186, 'Pointy-Eared Bulldog', 'Dogs'),
+    (30038, 'Snowfield Fox', 'Dogs'),
+    (30070, 'Husky', 'Dogs'),
+    (1002047, 'Shepherd', 'Dogs'),
+    (30022, 'Boarhound', 'Dogs'),
+    (32181, 'Greyhound', 'Dogs'),
+    (31400, 'Saluki', 'Dogs'),
+    (1002258, 'Jindo', 'Dogs'),
+    (1001396, 'Floppy-Eared Bulldog', 'Dogs'),
+    (31410, 'Desert Fox', 'Dogs'),
+    (31336, 'Boarhound Puppy', 'Dogs'),
+    (1004307, 'Dalmatian', 'Dogs'),
+    (32189, 'Beagle', 'Dogs'),
+    # Other
+    (30045, 'Hedgehog', 'Other'),
+    (30039, 'Weasel', 'Other'),
+    (30065, 'Chipmunk', 'Other'),
+    (32035, 'Snowfield Chipmunk', 'Other'),
+    (32370, 'Red Squirrel', 'Other'),
+    (32357, 'Choppy', 'Other'),
+    (1000804, 'Flying Squirrel', 'Other'),
+    (1004045, 'Baby Wyvern', 'Other'),
+    (1000979, 'Meerkat', 'Other'),
+    (1004022, 'Red Panda', 'Other'),
+    (32359, 'Feathered Weasel', 'Other'),
+    (32355, 'Skunky', 'Other'),
+    (1000991, 'Desert Porcupine', 'Other'),
+    (32261, 'Porcupine', 'Other'),
+    (30142, 'Badger', 'Other'),
+    (30141, 'Skunk', 'Other'),
+    (1000841, 'Wombat', 'Other'),
+    (30139, 'Beaver', 'Other'),
+    (1000923, 'Platypus', 'Other'),
+    (1003796, 'Raccoon', 'Other'),
+    (32034, 'Snowfield Weasel', 'Other'),
+    (30078, 'Armadillo', 'Other'),
+    (31409, 'Desert Rabbit', 'Other'),
+    (30189, 'Forest Rabbit', 'Other'),
+]
+PET_GROUPS = ("Birds", "Cats", "Dogs", "Other")
+
+
 def portrait_path(key: int):
-    """Path of the mount's picture (mount_portraits/<key>.webp, 128 px, made
-    from the game's own portrait textures), or None."""
+    """Path of the mount's or pet's picture (mount_portraits/ or
+    pet_portraits/<key>.webp, 128 px, made from the game's own portrait
+    textures), or None."""
     name = f"{int(key)}.webp"
     for base in (getattr(sys, "_MEIPASS", None), os.path.dirname(os.path.abspath(__file__))):
         if base:
-            p = os.path.join(base, "mount_portraits", name)
-            if os.path.isfile(p):
-                return p
+            for folder in ("mount_portraits", "pet_portraits"):
+                p = os.path.join(base, folder, name)
+                if os.path.isfile(p):
+                    return p
     return None
 
 _PLAIN = {"_characterKey", "_mercenaryNo", "_levelData", "_lastPaidTime", "_lastBreedingTime",
