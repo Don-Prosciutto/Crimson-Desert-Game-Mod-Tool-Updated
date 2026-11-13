@@ -25,7 +25,7 @@ RELEASES_URL = "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-U
 WHATS_NEW = [
     "Works with game 2.05.00",
     "Stores, characters and drop sets read correctly again",
-    "Quest, mission and character names updated (incl. DLC)",
+    "Save Editor: add mounts (bear, wolf, deer, warthog)",
     'From 2.4.6: Mounts tab, Mesh Swap "Look only", DLC Vendor',
 ]
 
