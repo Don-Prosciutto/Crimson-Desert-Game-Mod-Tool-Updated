@@ -32256,5 +32256,17 @@
   "name": "Knowledge_ShipItemManager_02",
   "display_name": "[DLC] Juan",
   "dlc": true
+ },
+ {
+  "key": 1007028,
+  "name": "Knowledge_Node_Ocean_SatyrosIsland_Dock",
+  "display_name": "[DLC] Satyros Dock",
+  "dlc": true
+ },
+ {
+  "key": 1007026,
+  "name": "Knowledge_Node_Garden_of_Trials",
+  "display_name": "[DLC] Garden of Trials",
+  "dlc": true
  }
 ]

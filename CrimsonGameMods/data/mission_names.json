@@ -32837,7 +32837,7 @@
  {
   "key": 1002817,
   "name": "Mission_KukuBird_Kuku_Repairkuku_5",
-  "display": "Speak with Grimnir"
+  "display": "Talk to Grimnir"
  },
  {
   "key": 1004739,
@@ -32922,12 +32922,12 @@
  {
   "key": 4294964216,
   "name": "Mission_TrollUniversity_Scholastone_2",
-  "display": "Find out Scholastone Institute's location"
+  "display": "Find out Scholastone's location"
  },
  {
   "key": 4294964215,
   "name": "Mission_TrollUniversity_Scholastone_3",
-  "display": "Go to Scholastone Institute"
+  "display": "Go to Scholastone"
  },
  {
   "key": 4294964214,
@@ -35004,7 +35004,7 @@
  {
   "key": 1004915,
   "name": "Graymane_KliffHouse_LivingTogether",
-  "display": "[DLC] [DLC] Graymane_KliffHouse_LivingTogether",
+  "display": "[DLC] [DLC] [DLC] Graymane_KliffHouse_LivingTogether",
   "dlc": true
  },
  {
@@ -35160,49 +35160,49 @@
  {
   "key": 1005090,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_03",
-  "display": "[DLC] Pirate Ship: The Vengeance",
+  "display": "[DLC] Pirate Crew: The Avengers",
   "dlc": true
  },
  {
   "key": 1005091,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_04",
-  "display": "[DLC] Pirate Ship: Faunus",
+  "display": "[DLC] Pirate Crew: The Faunus",
   "dlc": true
  },
  {
   "key": 1005092,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_05",
-  "display": "[DLC] Pirate Ship: The Grim Wind",
+  "display": "[DLC] Pirate Crew: The Grim Winds",
   "dlc": true
  },
  {
   "key": 1005093,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_06",
-  "display": "[DLC] Pirate Ship: The Scarlet Widow",
+  "display": "[DLC] Pirate Crew: The Scarlet Widows",
   "dlc": true
  },
  {
   "key": 1005094,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_07",
-  "display": "[DLC] Pirate Ship: The Bloodied Stake",
+  "display": "[DLC] Pirate Crew: The Bloodied Stakes",
   "dlc": true
  },
  {
   "key": 1005095,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_08",
-  "display": "[DLC] Pirate Ship: The Devils' Plunder",
+  "display": "[DLC] Pirate Crew: The Devils' Plunder",
   "dlc": true
  },
  {
   "key": 1005096,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_09",
-  "display": "[DLC] Pirate Ship: The Black Curved Blade",
+  "display": "[DLC] Pirate Crew: The Black Curved Blades",
   "dlc": true
  },
  {
   "key": 1005124,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_10",
-  "display": "[DLC] Pirate Ship: The Sea's Vengeance",
+  "display": "[DLC] Pirate Duo: The Twin Vengeances",
   "dlc": true
  },
  {
@@ -35460,7 +35460,7 @@
  {
   "key": 1005270,
   "name": "Mission_SatyrosIsland_Block_Satyros_SubNode",
-  "display": "[DLC] A tribe that hunts intruders",
+  "display": "[DLC] Intruder-Hunting Tribe",
   "dlc": true
  },
  {
@@ -35490,7 +35490,7 @@
  {
   "key": 1004978,
   "name": "Mission_OceanStory_CitizenStory_Start",
-  "display": "[DLC] [DLC] Mission_OceanStory_CitizenStory_Start",
+  "display": "[DLC] [DLC] [DLC] Mission_OceanStory_CitizenStory_Start",
   "dlc": true
  },
  {
@@ -36432,7 +36432,7 @@
  {
   "key": 1005157,
   "name": "Challenge_Management_I_0",
-  "display": "[DLC] Reach Popularity Lv. 5 for management facilities",
+  "display": "[DLC] Reach Popularity Lv. 5",
   "dlc": true
  },
  {
@@ -36798,7 +36798,7 @@
  {
   "key": 1004905,
   "name": "Mission_Graymane_Kliff_LoveStory_Elowen_Date_II_0",
-  "display": "[DLC] Make fruit wine to drink with Elowen",
+  "display": "[DLC] Make wine to drink with Elowen",
   "dlc": true
  },
  {
@@ -36960,7 +36960,7 @@
  {
   "key": 1005104,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_03_1",
-  "display": "[DLC] Destroy the Vengeance",
+  "display": "[DLC] Destroy the Avengers",
   "dlc": true
  },
  {
@@ -36972,7 +36972,7 @@
  {
   "key": 1005107,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_04_1",
-  "display": "[DLC] Destroy Faunus",
+  "display": "[DLC] Destroy the Faunus",
   "dlc": true
  },
  {
@@ -36984,7 +36984,7 @@
  {
   "key": 1005110,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_05_1",
-  "display": "[DLC] Destroy the Grim Wind",
+  "display": "[DLC] Destroy the Grim Winds",
   "dlc": true
  },
  {
@@ -36996,7 +36996,7 @@
  {
   "key": 1005113,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_06_1",
-  "display": "[DLC] Destroy the Scarlet Widow",
+  "display": "[DLC] Destroy the Scarlet Widows",
   "dlc": true
  },
  {
@@ -37008,7 +37008,7 @@
  {
   "key": 1005116,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_07_1",
-  "display": "[DLC] Destroy the Bloodied Stake",
+  "display": "[DLC] Destroy the Bloodied Stakes",
   "dlc": true
  },
  {
@@ -37032,7 +37032,7 @@
  {
   "key": 1005122,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_09_1",
-  "display": "[DLC] Destroy the Black Curved Blade",
+  "display": "[DLC] Destroy the Black Curved Blades",
   "dlc": true
  },
  {
@@ -37044,7 +37044,7 @@
  {
   "key": 1005129,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_10_1",
-  "display": "[DLC] Destroy the Sea's Vengeance",
+  "display": "[DLC] Destroy the Twin Vengeances",
   "dlc": true
  },
  {
@@ -37086,7 +37086,7 @@
  {
   "key": 1005153,
   "name": "Mission_Ocean_Wanted_Normal_Monster_ship_14_0",
-  "display": "[DLC] Read the pirate ship bounty notice",
+  "display": "[DLC] Read the pirate ship alert",
   "dlc": true
  },
  {
@@ -37314,7 +37314,7 @@
  {
   "key": 1004445,
   "name": "Mission_PoliticianStory_Discreet_Summons_0",
-  "display": "[DLC] Return to Countess Azerian's manor",
+  "display": "[DLC] Return to the Azerian manor",
   "dlc": true
  },
  {
@@ -37584,7 +37584,7 @@
  {
   "key": 1004948,
   "name": "Mission_MapmakerStory_Kliff_MileStone_5",
-  "display": "[DLC] Remove dark stakes",
+  "display": "[DLC] Remove the dark stakes",
   "dlc": true
  },
  {
@@ -37656,7 +37656,7 @@
  {
   "key": 1005242,
   "name": "Mission_OceanStory_On_Boarding_2",
-  "display": "[DLC] Go to the Ship Manager",
+  "display": "[DLC] Register 3 Deckhands with the ship manager.",
   "dlc": true
  },
  {
@@ -37974,7 +37974,7 @@
  {
   "key": 1005243,
   "name": "Mission_HernandCastle_Abalone_0",
-  "display": "[DLC] Speak with the man",
+  "display": "[DLC] Talk to the man",
   "dlc": true
  },
  {
@@ -37998,7 +37998,7 @@
  {
   "key": 1004850,
   "name": "Mission_DelesyiaCastle_SecretRecipe_0",
-  "display": "[DLC] Speak with the man",
+  "display": "[DLC] Talk to the man",
   "dlc": true
  },
  {
@@ -38022,7 +38022,7 @@
  {
   "key": 1004854,
   "name": "Mission_StonewardPort_CulinaryInspiration_0",
-  "display": "[DLC] Speak with the man",
+  "display": "[DLC] Talk to the man",
   "dlc": true
  },
  {
@@ -38040,7 +38040,7 @@
  {
   "key": 1004857,
   "name": "Mission_SilvermoonHQ_FreshTomorrow_0",
-  "display": "[DLC] Speak with the man",
+  "display": "[DLC] Talk to the man",
   "dlc": true
  },
  {
@@ -38058,7 +38058,7 @@
  {
   "key": 1005247,
   "name": "Mission_DelesyiaCastle_LingeringHeart_0",
-  "display": "[DLC] Speak with the man",
+  "display": "[DLC] Talk to the man",
   "dlc": true
  },
  {
