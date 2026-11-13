@@ -8176,23 +8176,48 @@ QCheckBox::indicator {{
         # from old game versions (the Dragon one marked WORK IN PROGRESS).
         # "Add Mounts" (2.4.8) works differently: it copies an entry of this
         # very save and only changes which character it is (mount_unlock.py).
-        from mount_unlock import MOUNTS as _MOUNTS
+        from mount_unlock import MOUNTS as _MOUNTS, DLC_GROUPS as _DLC_GROUPS
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem, QListView
         mount_grp = QGroupBox("Add Mounts")
         mount_lay = QVBoxLayout(mount_grp)
         mount_lay.setSpacing(4)
         mount_note = QLabel(
-            "Adds the ticked mounts to this save - they show up in game "
-            "in the inventory with your special mounts. Tested in game 2.05: call, ride, save, load. "
-            "Nothing is written until you save the file; keep a backup of your save.")
+            "Tick mounts and click Add Selected Mounts, then save the file - they show up in game "
+            "in the inventory with your special mounts (horses with your horses). Tested in game 2.05 "
+            "with all of them. [DLC] = needs Charting the Unknown. Blackstar comes with its quest. "
+            "Mounts this save already has are greyed out after Refresh List. Keep a backup of your save.")
         mount_note.setWordWrap(True)
         mount_note.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px; padding: 2px;")
         mount_lay.addWidget(mount_note)
+        self._mount_list = QListWidget()
+        self._mount_list.setFlow(QListView.Flow.TopToBottom)
+        self._mount_list.setWrapping(True)
+        self._mount_list.setResizeMode(QListView.ResizeMode.Adjust)
+        self._mount_list.setMinimumHeight(190)
+        _group = None
+        for _key, _name, _grp in _MOUNTS:
+            if _grp != _group:
+                _group = _grp
+                _hdr = QListWidgetItem(_grp.upper())
+                _hdr.setFlags(Qt.NoItemFlags)
+                _f = _hdr.font()
+                _f.setBold(True)
+                _hdr.setFont(_f)
+                _hdr.setForeground(QColor(COLORS['accent']))
+                self._mount_list.addItem(_hdr)
+            _it = QListWidgetItem(_name + ("  [DLC]" if _grp in _DLC_GROUPS else ""))
+            _it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
+            _it.setCheckState(Qt.Unchecked)
+            _it.setData(Qt.UserRole, _key)
+            self._mount_list.addItem(_it)
+        mount_lay.addWidget(self._mount_list)
         mount_row = QHBoxLayout()
-        self._mount_checks = []
-        for _key, _name in _MOUNTS:
-            _cb = QCheckBox(_name)
-            mount_row.addWidget(_cb)
-            self._mount_checks.append((_key, _cb))
+        _all_btn = QPushButton("All")
+        _all_btn.clicked.connect(lambda: self._mount_check_all(True))
+        mount_row.addWidget(_all_btn)
+        _none_btn = QPushButton("None")
+        _none_btn.clicked.connect(lambda: self._mount_check_all(False))
+        mount_row.addWidget(_none_btn)
         mount_row.addStretch()
         add_mount_btn = QPushButton("Add Selected Mounts")
         add_mount_btn.setObjectName("accentBtn")
@@ -8235,16 +8260,49 @@ QCheckBox::indicator {{
         self._tabs.addTab(tab, tr("tab.mercenary"))
         self._merc_entries = []
 
+    def _mount_items(self) -> list:
+        lw = getattr(self, "_mount_list", None)
+        if lw is None:
+            return []
+        return [lw.item(i) for i in range(lw.count()) if lw.item(i).data(Qt.UserRole)]
+
+    def _mount_check_all(self, on: bool) -> None:
+        for it in self._mount_items():
+            if it.flags() & Qt.ItemIsEnabled:
+                it.setCheckState(Qt.Checked if on else Qt.Unchecked)
+
+    def _mount_mark_owned(self) -> None:
+        """Grey out the mounts the loaded save already has."""
+        items = self._mount_items()
+        if not items or not self._save_data:
+            return
+        try:
+            import mount_unlock as mu
+            owned = mu.owned_keys(bytes(self._save_data.decompressed_blob))
+        except Exception:  # noqa: BLE001
+            log.exception("Add Mounts: reading the mercenary list failed")
+            return
+        for it in items:
+            base = it.text().replace("  (owned)", "")
+            if it.data(Qt.UserRole) in owned:
+                it.setText(base + "  (owned)")
+                it.setCheckState(Qt.Unchecked)
+                it.setFlags(Qt.ItemIsUserCheckable)
+            else:
+                it.setText(base)
+                it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
+
     def _merc_add_mounts(self) -> None:
         if not self._save_data:
             QMessageBox.warning(self, "Add Mounts", "Load a save file first.")
             return
-        keys = [k for k, cb in getattr(self, "_mount_checks", []) if cb.isChecked()]
+        keys = [it.data(Qt.UserRole) for it in self._mount_items()
+                if it.checkState() == Qt.Checked and it.flags() & Qt.ItemIsEnabled]
         if not keys:
             QMessageBox.information(self, "Add Mounts", "Tick at least one mount.")
             return
         import mount_unlock as mu
-        names = dict(mu.MOUNTS)
+        names = {k: n for k, n, _g in mu.MOUNTS}
         raw = bytes(self._save_data.decompressed_blob)
         try:
             owned = mu.owned_keys(raw)
@@ -8284,8 +8342,8 @@ QCheckBox::indicator {{
         log.info("Add Mounts: %s", added)
         done = ", ".join(names[k] for k, _ in added)
         self._merc_status.setText(f"Added: {done} - save the file to keep them")
-        for _k, cb in self._mount_checks:
-            cb.setChecked(False)
+        self._mount_check_all(False)
+        self._mount_mark_owned()
         try:
             self._scan_and_populate()
         except Exception:  # noqa: BLE001
@@ -8303,6 +8361,7 @@ QCheckBox::indicator {{
         if not self._save_data:
             QMessageBox.warning(self, "Mercenary", "Load a save file first.")
             return
+        self._mount_mark_owned()
 
         self._merc_status.setText("Scanning mercenaries...")
         QApplication.processEvents()

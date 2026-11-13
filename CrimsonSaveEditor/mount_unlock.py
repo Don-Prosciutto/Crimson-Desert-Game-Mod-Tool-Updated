@@ -6,8 +6,9 @@ the plainest entry of the player's own mercenary list (the layout this game
 version writes), changes only which character it is and gives it a new number.
 The game fills in the rest itself on the next save (owner, HP, position).
 
-Tested in game 2.05.00 (13.11.2026): White Bear, Silver Fang, Snowwhite Deer,
-Rock Tusk - call, ride, attack, save, restart, load, play on, load again.
+Tested in game 2.05.00 (13.11.2026): first White Bear, Silver Fang, Snowwhite
+Deer and Rock Tusk (call, ride, attack, save, restart, load, play on, load
+again), then all 57 mounts below in one save.
 
 Every result is checked before it is returned: list count, the new entries,
 the old entries, every other block decoded identically and not a single byte
@@ -21,13 +22,84 @@ import copy
 import struct
 from typing import Dict, Iterable, List, Tuple
 
-# (characterKey, name) - only mounts tested in game.
-MOUNTS: List[Tuple[int, str]] = [
-    (1003917, "White Bear"),
-    (1003918, "Silver Fang (wolf)"),
-    (1003919, "Snowwhite Deer"),
-    (1003912, "Rock Tusk (warthog)"),
+# (characterKey, name, group) - the rideable mounts as listed on
+# crimsondesert.gg/mounts (58 incl. DLC), one game record each (the "Riding_"
+# record where there is one). Blackstar is left out: the entry is written but
+# the game only shows it after its quest. Tested in game 2.05.00, 13.11.2026:
+# all in one save (Royler, Camora and Wyvern were owned already) - call,
+# ride, animations. Aquatic ones and the Ocean Drifter need the DLC.
+MOUNTS: List[Tuple[int, str, str]] = [
+    # Horses
+    (2002, 'Brianto', 'Horses'),
+    (1002441, "Calphadean Scout's Horse", 'Horses'),
+    (31379, 'Camora', 'Horses'),
+    (2011, 'Elantrima', 'Horses'),
+    (1000766, "Hernandian Soldier's Horse", 'Horses'),
+    (2000, 'Herspia', 'Horses'),
+    (2005, 'Numont', 'Horses'),
+    (2001, 'Priden', 'Horses'),
+    (1001120, 'Race Horse', 'Horses'),
+    (31378, 'Rokade', 'Horses'),
+    (31377, 'Royler', 'Horses'),
+    # Predators
+    (1003769, 'Large White Wolf', 'Predators'),
+    (1001009, 'Large Wolf', 'Predators'),
+    (1003918, 'Silver Fang', 'Predators'),
+    (1000264, 'Swift Wolf', 'Predators'),
+    (1002316, 'Circus Lion', 'Predators'),
+    (1003792, 'Lion', 'Predators'),
+    (1001077, 'Tiger', 'Predators'),
+    # Bears
+    (30116, 'Bear', 'Bears'),
+    (30108, 'Black Bear', 'Bears'),
+    (1000022, 'Captured Bear', 'Bears'),
+    (1003911, 'Clawed Bear', 'Bears'),
+    (30111, 'Grizzly Bear', 'Bears'),
+    (1003917, 'White Bear', 'Bears'),
+    # Camels
+    (1004021, 'Sandwalk Camel', 'Camels'),
+    # Boars
+    (1003912, 'Rock Tusk Warthog', 'Boars'),
+    # Deer
+    (1003914, 'Rosehorn Deer', 'Deer'),
+    (1003919, 'Snowwhite Deer', 'Deer'),
+    # Ibex
+    (1002315, 'Ibex', 'Ibex'),
+    (1003915, 'Icicle Edge Alpine Ibex', 'Ibex'),
+    # Birds
+    (1004046, 'Leaping Kuku Bird', 'Birds'),
+    (1000265, 'Red-Feathered Raptor', 'Birds'),
+    # Reptiles
+    (1000254, 'Giant Green Iguana', 'Reptiles'),
+    (1000363, 'Giant Red Iguana', 'Reptiles'),
+    # Mechanical
+    (1004643, 'Ocean Drifter', 'Mechanical'),
+    # Aquatic
+    (1004531, 'Golden Shark', 'Aquatic'),
+    (1004575, 'Hammerhead Shark', 'Aquatic'),
+    (1004278, 'Shark', 'Aquatic'),
+    (1004280, 'Orca', 'Aquatic'),
+    (1004279, 'Sunfish', 'Aquatic'),
+    (1004089, 'Spotted Seal', 'Aquatic'),
+    (1004224, 'Green Sea Turtle', 'Aquatic'),
+    (1004226, 'Hawksbill Sea Turtle', 'Aquatic'),
+    (1004561, 'Hydrothermal Turtle', 'Aquatic'),
+    (32300, 'Loggerhead Sea Turtle', 'Aquatic'),
+    (1004225, 'Olive Ridley Sea Turtle', 'Aquatic'),
+    (1004574, 'Eagle Ray', 'Aquatic'),
+    (1004563, 'Electric Ray', 'Aquatic'),
+    (1004626, 'Giant Manta Ray', 'Aquatic'),
+    (1004277, 'Manta Ray', 'Aquatic'),
+    (1004530, 'Pink Manta Ray', 'Aquatic'),
+    (1004535, 'Dolphin', 'Aquatic'),
+    (1004536, 'Pink Dolphin', 'Aquatic'),
+    # Flying
+    (1004233, 'Wyvern', 'Flying'),
+    (1002041, 'Cloudcart', 'Flying'),
+    (1002042, 'Cloudcruiser', 'Flying'),
+    (1002043, 'Skystreaker', 'Flying'),
 ]
+DLC_GROUPS = {"Aquatic", "Mechanical"}
 
 _PLAIN = {"_characterKey", "_mercenaryNo", "_levelData", "_lastPaidTime", "_lastBreedingTime",
           "_spawnPosition", "_spawnYaw", "_spawnFieldInfoKey", "_isInitialize"}
