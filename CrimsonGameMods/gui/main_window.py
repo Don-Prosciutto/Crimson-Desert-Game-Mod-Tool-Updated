@@ -821,6 +821,15 @@ class MainWindow(SelfTestMixin, QMainWindow):
                 pass
         self._mods_tabs.addTab(self._bagspace_tab, "BagSpace")
 
+        # Map Colors (2.4.9): world map colour schemes as a DMM byte patch.
+        try:
+            from gui.tabs.map_colors import MapColorsTab
+            self._map_colors_tab = MapColorsTab(config=self._config)
+            self._map_colors_tab.status_message.connect(self._update_status)
+            self._mods_tabs.addTab(self._map_colors_tab, "Map Colors")
+        except Exception:  # noqa: BLE001
+            log.exception("Map Colors page not available")
+
         self._dropset_tab = DropsetTab(
             name_db=self._name_db,
             icon_cache=self._icon_cache,

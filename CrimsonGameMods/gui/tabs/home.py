@@ -40,6 +40,7 @@ GAME_CARDS = [
     ("Stacker Tool", "Combine several item mods into one, without conflicts."),
     ("Stores", "What vendors sell and for how much – incl. DLC Vendor."),
     ("BagSpace", "More inventory and storage slots."),
+    ("Map Colors", "Colour schemes for the world map - presets or your own."),
     ("DropSets", "What enemies, chests and gathering drop."),
     ("SpawnEdit", "How many creatures spawn and how fast they come back."),
     ("SkillTree", "Swap move sets, skill cooldowns and costs."),
