@@ -267,29 +267,14 @@ def _fixup_global_self_references(
                 pos += 12
                 continue
 
-            found_valid = False
-            for mbc in (1, 2, 3, 4, 8):
-                loc_start = pos - (mbc + 5)
-                if loc_start < block_start:
-                    continue
-                mbc_read = struct.unpack_from('<H', out, loc_start)[0]
-                if mbc_read != mbc:
-                    continue
-                type_idx_pos = loc_start + 2 + mbc
-                if type_idx_pos + 3 > pos:
-                    continue
-                type_idx = struct.unpack_from('<H', out, type_idx_pos)[0]
-                if type_idx not in type_indices:
-                    continue
-                reserved = out[type_idx_pos + 2]
-                if reserved != 0:
-                    continue
-                new_ref = old_ref + delta
-                struct.pack_into('<I', out, ref_pos, new_ref)
-                found_valid = True
-                break
-
-            pos += 12 if found_valid else 1
+            # Only exact payload pointers are shifted. The former second rule
+            # (shift when the bytes before the 8x FF look like an object
+            # header) also hit plain data behind 8x FF - e.g. an item's -1
+            # cooldown followed by its next value - and changed world items
+            # in FieldSaveData by the size of the insert (found 13.11.2026).
+            # A scan of two 2.04/2.05 saves found no real pointer that is not
+            # exact.
+            pos += 1
 
 
 class BlockParser:
