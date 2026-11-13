@@ -8,7 +8,8 @@ The game fills in the rest itself on the next save (owner, HP, position).
 
 Tested in game 2.05.00 (13.11.2026): first White Bear, Silver Fang, Snowwhite
 Deer and Rock Tusk (call, ride, attack, save, restart, load, play on, load
-again), then all 57 mounts below in one save, then all 84 pets in one save.
+again), then all 57 mounts below in one save, then all 84 pets in one save,
+then the 101 pet variants next to them.
 Mounts and pets live in the same list, so add_mounts() adds either.
 
 Every result is checked before it is returned: list count, the new entries,
@@ -204,6 +205,135 @@ PETS: List[Tuple[int, str, str]] = [
     (30189, 'Forest Rabbit', 'Other'),
 ]
 PET_GROUPS = ("Birds", "Cats", "Dogs", "Other")
+
+# (characterKey, name, group, base pet key or 0) - further looks of the pets
+# above: cat colours, dog coats and the named town cats and dogs. Each is its
+# own game record with its own pet portrait. Tested in game 2.05.00,
+# 14.11.2026: all in one save next to the 84 pets - they look right and
+# behave like normal pets.
+PET_VARIANTS: List[Tuple[int, str, str, int]] = [
+    # Cats
+    (1000296, 'Long-Haired Cat (White)', 'Cats', 30007),
+    (1003952, 'Ragdoll Cat', 'Cats', 30007),
+    (1000314, 'Cat (Black)', 'Cats', 30024),
+    (1000316, 'Cat (Calico)', 'Cats', 30024),
+    (1000312, 'Cat (Ginger)', 'Cats', 30024),
+    (1003951, 'Cat (Russian Blue)', 'Cats', 30024),
+    (1000315, 'Cat (Two-Tone)', 'Cats', 30024),
+    (1000313, 'Cat (White)', 'Cats', 30024),
+    (1000356, 'Short-Haired Cat (Brown)', 'Cats', 31467),
+    (1000359, 'Short-Haired Cat (Tabby)', 'Cats', 31467),
+    (1000358, 'Short-Haired Cat (Two-Tone)', 'Cats', 31467),
+    (1000357, 'Short-Haired Cat (White)', 'Cats', 31467),
+    (1000364, 'Short-Haired Kitten (Brown)', 'Cats', 31468),
+    (1000367, 'Short-Haired Kitten (Tabby)', 'Cats', 31468),
+    (1000366, 'Short-Haired Kitten (Two-Tone)', 'Cats', 31468),
+    (1000365, 'Short-Haired Kitten (White)', 'Cats', 31468),
+    (1000348, 'Kitten (Black)', 'Cats', 31511),
+    (1000350, 'Kitten (Calico)', 'Cats', 31511),
+    (1000346, 'Kitten (Ginger)', 'Cats', 31511),
+    (1003961, 'Kitten (Russian Blue)', 'Cats', 31511),
+    (1000349, 'Kitten (Two-Tone)', 'Cats', 31511),
+    (1000347, 'Kitten (White)', 'Cats', 31511),
+    (1000320, 'Loafy Cat (Black)', 'Cats', 1000317),
+    (1000322, 'Loafy Cat (Calico)', 'Cats', 1000317),
+    (1000318, 'Loafy Cat (Ginger)', 'Cats', 1000317),
+    (1003959, 'Loafy Cat (Russian Blue)', 'Cats', 1000317),
+    (1000321, 'Loafy Cat (Two-Tone)', 'Cats', 1000317),
+    (1000319, 'Loafy Cat (White)', 'Cats', 1000317),
+    (1000326, 'Slim Cat (Black)', 'Cats', 1000323),
+    (1000328, 'Slim Cat (Calico)', 'Cats', 1000323),
+    (1000324, 'Slim Cat (Ginger)', 'Cats', 1000323),
+    (1003960, 'Slim Cat (Russian Blue)', 'Cats', 1000323),
+    (1000327, 'Slim Cat (Two-Tone)', 'Cats', 1000323),
+    (1000325, 'Slim Cat (White)', 'Cats', 1000323),
+    (1000337, 'Delesyia Cat', 'Cats', 0),
+    (1000336, 'Demeniss Cat', 'Cats', 0),
+    (1000335, 'Hernand Cat', 'Cats', 0),
+    (1000338, 'Pailune Cat', 'Cats', 0),
+    (1001853, 'Pororin Cat', 'Cats', 0),
+    (1001854, 'Red Orc Cat', 'Cats', 0),
+    (1002899, 'Tashkalp Cat', 'Cats', 0),
+    # Dogs
+    (1003681, 'Boarhound #1', 'Dogs', 30022),
+    (1003682, 'Boarhound #2', 'Dogs', 30022),
+    (1003683, 'Boarhound #3', 'Dogs', 30022),
+    (1003684, 'Boarhound #4', 'Dogs', 30022),
+    (1003685, 'Boarhound #8', 'Dogs', 30022),
+    (1003686, 'Boarhound #9', 'Dogs', 30022),
+    (1003687, 'Boarhound #10', 'Dogs', 30022),
+    (32427, 'Boarhound with Pack', 'Dogs', 30022),
+    (1003667, 'Pointy-Eared Bulldog #2', 'Dogs', 30186),
+    (1003668, 'Pointy-Eared Bulldog #3', 'Dogs', 30186),
+    (1003669, 'Pointy-Eared Bulldog #4', 'Dogs', 30186),
+    (1003670, 'Pointy-Eared Bulldog #5', 'Dogs', 30186),
+    (1003671, 'Pointy-Eared Bulldog #6', 'Dogs', 30186),
+    (1003672, 'Pointy-Eared Bulldog #7', 'Dogs', 30186),
+    (1003673, 'Pointy-Eared Bulldog #8', 'Dogs', 30186),
+    (1003688, 'Boarhound Puppy #1', 'Dogs', 31336),
+    (1003689, 'Boarhound Puppy #2', 'Dogs', 31336),
+    (1003690, 'Boarhound Puppy #3', 'Dogs', 31336),
+    (1003691, 'Boarhound Puppy #4', 'Dogs', 31336),
+    (1003692, 'Boarhound Puppy #8', 'Dogs', 31336),
+    (1003693, 'Boarhound Puppy #9', 'Dogs', 31336),
+    (1003694, 'Boarhound Puppy #10', 'Dogs', 31336),
+    (1003695, 'Saluki #1', 'Dogs', 31400),
+    (1003696, 'Saluki #2', 'Dogs', 31400),
+    (1003697, 'Saluki #3', 'Dogs', 31400),
+    (1003698, 'Saluki #4', 'Dogs', 31400),
+    (1003699, 'Saluki #5', 'Dogs', 31400),
+    (1003700, 'Greyhound #1', 'Dogs', 32181),
+    (1003701, 'Greyhound #2', 'Dogs', 32181),
+    (1003702, 'Greyhound #3', 'Dogs', 32181),
+    (1003703, 'Greyhound #4', 'Dogs', 32181),
+    (1003704, 'Greyhound #5', 'Dogs', 32181),
+    (1003705, 'Greyhound #6', 'Dogs', 32181),
+    (1003706, 'Greyhound #7', 'Dogs', 32181),
+    (1003707, 'Greyhound #8', 'Dogs', 32181),
+    (1003708, 'Greyhound #9', 'Dogs', 32181),
+    (1003709, 'Greyhound #10', 'Dogs', 32181),
+    (1003710, 'Beagle #1', 'Dogs', 32189),
+    (1003711, 'Beagle #2', 'Dogs', 32189),
+    (1003712, 'Beagle #3', 'Dogs', 32189),
+    (1003713, 'Beagle #4', 'Dogs', 32189),
+    (1003674, 'Floppy-Eared Bulldog #1', 'Dogs', 1001396),
+    (1003675, 'Floppy-Eared Bulldog #2', 'Dogs', 1001396),
+    (1003676, 'Floppy-Eared Bulldog #3', 'Dogs', 1001396),
+    (1003677, 'Floppy-Eared Bulldog #4', 'Dogs', 1001396),
+    (1003678, 'Floppy-Eared Bulldog #5', 'Dogs', 1001396),
+    (1003679, 'Floppy-Eared Bulldog #6', 'Dogs', 1001396),
+    (1003680, 'Floppy-Eared Bulldog #7', 'Dogs', 1001396),
+    (1003665, 'Jindo #2', 'Dogs', 1002258),
+    (1003666, 'Jindo #3', 'Dogs', 1002258),
+    (1000370, 'Delesyia Dog', 'Dogs', 0),
+    (1000369, 'Demeniss Dog', 'Dogs', 0),
+    (1000368, 'Hernand Dog', 'Dogs', 0),
+    (1002271, 'Hernand Dog 2', 'Dogs', 0),
+    (1001855, 'Jijeong Temple Dog', 'Dogs', 0),
+    (1001856, 'Longleaf Dog', 'Dogs', 0),
+    (1000371, 'Pailune Dog', 'Dogs', 0),
+    (31195, 'Righteous Arrows Dog', 'Dogs', 0),
+    (1002900, 'Tashkalp Dog', 'Dogs', 0),
+    (59002, 'Trained Dog', 'Dogs', 0),
+]
+
+
+def pet_entries() -> List[Tuple[int, str, str, bool]]:
+    """(key, name, group, is_variant) in display order: each pet followed by
+    its variants, the town pets at the end of their group."""
+    by_base: Dict[int, list] = {}
+    for k, n, g, b in PET_VARIANTS:
+        by_base.setdefault(b, []).append((k, n, g, True))
+    out: List[Tuple[int, str, str, bool]] = []
+    groups = [g for g in PET_GROUPS]
+    for g in groups:
+        for k, n, pg in PETS:
+            if pg != g:
+                continue
+            out.append((k, n, pg, False))
+            out.extend(by_base.get(k, []))
+        out.extend(e for e in by_base.get(0, []) if e[2] == g)
+    return out
 
 
 def portrait_path(key: int):

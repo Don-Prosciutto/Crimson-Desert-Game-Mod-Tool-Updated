@@ -8205,11 +8205,12 @@ QCheckBox::indicator {{
         if kind == "pet":
             return {
                 "title": "Add Pets", "noun": "pets", "one": "pet",
-                "entries": mu.PETS, "filters": ("All",) + tuple(mu.PET_GROUPS),
+                "entries": mu.pet_entries(), "filters": ("All",) + tuple(mu.PET_GROUPS),
+                "variants": "Show variants (cat colours, dog coats, town pets)",
                 "area": lambda g: g, "dlc": set(),
                 "note": ("Tick the pets you want, click Add Selected Pets, then save the file - they "
-                         "show up in game with your pets, with full trust. Tested in game 2.05 with all "
-                         "of them. Greyed out = this save has it already (after Refresh List). Abyss "
+                         "show up in game with your pets, with full trust. Tick Show variants for the other "
+                         "looks (e.g. a black Loafy Cat). Tested in game 2.05 with all of them. Greyed out = this save has it already (after Refresh List). Abyss "
                          "Heuklang comes with its quest. Keep a backup of your save."),
                 "where": "with your pets",
             }
@@ -8248,6 +8249,11 @@ QCheckBox::indicator {{
             grp.addButton(b)
             row.addWidget(b)
         row.addStretch()
+        if spec.get("variants"):
+            from PySide6.QtWidgets import QCheckBox
+            cb = QCheckBox(spec["variants"])
+            cb.toggled.connect(lambda on, k=kind: self._pick_show_variants(k, on))
+            row.addWidget(cb)
         lay.addLayout(row)
         lw = QListWidget()
         lw.setViewMode(QListView.ViewMode.IconMode)
@@ -8257,13 +8263,16 @@ QCheckBox::indicator {{
         lw.setMovement(QListView.Movement.Static)
         lw.setWordWrap(True)
         lw.setMinimumHeight(250)
-        for key, name, g in spec["entries"]:
+        for entry in spec["entries"]:
+            key, name, g = entry[:3]
+            variant = len(entry) > 3 and bool(entry[3])
             it = QListWidgetItem(name + (" [DLC]" if g in spec["dlc"] else ""))
             it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
             it.setCheckState(Qt.Unchecked)
             it.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
             it.setData(Qt.UserRole, key)
             it.setData(Qt.UserRole + 1, spec["area"](g))
+            it.setData(Qt.UserRole + 2, variant)
             pic = _portrait(key)
             if pic:
                 it.setIcon(QIcon(pic))
@@ -8288,7 +8297,8 @@ QCheckBox::indicator {{
         lay.addLayout(row)
         if not hasattr(self, "_pickers"):
             self._pickers = {}
-        self._pickers[kind] = {"list": lw, "count": count}
+        self._pickers[kind] = {"list": lw, "count": count, "area": "All", "variants": False}
+        self._pick_visibility(kind)
         return box
 
     def _pick_items(self, kind: str) -> list:
@@ -8298,8 +8308,25 @@ QCheckBox::indicator {{
         return [lw.item(i) for i in range(lw.count())]
 
     def _pick_filter(self, kind: str, area: str) -> None:
+        w = getattr(self, "_pickers", {}).get(kind)
+        if w is not None:
+            w["area"] = area
+        self._pick_visibility(kind)
+
+    def _pick_show_variants(self, kind: str, on: bool) -> None:
+        w = getattr(self, "_pickers", {}).get(kind)
+        if w is not None:
+            w["variants"] = on
+        self._pick_visibility(kind)
+
+    def _pick_visibility(self, kind: str) -> None:
+        w = getattr(self, "_pickers", {}).get(kind) or {}
+        area, show_var = w.get("area", "All"), w.get("variants", False)
         for it in self._pick_items(kind):
-            it.setHidden(area != "All" and it.data(Qt.UserRole + 1) != area)
+            hide = (area != "All" and it.data(Qt.UserRole + 1) != area) \
+                or (bool(it.data(Qt.UserRole + 2)) and not show_var)
+            it.setHidden(hide)
+        self._pick_update_count(kind)
 
     def _pick_check_all(self, kind: str, on: bool) -> None:
         for it in self._pick_items(kind):
@@ -8352,7 +8379,7 @@ QCheckBox::indicator {{
             QMessageBox.information(self, title, f"Tick at least one {spec['one']}.")
             return
         import mount_unlock as mu
-        names = {k: n for k, n, _g in spec["entries"]}
+        names = {e[0]: e[1] for e in spec["entries"]}
         raw = bytes(self._save_data.decompressed_blob)
         try:
             owned = mu.owned_keys(raw)
