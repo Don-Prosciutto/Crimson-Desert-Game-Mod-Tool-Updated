@@ -824,7 +824,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         # Map Colors (2.4.9): world map colour schemes as a DMM byte patch.
         try:
             from gui.tabs.map_colors import MapColorsTab
-            self._map_colors_tab = MapColorsTab(config=self._config)
+            self._map_colors_tab = MapColorsTab(config=self._config, save_config=self._save_config)
             self._map_colors_tab.status_message.connect(self._update_status)
             self._mods_tabs.addTab(self._map_colors_tab, "Map Colors")
         except Exception:  # noqa: BLE001

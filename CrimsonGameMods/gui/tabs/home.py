@@ -23,8 +23,8 @@ RELEASES_URL = "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-U
 
 # Shown under "New in this version". Keep it to a few lines.
 WHATS_NEW = [
-    "Save Editor: add any of the 84 pets, with full trust",
-    "Map Colors: colour schemes for the world map",
+    "Save Editor: add pets - 84 kinds, 101 more looks, full trust",
+    "Map Colors: 25 world map colour schemes or your own",
     "Stores: DLC items in every shop, DLC Vendor with clean prices",
     "From 2.4.8: game 2.05.00, add any of the 57 mounts",
 ]

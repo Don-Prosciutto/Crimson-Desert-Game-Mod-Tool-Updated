@@ -221,6 +221,33 @@ def build_mod(css: bytes, colors: Dict[str, str], title: str = "Map Colors",
     }
 
 
+def colors_from_mod(css: bytes, mod) -> Dict[str, str]:
+    """role -> #rrggbb read from a map colour mod (a dict or a path to one):
+    the changes on ui/worldmapview.css whose offset is a colour of the game's
+    file. Changes it cannot place are ignored."""
+    if isinstance(mod, str):
+        with open(mod, encoding="utf-8") as f:
+            mod = json.load(f)
+    found = find_colors(css)
+    at = {off: key for key, (off, _old) in found.items()}
+    role_of = {t: role for role, _l, targets in ROLES for t in targets}
+    out: Dict[str, str] = {}
+    for p in mod.get("patches") or []:
+        if not str(p.get("game_file", "")).lower().endswith(NAME):
+            continue
+        for ch in p.get("changes") or []:
+            key = at.get(int(ch.get("offset", -1)))
+            if key is None or key not in role_of:
+                continue
+            try:
+                val = bytes.fromhex(ch.get("patched", "")).decode("ascii")[:6].lower()
+            except (ValueError, UnicodeDecodeError):
+                continue
+            if re.fullmatch(r"[0-9a-f]{6}", val):
+                out.setdefault(role_of[key], "#" + val)
+    return out
+
+
 def write_mod(path: str, mod: dict) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(mod, f, indent=2, ensure_ascii=False)

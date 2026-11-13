@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen, QPolygonF
 from PySide6.QtWidgets import (
-    QColorDialog, QComboBox, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel,
+    QColorDialog, QComboBox, QFileDialog, QGridLayout, QGroupBox, QHBoxLayout, QInputDialog, QLabel,
     QMessageBox, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
@@ -115,9 +115,12 @@ class _Preview(QWidget):
 class MapColorsTab(QWidget):
     status_message = Signal(str)
 
-    def __init__(self, config: dict, parent=None):
+    _MY = "My: "   # prefix of the user's own presets in the list
+
+    def __init__(self, config: dict, save_config: Optional[Callable[[], None]] = None, parent=None):
         super().__init__(parent)
         self._config = config
+        self._save_config = save_config
         self._css: Optional[bytes] = None
         self._game: Dict[str, str] = {}
         self._colors: Dict[str, str] = {}
@@ -130,7 +133,8 @@ class MapColorsTab(QWidget):
         info = QLabel(
             "Give the world map a colour scheme: pick a preset or set each part yourself, "
             "then Save as mod and load the file in DMM. Disable it there for the original "
-            "colours. Only the map's colours change - icons and text stay.")
+            "colours. Only the map's colours change - icons and text stay. Your own schemes: "
+            "change the colours, then Save as my preset - they stay in the list.")
         info.setWordWrap(True)
         info.setStyleSheet(f"color: {COLORS['text_dim']};")
         outer.addWidget(info)
@@ -138,11 +142,11 @@ class MapColorsTab(QWidget):
         top = QHBoxLayout()
         top.addWidget(QLabel("Preset:"))
         self._preset = QComboBox()
-        self._preset.addItems(list(mc.PRESETS))
-        self._preset.currentTextChanged.connect(self._apply_preset)
+        self._preset.setMinimumWidth(180)
+        self._preset.currentIndexChanged.connect(lambda _i: self._apply_selected())
         top.addWidget(self._preset)
         reset = QPushButton("Reset to game colours")
-        reset.clicked.connect(lambda: self._apply_preset("Original"))
+        reset.clicked.connect(lambda: self._select("Original"))
         top.addWidget(reset)
         top.addStretch()
         save = QPushButton("Save as mod...")
@@ -150,6 +154,21 @@ class MapColorsTab(QWidget):
         save.clicked.connect(self._save)
         top.addWidget(save)
         outer.addLayout(top)
+
+        mine = QHBoxLayout()
+        b = QPushButton("Save as my preset...")
+        b.setToolTip("Keep the current colours under a name of your own")
+        b.clicked.connect(self._save_preset)
+        mine.addWidget(b)
+        self._delete_btn = QPushButton("Delete my preset")
+        self._delete_btn.clicked.connect(self._delete_preset)
+        mine.addWidget(self._delete_btn)
+        b = QPushButton("Load colours from a mod...")
+        b.setToolTip("Read the colours of a map colour mod (one made here, or e.g. Dark Mode Map)")
+        b.clicked.connect(self._load_mod)
+        mine.addWidget(b)
+        mine.addStretch()
+        outer.addLayout(mine)
 
         body = QHBoxLayout()
         grp = QGroupBox("Colours")
@@ -175,6 +194,116 @@ class MapColorsTab(QWidget):
         self._status = QLabel("")
         self._status.setStyleSheet(f"color: {COLORS['text_dim']};")
         outer.addWidget(self._status)
+        self._fill_presets()
+
+    # ── presets ───────────────────────────────────────────────────────────
+
+    def _mine(self) -> Dict[str, Dict[str, str]]:
+        d = self._config.get("map_colors_presets")
+        if not isinstance(d, dict):
+            d = {}
+            self._config["map_colors_presets"] = d
+        return d
+
+    def _store(self) -> None:
+        if self._save_config:
+            try:
+                self._save_config()
+            except Exception:  # noqa: BLE001
+                log.exception("Map Colors: saving the settings failed")
+
+    def _fill_presets(self, select: Optional[str] = None) -> None:
+        cur = select or self._preset.currentText() or "Original"
+        self._preset.blockSignals(True)
+        self._preset.clear()
+        self._preset.addItems(list(mc.PRESETS))
+        mine = sorted(self._mine(), key=str.lower)
+        if mine:
+            self._preset.insertSeparator(self._preset.count())
+            self._preset.addItems([self._MY + n for n in mine])
+        i = self._preset.findText(cur)
+        self._preset.setCurrentIndex(i if i >= 0 else 0)
+        self._preset.blockSignals(False)
+        self._delete_btn.setEnabled(self._preset.currentText().startswith(self._MY))
+
+    def _preset_colors(self, name: str) -> Dict[str, str]:
+        if name.startswith(self._MY):
+            return dict(self._mine().get(name[len(self._MY):], {}))
+        return dict(mc.PRESETS.get(name, {}))
+
+    def _select(self, name: str) -> None:
+        i = self._preset.findText(name)
+        if i >= 0 and i != self._preset.currentIndex():
+            self._preset.setCurrentIndex(i)      # -> _apply_selected
+        else:
+            self._apply_selected()
+
+    def _apply_selected(self) -> None:
+        name = self._preset.currentText()
+        self._delete_btn.setEnabled(name.startswith(self._MY))
+        self._colors = dict(self._game)
+        self._colors.update(self._preset_colors(name))
+        self._refresh()
+
+    def _save_preset(self) -> None:
+        cur = self._preset.currentText()
+        start = cur[len(self._MY):] if cur.startswith(self._MY) else ""
+        name, ok = QInputDialog.getText(self, "Save as my preset", "Name of your colour scheme:",
+                                        text=start)
+        name = (name or "").strip()
+        if not ok or not name:
+            return
+        if name in mc.PRESETS:
+            QMessageBox.information(self, "Map Colors", f"'{name}' is a built-in preset - pick another name.")
+            return
+        mine = self._mine()
+        if name in mine and QMessageBox.question(
+                self, "Map Colors", f"Replace your preset '{name}'?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        mine[name] = {r: c for r, c in self._colors.items() if c.lower() != self._game.get(r, "").lower()} \
+            if self._game else dict(self._colors)
+        self._store()
+        self._fill_presets(select=self._MY + name)
+        self._apply_selected()
+        self._status.setText(f"Saved your preset '{name}'.")
+
+    def _delete_preset(self) -> None:
+        cur = self._preset.currentText()
+        if not cur.startswith(self._MY):
+            return
+        name = cur[len(self._MY):]
+        if QMessageBox.question(self, "Map Colors", f"Delete your preset '{name}'?",
+                                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        self._mine().pop(name, None)
+        self._store()
+        self._fill_presets(select="Original")
+        self._apply_selected()
+        self._status.setText(f"Deleted your preset '{name}'.")
+
+    def _load_mod(self) -> None:
+        if not self._ensure_loaded():
+            QMessageBox.warning(self, "Map Colors", self._status.text())
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load colours from a map colour mod",
+            self._config.get("map_colors_dir", "") or os.path.expanduser("~"), "DMM mod (*.json)")
+        if not path:
+            return
+        try:
+            colors = mc.colors_from_mod(self._css, path)
+        except Exception as e:  # noqa: BLE001
+            QMessageBox.warning(self, "Map Colors", f"Could not read colours from this file:\n{e}")
+            return
+        if not colors:
+            QMessageBox.information(self, "Map Colors", "This file changes none of the map colours.")
+            return
+        self._colors = dict(self._game)
+        self._colors.update(colors)
+        self._refresh()
+        self._status.setText(f"Loaded {len(colors)} colours from {os.path.basename(path)} - "
+                             "Save as my preset to keep them.")
 
     # ── data ──────────────────────────────────────────────────────────────
 
@@ -194,21 +323,12 @@ class MapColorsTab(QWidget):
             return False
         n = len(mc.find_colors(self._css))
         self._status.setText(f"Read {n} map colours from the game.")
-        self._apply_preset(self._preset.currentText())
+        self._apply_selected()
         return True
 
     def showEvent(self, e):  # noqa: N802
         self._ensure_loaded()
         super().showEvent(e)
-
-    def _apply_preset(self, name: str) -> None:
-        if self._preset.currentText() != name:
-            self._preset.blockSignals(True)
-            self._preset.setCurrentText(name)
-            self._preset.blockSignals(False)
-        self._colors = dict(self._game)
-        self._colors.update(mc.PRESETS.get(name, {}))
-        self._refresh()
 
     def _refresh(self) -> None:
         for role, b in self._buttons.items():
@@ -232,16 +352,19 @@ class MapColorsTab(QWidget):
             return
         preset = self._preset.currentText()
         changed = {r: c for r, c in self._colors.items() if c.lower() != self._game.get(r, "").lower()}
-        title = f"Map Colors - {preset}" if all(
-            mc.PRESETS.get(preset, {}).get(r, self._game.get(r)) == c for r, c in self._colors.items()
-        ) else "Map Colors - Custom"
+        base = dict(self._game)
+        base.update(self._preset_colors(preset))
+        same = all(base.get(r, "").lower() == c.lower() for r, c in self._colors.items())
+        shown = preset[len(self._MY):] if preset.startswith(self._MY) else preset
+        title = f"Map Colors - {shown}" if same else "Map Colors - Custom"
         try:
             mod = mc.build_mod(self._css, changed, title=title)
         except ValueError as e:
             QMessageBox.information(self, "Map Colors", str(e))
             return
+        fname = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in title.replace(" - ", "_"))
         start = os.path.join(self._config.get("map_colors_dir", "") or os.path.expanduser("~"),
-                             title.replace(" - ", "_").replace(" ", "_") + ".json")
+                             fname + ".json")
         path, _ = QFileDialog.getSaveFileName(self, "Save map colours as mod", start,
                                               "DMM mod (*.json)")
         if not path:
@@ -252,6 +375,7 @@ class MapColorsTab(QWidget):
             QMessageBox.critical(self, "Map Colors", f"Could not write the file:\n{e}")
             return
         self._config["map_colors_dir"] = os.path.dirname(path)
+        self._store()
         n = len(mod["patches"][0]["changes"])
         self._status.setText(f"Saved {os.path.basename(path)} ({n} colour values).")
         self.status_message.emit(f"Map colours saved: {path}")
