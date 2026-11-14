@@ -177,6 +177,9 @@ class FieldEditTab(QWidget):
         self._fe_pages.addTab(ships_w, "Ships")
         self._fe_pages.setTabToolTip(self._fe_pages.indexOf(ships_w),
                                      "The player ships of the DLC Charting the Unknown.")
+        # On hold (Allan, 14.11.): a Nexus mod already covers ships; the tab is
+        # not tested in game - hidden until it is.
+        self._fe_pages.setTabVisible(self._fe_pages.indexOf(ships_w), False)
         ml_w = QWidget()
         ml_l = QVBoxLayout(ml_w)
         self._fe_pages.addTab(ml_w, tr("Mounts"))
