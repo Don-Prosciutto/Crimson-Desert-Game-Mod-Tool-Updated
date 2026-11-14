@@ -1372,6 +1372,12 @@ class ItemBuffsTab(QWidget):
         for _i in range(_tabs.count()):
             _pg = _tabs.widget(_i)
             if isinstance(_pg, _QSA):
+                # pages that scroll already: dress their content
+                _inner = _pg.takeWidget()
+                if _inner is not None:
+                    _pg.setWidget(self._ib_dress_page(_inner, _tabs.tabText(_i)))
+                    _pg.setFrameShape(QFrame.NoFrame)
+                    _pg.viewport().setAutoFillBackground(False)
                 continue
             _txt, _tip = _tabs.tabText(_i), _tabs.tabToolTip(_i)
             _vis = _tabs.isTabVisible(_i)
@@ -1382,7 +1388,7 @@ class ItemBuffsTab(QWidget):
             _sa.setStyleSheet("QScrollArea#ibPageScroll { background: transparent; border: none; }")
             _sa.viewport().setAutoFillBackground(False)
             _tabs.removeTab(_i)
-            _sa.setWidget(_pg)
+            _sa.setWidget(self._ib_dress_page(_pg, _txt))
             _pg.setAutoFillBackground(False)
             _tabs.insertTab(_i, _sa, _txt)
             _tabs.setTabToolTip(_i, _tip)
@@ -1740,16 +1746,98 @@ class ItemBuffsTab(QWidget):
             ("MP Regen", 1000027, "regen_stat_list", 100000),
         ]
 
-    def _build_buff_quick_edit_page(self) -> QWidget:
-        """Quick Edit sub-tab — preset, custom row, edit-selected stat."""
-        page = QWidget()
-        pl = QVBoxLayout(page)
-        pl.setContentsMargins(8, 8, 8, 8)
-        pl.setSpacing(6)
+    def _ib_card(self, title: str, sub: str = ""):
+        """A card for the editor pages: (frame, body layout)."""
+        card = QFrame()
+        card.setObjectName("ibEdCard")
+        card.setStyleSheet(
+            f"QFrame#ibEdCard {{ background: {COLORS['header']}; "
+            f"border: 1px solid {COLORS.get('border_soft', COLORS['border'])}; border-radius: 12px; }}"
+            f"QFrame#ibEdCard QLabel {{ background: transparent; }}"
+            f"QFrame#ibEdCard > QWidget {{ background: transparent; }}")
+        v = QVBoxLayout(card)
+        v.setContentsMargins(14, 12, 14, 14)
+        v.setSpacing(8)
+        head = QLabel(title)
+        head.setStyleSheet(f"font-size: 14px; font-weight: 700; "
+                           f"color: {COLORS.get('text_strong', COLORS['text'])};")
+        v.addWidget(head)
+        if sub:
+            cap = QLabel(sub)
+            cap.setWordWrap(True)
+            cap.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']};")
+            v.addWidget(cap)
+        return card, v
 
-        preset_row = QHBoxLayout()
-        preset_row.setSpacing(4)
-        preset_row.addWidget(QLabel("Preset:"))
+    _IB_PAGE_INTRO = {
+        "Passives & Effects": ("Passives, effects and gimmicks",
+                               "Add a passive skill, an effect (shadow, lightning ...) or a gimmick "
+                               "to the selected item."),
+        "Stats & Buffs": ("Stats and equip buffs",
+                          "Add or remove a stat or an equip buff on the selected item, "
+                          "for one refine level or all."),
+        "Imbue": ("Imbue", "Give weapons an elemental passive (fire, ice, lightning, poison ...)."),
+        "Global Mods": ("Whole-game changes", "These apply to every item at once."),
+        "Bulk Actions": ("Bulk actions",
+                         "Change many items at once - where it matters, pick a source item first."),
+    }
+
+    def _ib_dress_page(self, pg: QWidget, tab_text: str) -> QWidget:
+        """Put an editor page into a card and calm its buttons."""
+        key = tab_text.replace("&&", "&")
+        intro = self._IB_PAGE_INTRO.get(key)
+        if intro is None:
+            return pg
+        danger = button_css("danger").split(";")[0]          # background-color: ...
+        for btn in pg.findChildren(QPushButton):
+            ss = btn.styleSheet() or ""
+            if "background-color" not in ss:
+                continue
+            if danger in ss:
+                btn.setStyleSheet(
+                    f"QPushButton {{ background: transparent; color: {COLORS.get('error', '#f87171')}; "
+                    f"border: 1px solid {COLORS.get('error', '#f87171')}; border-radius: 8px; "
+                    f"padding: 5px 12px; font-weight: 600; }}"
+                    f"QPushButton:hover {{ background: rgba(248,113,113,0.12); }}")
+            else:
+                btn.setStyleSheet("")
+        wrap = QWidget()
+        wl = QVBoxLayout(wrap)
+        wl.setContentsMargins(4, 10, 4, 4)
+        wl.setSpacing(0)
+        card, v = self._ib_card(*intro)
+        soft = COLORS.get("border_soft", COLORS["border"])
+        card.setStyleSheet(card.styleSheet() +
+                           f"QFrame#ibEdCard QGroupBox {{ background: transparent; border: 1px solid {soft}; "
+                           f"border-radius: 10px; margin-top: 16px; padding: 14px 10px 10px 10px; "
+                           f"font-weight: 700; }}"
+                           f"QFrame#ibEdCard QGroupBox::title {{ subcontrol-origin: margin; left: 10px; "
+                           f"padding: 0 4px; color: {COLORS.get('text_strong', COLORS['text'])}; }}")
+        pg.setAutoFillBackground(False)
+        pg.setObjectName(pg.objectName() or "ibPageBody")
+        pg.setStyleSheet((pg.styleSheet() or "") + " QWidget#ibPageBody { background: transparent; }")
+        v.addWidget(pg, 1)
+        pg.setVisible(True)        # the tab widget had hidden it (not the current page)
+        for _w in pg.findChildren(QWidget):
+            if type(_w) is QWidget and not _w.objectName():   # plain row holders
+                _w.setObjectName("ibRowBg")
+                _w.setStyleSheet("QWidget#ibRowBg { background: transparent; }")
+        wl.addWidget(card)
+        wl.addStretch(1)
+        return wrap
+
+    def _build_buff_quick_edit_page(self) -> QWidget:
+        """Quick Edit sub-tab — preset, custom row, edit-selected stat,
+        sockets and drop level, as cards (new look 2.5)."""
+        page = QWidget()
+        pl = QGridLayout(page)
+        pl.setContentsMargins(4, 10, 4, 4)
+        pl.setHorizontalSpacing(12)
+        pl.setVerticalSpacing(12)
+
+        # ── Apply a preset ────────────────────────────────────────────────
+        preset_card, pc = self._ib_card(
+            "Apply a preset", "Changes the stats of the item selected in the list.")
         self._buff_preset_combo = QComboBox()
         self._buff_preset_combo.addItems([
             "Max All (max every stat value, no hash changes)",
@@ -1762,38 +1850,23 @@ class ItemBuffsTab(QWidget):
             "Swap to DPV (change flat2 hashes to Defense)",
             "Custom (pick stat + value)",
         ])
+        for _cb in (self._buff_preset_combo,):
+            _cb.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+            _cb.setMinimumContentsLength(24)
         self._buff_preset_combo.currentIndexChanged.connect(self._buff_preset_changed)
-        preset_row.addWidget(self._buff_preset_combo, 1)
-
-        apply_preset_btn = QPushButton("Apply Preset")
-        apply_preset_btn.setObjectName("accentBtn")
-        apply_preset_btn.clicked.connect(self._buff_add_to_item)
-        preset_row.addWidget(apply_preset_btn)
-
-        suggest_btn = QPushButton("Suggest from Cluster")
-        suggest_btn.setToolTip(
-            "Show the stat template typical for items like the one selected "
-            "(same item_type + tier). Read-only.")
-        suggest_btn.clicked.connect(self._buff_show_stat_template)
-        preset_row.addWidget(suggest_btn)
-
-        reset_btn = QPushButton("Reset")
-        reset_btn.setToolTip("Discard all in-memory changes, re-extract from disk")
-        reset_btn.clicked.connect(self._buff_remove_all)
-        preset_row.addWidget(reset_btn)
-        pl.addLayout(preset_row)
+        pc.addWidget(self._buff_preset_combo)
 
         # Custom stat row (hidden unless "Custom" preset selected).
         self._buff_custom_row = QWidget()
         custom_layout = QHBoxLayout(self._buff_custom_row)
         custom_layout.setContentsMargins(0, 0, 0, 0)
-        custom_layout.setSpacing(4)
-        custom_layout.addWidget(QLabel("Stat:"))
+        custom_layout.setSpacing(6)
+        custom_layout.addWidget(QLabel("Stat"))
         self._buff_type_combo = QComboBox()
         for name in BUFF_HASHES:
             self._buff_type_combo.addItem(name)
         custom_layout.addWidget(self._buff_type_combo, 1)
-        custom_layout.addWidget(QLabel("Value:"))
+        custom_layout.addWidget(QLabel("Value"))
         self._buff_value_spin = QSpinBox()
         self._buff_value_spin.setRange(0, 999999999)
         self._buff_value_spin.setValue(1000000)
@@ -1803,37 +1876,73 @@ class ItemBuffsTab(QWidget):
             "Invincible: 1 = on, 0 = off")
         custom_layout.addWidget(self._buff_value_spin)
         self._buff_custom_row.setVisible(False)
-        pl.addWidget(self._buff_custom_row)
+        pc.addWidget(self._buff_custom_row)
 
-        # Edit-Selected-Stat + Refinement Level row.
-        edit_refine_row = QHBoxLayout()
-        edit_refine_row.setSpacing(4)
-        edit_refine_row.addWidget(QLabel("Edit Stat:"))
+        # Description label (compact, hidden by default).
+        self._buff_desc_label = QLabel()
+        self._buff_desc_label.setWordWrap(True)
+        self._buff_desc_label.setStyleSheet(
+            f"color: {COLORS['text_dim']}; padding: 2px; font-size: 11px;"
+        )
+        self._buff_desc_label.setVisible(False)
+        pc.addWidget(self._buff_desc_label)
+
+        prow = QHBoxLayout()
+        prow.setSpacing(6)
+        prow.addWidget(QLabel("Refine level"))
+        self._buff_array_combo = QComboBox()
+        self._buff_array_combo.addItem("All Levels (apply to every array)")
+        self._buff_array_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self._buff_array_combo.setMinimumContentsLength(16)
+        self._buff_array_combo.setToolTip(
+            "Select which refinement level to apply presets to.\n"
+            "'All Levels' applies to every array (default).")
+        prow.addWidget(self._buff_array_combo, 1)
+        pc.addLayout(prow)
+        prow = QHBoxLayout()
+        prow.setSpacing(6)
+        prow.addStretch(1)
+        suggest_btn = QPushButton("Suggest from cluster")
+        suggest_btn.setToolTip(
+            "Show the stat template typical for items like the one selected "
+            "(same item_type + tier). Read-only.")
+        suggest_btn.clicked.connect(self._buff_show_stat_template)
+        prow.addWidget(suggest_btn)
+        reset_btn = QPushButton("Reset")
+        reset_btn.setToolTip("Discard all in-memory changes, re-extract from disk")
+        reset_btn.clicked.connect(self._buff_remove_all)
+        prow.addWidget(reset_btn)
+        apply_preset_btn = QPushButton("Apply preset")
+        apply_preset_btn.setObjectName("accentBtn")
+        apply_preset_btn.clicked.connect(self._buff_add_to_item)
+        prow.addWidget(apply_preset_btn)
+        pc.addLayout(prow)
+        pl.addWidget(preset_card, 0, 0, 1, 2)
+
+        # ── Change one stat ───────────────────────────────────────────────
+        stat_card, sc = self._ib_card(
+            "Change one stat", "Click a stat in the middle list first, then set its value.")
+        self._buff_sel_label = QLabel("No stat picked")
+        self._buff_sel_label.setWordWrap(True)
+        self._buff_sel_label.setStyleSheet(f"color: {COLORS['accent']}; font-weight: 600;")
+        sc.addWidget(self._buff_sel_label)
+        srow = QHBoxLayout()
+        srow.setSpacing(6)
         self._buff_sel_value_spin = QSpinBox()
         self._buff_sel_value_spin.setRange(0, 999999999)
         self._buff_sel_value_spin.setValue(0)
         self._buff_sel_value_spin.setToolTip(
             "Set the value for the selected base stat "
             "(Attack/Defense/DDD/DPV/HP etc.)")
-        edit_refine_row.addWidget(self._buff_sel_value_spin)
-
-        edit_sel_btn = QPushButton("Apply to Stat")
+        srow.addWidget(self._buff_sel_value_spin, 1)
+        edit_sel_btn = QPushButton("Apply to stat")
+        edit_sel_btn.setObjectName("accentBtn")
         edit_sel_btn.setToolTip("Change ONLY the clicked base stat")
         edit_sel_btn.clicked.connect(self._buff_apply_to_selected)
-        edit_refine_row.addWidget(edit_sel_btn)
-
-        self._buff_sel_label = QLabel("")
-        self._buff_sel_label.setStyleSheet(f"color: {COLORS['accent']};")
-        edit_refine_row.addWidget(self._buff_sel_label, 1)
-
-        edit_refine_row.addWidget(QLabel("Refine:"))
-        self._buff_array_combo = QComboBox()
-        self._buff_array_combo.addItem("All Levels (apply to every array)")
-        self._buff_array_combo.setToolTip(
-            "Select which refinement level to apply presets to.\n"
-            "'All Levels' applies to every array (default).")
-        edit_refine_row.addWidget(self._buff_array_combo)
-        pl.addLayout(edit_refine_row)
+        srow.addWidget(edit_sel_btn)
+        sc.addLayout(srow)
+        sc.addStretch(1)
+        pl.addWidget(stat_card, 1, 0)
 
         # Kept as empty widgets for any legacy API references.
         self._buff_edit_selected_row = QWidget()
@@ -1842,76 +1951,72 @@ class ItemBuffsTab(QWidget):
         # Connect stat-table selection to the edit-selected controls.
         self._buff_stats_table.selectionModel().selectionChanged.connect(
             self._buff_on_stat_selected)
-
-        # Description label (compact, hidden by default).
-        self._buff_desc_label = QLabel()
-        self._buff_desc_label.setWordWrap(True)
-        self._buff_desc_label.setStyleSheet(
-            f"color: {COLORS['text_dim']}; padding: 2px; font-size: 10px;"
-        )
-        self._buff_desc_label.setVisible(False)
         self._buff_preset_combo.currentIndexChanged.connect(self._buff_update_desc)
         self._buff_type_combo.currentTextChanged.connect(self._buff_update_desc)
         self._buff_update_desc()
-        pl.addWidget(self._buff_desc_label)
-        
-        pl.addWidget(self._ui_add_line(True))
-        
-        # --- Socket count ---
+
+        # ── Sockets ───────────────────────────────────────────────────────
+        sock_card, kc = self._ib_card(
+            "Sockets", "Abyss gear only (items with sockets): how many it has and how many are open.")
         self._eb_socket_row_widget = QWidget()
         socket_row = QHBoxLayout(self._eb_socket_row_widget)
         socket_row.setContentsMargins(0, 0, 0, 0)
         socket_row.setSpacing(6)
-        socket_row.addWidget(QLabel("Count:"))
+        socket_row.addWidget(QLabel("Count"))
         self._eb_socket_count = QSpinBox()
         self._eb_socket_count.setRange(1, 8)
         self._eb_socket_count.setValue(5)
-        self._eb_socket_count.setFixedWidth(60)
         self._eb_socket_count.setToolTip(
             "Target max socket count. Writes to drop_default_data."
             "add_socket_material_item_list.")
         socket_row.addWidget(self._eb_socket_count)
-        socket_row.addWidget(QLabel("Pre-unlocked:"))
+        socket_row.addSpacing(8)
+        socket_row.addWidget(QLabel("Open"))
         self._eb_socket_valid = QSpinBox()
         self._eb_socket_valid.setRange(0, 8)
         self._eb_socket_valid.setValue(0)
-        self._eb_socket_valid.setFixedWidth(60)
         self._eb_socket_valid.setToolTip(
             "How many sockets are unlocked on drop. Extra sockets need to "
             "be unlocked at the Witch NPC.")
         socket_row.addWidget(self._eb_socket_valid)
-        socket_apply_btn = QPushButton("Extend Sockets (Selected)")
+        socket_row.addStretch(1)
+        kc.addWidget(self._eb_socket_row_widget)
+        socket_apply_btn = QPushButton("Extend sockets")
         socket_apply_btn.setToolTip(
             "Extend socket capacity on the SELECTED item. Only applies to "
             "items with use_socket=1 (abyss gear).")
         socket_apply_btn.clicked.connect(self._eb_extend_sockets)
-        socket_row.addWidget(socket_apply_btn)
-        socket_row.addStretch(1)
-        pl.addWidget(self._eb_socket_row_widget)
-        
-        # --- Drop enchant level ---
+        kc.addWidget(socket_apply_btn, 0, Qt.AlignLeft)
+        kc.addStretch(1)
+        pl.addWidget(sock_card, 1, 1)
+
+        # ── Drop level ────────────────────────────────────────────────────
+        drop_card, dc = self._ib_card(
+            "Drop level", "The refine level the selected item has when it drops or is bought.")
         drop_enchant = QWidget()
         drop_enchant_row = QHBoxLayout(drop_enchant)
         drop_enchant_row.setContentsMargins(0, 0, 0, 0)
         drop_enchant_row.setSpacing(6)
-        drop_enchant_row.addWidget(QLabel("Enchant Level:"))
+        drop_enchant_row.addWidget(QLabel("Refine level"))
         self._eb_drop_enchant_level = QSpinBox()
         self._eb_drop_enchant_level.setRange(0, 10)
         self._eb_drop_enchant_level.setValue(0)
-        self._eb_drop_enchant_level.setFixedWidth(60)
         self._eb_drop_enchant_level.setToolTip(
             "What refinement level the item will be on drop.")
         drop_enchant_row.addWidget(self._eb_drop_enchant_level)
-        drop_enchant_apply = QPushButton("Change Drop Level (Selected)")
+        drop_enchant_row.addStretch(1)
+        drop_enchant_apply = QPushButton("Set drop level")
         drop_enchant_apply.setToolTip(
             "Change the default enchantment level for the SELECTED item "
             "when it drops or is purchased.")
         drop_enchant_apply.clicked.connect(self._eb_change_drop_enchant)
         drop_enchant_row.addWidget(drop_enchant_apply)
-        drop_enchant_row.addStretch(1)
-        pl.addWidget(drop_enchant)
+        dc.addWidget(drop_enchant)
+        pl.addWidget(drop_card, 2, 0)
 
-        pl.addStretch(1)
+        pl.setColumnStretch(0, 1)
+        pl.setColumnStretch(1, 1)
+        pl.setRowStretch(3, 1)
         return page
 
     def _build_buff_effects_page(self) -> QWidget:
@@ -2108,7 +2213,7 @@ class ItemBuffsTab(QWidget):
         self._eb_level_target.currentIndexChanged.connect(
             lambda: self._buff_refresh_stats() if self._buff_current_item else None)
         level_row.addWidget(self._eb_level_target)
-        hint = QLabel("Pick level \u2192 Add stats/buffs \u2192 Apply to Game")
+        hint = QLabel("Pick level \u2192 Add stats/buffs \u2192 Export mod")
         hint.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 10px;")
         level_row.addWidget(hint, 1)
         form.addRow("Enchant level:", level_container)
