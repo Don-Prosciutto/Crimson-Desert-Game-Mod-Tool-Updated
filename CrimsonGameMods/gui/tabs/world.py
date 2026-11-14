@@ -166,6 +166,7 @@ class StoreEditorTab(QWidget):
         splitter = QSplitter(Qt.Horizontal)
         splitter.setChildrenCollapsible(False)
         splitter.setHandleWidth(10)
+        splitter.setStyleSheet("QSplitter::handle { background: transparent; }")
 
         store_frame, store_vlayout = _card()
         _shops_head = QLabel("Shops")

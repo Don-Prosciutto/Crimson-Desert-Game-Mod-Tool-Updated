@@ -18,10 +18,22 @@ _QWIDGETSIZE_MAX = 16777215
 
 
 def fit(root) -> int:
-    """Grow too-small fixed buttons below `root`. Returns how many changed."""
-    from PySide6.QtWidgets import QPushButton
+    """Grow too-small fixed buttons and number fields below `root`.
+    Returns how many changed."""
+    from PySide6.QtWidgets import QDoubleSpinBox, QPushButton, QSpinBox
 
     changed = 0
+    for sb in root.findChildren(QSpinBox) + root.findChildren(QDoubleSpinBox):
+        if getattr(sb, "_fit_done", False):
+            continue
+        sb._fit_done = True
+        if not (sb.minimumWidth() == sb.maximumWidth() and sb.maximumWidth() < _QWIDGETSIZE_MAX):
+            continue
+        widest = max(len(sb.textFromValue(sb.maximum())), len(sb.textFromValue(sb.minimum())), 2)
+        need = sb.fontMetrics().horizontalAdvance("8" * widest + sb.suffix() + sb.prefix()) + 52
+        if sb.maximumWidth() < need:
+            sb.setFixedWidth(need)
+            changed += 1
     for btn in root.findChildren(QPushButton):
         if getattr(btn, "_fit_done", False):
             continue

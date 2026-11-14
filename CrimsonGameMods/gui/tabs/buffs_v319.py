@@ -1332,14 +1332,25 @@ class ItemBuffsTab(QWidget):
                 _r2.addWidget(_w)
         _iv.addLayout(_r2)
         items_frame = build_items_frame()
+        self._buff_items_table.verticalHeader().setVisible(False)
+        self._buff_items_table.setShowGrid(False)
+        self._buff_items_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         _first_label = items_frame.layout().itemAt(0).widget()
         if isinstance(_first_label, QLabel):
             _first_label.setVisible(False)          # "Matching Items:" - the card says it
         _iv.addWidget(items_frame, 1)
+        items_frame.setObjectName("ibInner")
+        items_frame.setStyleSheet("QFrame#ibInner { background: transparent; border: none; }")
+        inner_layout.setStyleSheet("QSplitter::handle { background: transparent; }")
         inner_layout.addWidget(_card("Items", _items_body))
 
         stats_table_frame = build_stats_table_frame()
+        stats_table_frame.setObjectName("ibInner")
+        stats_table_frame.setStyleSheet("QFrame#ibInner { background: transparent; border: none; }")
         self._buff_selected_label.setWordWrap(True)
+        self._buff_stats_table.verticalHeader().setVisible(False)
+        self._buff_stats_table.setShowGrid(False)
+        self._buff_stats_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         _cap = stats_table_frame.layout().itemAt(1).widget()
         if isinstance(_cap, QLabel):
             _cap.setText("Current stats and buffs")
@@ -1347,6 +1358,9 @@ class ItemBuffsTab(QWidget):
         inner_layout.addWidget(_card("", stats_table_frame))
 
         build_buff_action_tabs()
+        self._buff_action_tabs.setStyleSheet(
+            "QTabWidget::pane { background: transparent; border: none; border-top: 1px solid "
+            + COLORS.get("border_soft", COLORS["border"]) + "; border-radius: 0px; }")
         inner_layout.addWidget(_card("", self._buff_action_tabs))
         inner_layout.setHandleWidth(10)
         inner_layout.setStretchFactor(0, 0)

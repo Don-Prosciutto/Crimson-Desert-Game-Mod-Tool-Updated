@@ -420,6 +420,24 @@ QTableCornerButton::section {{
     background-color: {c['panel']};
     border: none;
 }}
+QHeaderView {{
+    background-color: {c['panel']};
+    border: none;
+}}
+QHeaderView::section:vertical {{
+    background-color: {c['panel']};
+    color: {c['text_dim']};
+    padding: 0px 6px;
+    border: none;
+    border-right: 1px solid {soft};
+    font-weight: 500;
+}}
+QAbstractSpinBox QLineEdit {{
+    padding: 0px;
+    margin: 0px;
+    border: none;
+    background: transparent;
+}}
 QPushButton {{
     background-color: {c['header']};
     color: {c['text']};
