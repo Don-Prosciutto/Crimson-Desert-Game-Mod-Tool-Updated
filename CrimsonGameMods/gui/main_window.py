@@ -462,9 +462,10 @@ class MainWindow(SelfTestMixin, QMainWindow):
             QDockWidget.DockWidgetClosable
         )
         self._save_dock.setStyleSheet(
-            f"QDockWidget::title {{ background: {COLORS['accent']}; padding: 4px; "
-            f"color: white; font-weight: bold; }}"
-            f"QDockWidget {{ border: 1px solid {COLORS['accent']}; }}")
+            f"QDockWidget::title {{ background: {COLORS.get('side', COLORS['panel'])}; padding: 6px 10px; "
+            f"color: {COLORS['text']}; font-weight: 600; "
+            f"border-bottom: 1px solid {COLORS.get('border_soft', COLORS['border'])}; }}"
+            f"QDockWidget {{ border: 1px solid {COLORS.get('border_soft', COLORS['border'])}; }}")
         self._save_dock.setWidget(sidebar)
         self._save_dock.visibilityChanged.connect(
             lambda v: self.__dict__.update({'_sb_collapsed': not v})
@@ -639,9 +640,10 @@ class MainWindow(SelfTestMixin, QMainWindow):
             QDockWidget.DockWidgetClosable
         )
         self._pack_dock.setStyleSheet(
-            f"QDockWidget::title {{ background: {COLORS['accent']}; padding: 4px; "
-            f"color: white; font-weight: bold; }}"
-            f"QDockWidget {{ border: 1px solid {COLORS['accent']}; }}")
+            f"QDockWidget::title {{ background: {COLORS.get('side', COLORS['panel'])}; padding: 6px 10px; "
+            f"color: {COLORS['text']}; font-weight: 600; "
+            f"border-bottom: 1px solid {COLORS.get('border_soft', COLORS['border'])}; }}"
+            f"QDockWidget {{ border: 1px solid {COLORS.get('border_soft', COLORS['border'])}; }}")
         self._pack_dock.setWidget(pack_sidebar)
         self._pack_dock.visibilityChanged.connect(
             lambda v: self.__dict__.update({'_ps_collapsed': not v})

@@ -3131,9 +3131,9 @@ class MainWindow(QMainWindow):
             QDockWidget.DockWidgetClosable
         )
         self._save_dock.setStyleSheet(
-            f"QDockWidget::title {{ background: {COLORS['accent']}; padding: 4px; "
-            f"color: {COLORS.get('accent_text', '#111111')}; font-weight: bold; }}"
-            f"QDockWidget {{ border: 1px solid {COLORS['accent']}; }}")
+            f"QDockWidget::title {{ background: {COLORS['header']}; padding: 6px 10px; "
+            f"color: {COLORS['text']}; font-weight: 600; }}"
+            f"QDockWidget {{ border: 1px solid {COLORS['border']}; }}")
         self._save_dock.setWidget(sidebar)
         self._save_dock.visibilityChanged.connect(
             lambda v: self.__dict__.update({'_sb_collapsed': not v})
@@ -3316,9 +3316,9 @@ class MainWindow(QMainWindow):
             QDockWidget.DockWidgetClosable
         )
         self._pack_dock.setStyleSheet(
-            f"QDockWidget::title {{ background: {COLORS['accent']}; padding: 4px; "
-            f"color: {COLORS.get('accent_text', '#111111')}; font-weight: bold; }}"
-            f"QDockWidget {{ border: 1px solid {COLORS['accent']}; }}")
+            f"QDockWidget::title {{ background: {COLORS['header']}; padding: 6px 10px; "
+            f"color: {COLORS['text']}; font-weight: 600; }}"
+            f"QDockWidget {{ border: 1px solid {COLORS['border']}; }}")
         self._pack_dock.setWidget(pack_sidebar)
         self._pack_dock.visibilityChanged.connect(
             lambda v: self.__dict__.update({'_ps_collapsed': not v})

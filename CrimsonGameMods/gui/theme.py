@@ -424,7 +424,7 @@ QPushButton {{
     background-color: {c['header']};
     color: {c['text']};
     border: 1px solid {c['border']};
-    padding: 7px 16px;
+    padding: 5px 12px;
     border-radius: 8px;
     font-weight: 600;
 }}
