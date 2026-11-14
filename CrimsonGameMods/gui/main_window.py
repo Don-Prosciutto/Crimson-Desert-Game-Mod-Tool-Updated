@@ -508,7 +508,13 @@ class MainWindow(SelfTestMixin, QMainWindow):
             f"font-size: 18px; font-weight: 700; color: {COLORS.get('text_strong', COLORS['text'])};")
         self._page_sub = QLabel("")
         self._page_sub.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']};")
-        _title_box.addWidget(self._page_title)
+        _title_row = QHBoxLayout()
+        _title_row.setSpacing(10)
+        _title_row.addWidget(self._page_title)
+        from gui.area_nav import build_scope_badge as _build_scope_badge
+        _title_row.addWidget(_build_scope_badge(self), 0, Qt.AlignVCenter)
+        _title_row.addStretch(1)
+        _title_box.addLayout(_title_row)
         _title_box.addWidget(self._page_sub)
         info_layout.addLayout(_title_box)
         info_layout.addStretch(1)
@@ -1396,6 +1402,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         nav.header().setSectionResizeMode(0, _QHV.Stretch)
         nav.header().setSectionResizeMode(1, _QHV.ResizeToContents)
         nav.setRootIsDecorated(False)
+        nav.setItemsExpandable(False)
         nav.setIndentation(0)
         nav.setFocusPolicy(Qt.NoFocus)
         nav.setIconSize(QSize(18, 18))
@@ -1423,7 +1430,15 @@ class MainWindow(SelfTestMixin, QMainWindow):
             f"QWidget#navHead {{ background: transparent; }}")
 
         h.addWidget(side)
-        h.addWidget(rt, 1)
+        # Navigation by task (2.5): the open area's pages as tabs above them.
+        from gui.area_nav import build_tab_row as _build_tab_row
+        _pages_box = QWidget()
+        _pv = QVBoxLayout(_pages_box)
+        _pv.setContentsMargins(0, 0, 0, 0)
+        _pv.setSpacing(0)
+        _pv.addWidget(_build_tab_row(self))
+        _pv.addWidget(rt, 1)
+        h.addWidget(_pages_box, 1)
         lay.insertWidget(pos, box, 1)
         rt.tabBar().hide()
         rt.setDocumentMode(True)
@@ -1502,116 +1517,17 @@ class MainWindow(SelfTestMixin, QMainWindow):
         return ""
 
     def _nav_rebuild(self) -> None:
-        from PySide6.QtWidgets import QTreeWidgetItem
-        from PySide6.QtGui import QFont
-        nav, rt = self._nav, self._real_tabs
-        expanded = self._config.get("nav_collapsed", [])
-        nav.blockSignals(True)
-        nav.clear()
-        for i in range(rt.count()):
-            page, label = rt.widget(i), rt.tabText(i)
-            scope = self._nav_scope(page)
-            if isinstance(page, QTabWidget) and page.count() > 0:
-                page.tabBar().hide()
-                page.setDocumentMode(True)
-                grp = QTreeWidgetItem([label.upper()])
-                f = QFont(nav.font())
-                f.setBold(True)
-                f.setPointSizeF(max(7.0, f.pointSizeF() - 1.5))
-                f.setLetterSpacing(QFont.PercentageSpacing, 108)
-                grp.setFont(0, f)
-                color = {"game": COLORS["scope_game"], "save": COLORS["scope_save"]}.get(
-                    scope, COLORS["text_dim"])
-                grp.setForeground(0, QColor(color))
-                tip = {"game": "Changes GAME FILES (all saves)",
-                       "save": "Changes your SAVE FILE"}.get(scope, "")
-                grp.setToolTip(0, tip)
-                badge = {"game": "GAME FILES", "save": "SAVE FILE"}.get(scope, "")
-                if badge:
-                    grp.setText(1, badge + " ")
-                    bf = QFont(f)
-                    bf.setBold(False)
-                    grp.setFont(1, bf)
-                    grp.setForeground(1, QColor(color))
-                    grp.setTextAlignment(1, Qt.AlignRight | Qt.AlignVCenter)
-                    grp.setToolTip(1, tip)
-                grp.setFlags(Qt.ItemIsEnabled)
-                grp.setData(0, Qt.UserRole, ("group", label))
-                nav.addTopLevelItem(grp)
-                for j in range(page.count()):
-                    if hasattr(page, "isTabVisible") and not page.isTabVisible(j):
-                        continue
-                    it = QTreeWidgetItem(grp, [page.tabText(j)])
-                    it.setData(0, Qt.UserRole, ("page", page, page.widget(j)))
-                    self._nav_set_icon(it, page.tabText(j), False)
-                    it.setFirstColumnSpanned(True)
-                    tip = page.tabToolTip(j)
-                    if tip:
-                        it.setToolTip(0, tip)
-                grp.setExpanded(label not in expanded)
-                if id(page) not in self._nav_watched:
-                    page.currentChanged.connect(lambda _i: self._nav_sync())
-                    self._nav_watched.add(id(page))
-            else:
-                it = QTreeWidgetItem([label])
-                it.setData(0, Qt.UserRole, ("page", rt, page))
-                self._nav_set_icon(it, label, False)
-                if scope == "save":
-                    it.setToolTip(0, "Changes your SAVE FILE")
-                nav.addTopLevelItem(it)
-                it.setFirstColumnSpanned(True)
-        nav.blockSignals(False)
-        self._nav_sync()
-        self._selftest_apply_to_nav()
+        """Navigation by task: ten areas, their pages as tabs (gui/area_nav.py)."""
+        from gui import area_nav
+        area_nav.rebuild(self)
 
     def _nav_clicked(self, item, _col=0) -> None:
-        data = item.data(0, Qt.UserRole)
-        if not data:
-            return
-        if data[0] == "group":
-            item.setExpanded(not item.isExpanded())
-            collapsed = [self._nav.topLevelItem(k).data(0, Qt.UserRole)[1]
-                         for k in range(self._nav.topLevelItemCount())
-                         if (self._nav.topLevelItem(k).data(0, Qt.UserRole) or ("",))[0] == "group"
-                         and not self._nav.topLevelItem(k).isExpanded()]
-            self._config["nav_collapsed"] = collapsed
-            self._save_config()
-            self._nav_sync()
-            return
-        _kind, holder, widget = data
-        rt = self._real_tabs
-        if holder is rt:
-            rt.setCurrentWidget(widget)
-        else:
-            rt.setCurrentWidget(holder)
-            holder.setCurrentWidget(widget)
-        try:
-            self._config["last_page"] = item.text(0)
-        except Exception:  # noqa: BLE001
-            pass
+        from gui import area_nav
+        area_nav.clicked(self, item, _col)
 
     def _nav_sync(self) -> None:
-        nav = getattr(self, "_nav", None)
-        if nav is None:
-            return
-        rt = self._real_tabs
-        page = rt.currentWidget()
-        target = page.currentWidget() if isinstance(page, QTabWidget) and page.count() else page
-        from PySide6.QtWidgets import QTreeWidgetItemIterator
-        itr = QTreeWidgetItemIterator(nav)
-        while itr.value():
-            it = itr.value()
-            d = it.data(0, Qt.UserRole)
-            if d and d[0] == "page":
-                on = d[2] is target
-                if it.data(0, Qt.UserRole + 10) != on:
-                    self._nav_set_icon(it, it.text(0), on)
-                if on:
-                    nav.blockSignals(True)
-                    nav.setCurrentItem(it)
-                    nav.blockSignals(False)
-                    self._set_page_title(it)
-            itr += 1
+        from gui import area_nav
+        area_nav.sync(self)
 
     def _apply_save_browser_mode(self, pinned: bool, show: bool) -> None:
         """Docked on the left (pinned) or a floating window (the default)."""
