@@ -384,7 +384,19 @@ def _u(raw: bytes, cf) -> int:
 
 
 def owned_keys(raw: bytes) -> set:
-    """Character keys already in the save's mercenary list."""
+    """Character keys already in the save's mercenary list.
+
+    Reads only the mercenary list (save_pet_rename, a few ms); the full tree
+    decode below took about 5 s on a big save and ran on every Refresh List.
+    The full decode stays as the fallback."""
+    try:
+        from save_pet_rename import find_mercenary_bitmap_positions, parse_reflection_layout
+        mercs = find_mercenary_bitmap_positions(raw, parse_reflection_layout(raw))
+        keys = {m.get("extra", {}).get("_characterKey") for m in mercs}
+        if mercs and None not in keys:
+            return keys
+    except Exception:  # noqa: BLE001 - fall back to the full decode
+        pass
     _, blocks = _tree(raw)
     _, lst = _merc_list(blocks)
     return {_u(raw, _present(e)["_characterKey"]) for e in lst.list_elements}

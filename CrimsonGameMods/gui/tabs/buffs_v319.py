@@ -304,7 +304,7 @@ def _is_game_running() -> bool:
     try:
         out = subprocess.check_output(
             ["tasklist", "/FI", "IMAGENAME eq CrimsonDesert.exe", "/FO", "CSV", "/NH"],
-            stderr=subprocess.DEVNULL, text=True, timeout=3,
+            stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace", timeout=3,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         return "CrimsonDesert.exe" in out

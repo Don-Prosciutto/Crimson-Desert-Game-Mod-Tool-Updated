@@ -89,6 +89,9 @@ class IconPreview(QObject):
         view = obj.parent()
         if not isinstance(view, QAbstractItemView) or obj is not view.viewport():
             return False
+        # Line icons (navigation, menus of pages) are not item pictures.
+        if view.objectName() == "navTree" or view.property("noIconPreview"):
+            return False
         try:
             pos = event.pos() if et == QEvent.ToolTip else event.position().toPoint()
         except AttributeError:

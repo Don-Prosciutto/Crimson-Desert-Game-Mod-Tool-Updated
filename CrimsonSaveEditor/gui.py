@@ -103,7 +103,7 @@ def _is_game_running() -> bool:
         import subprocess
         out = subprocess.check_output(
             ["tasklist", "/FI", "IMAGENAME eq CrimsonDesert.exe", "/FO", "CSV", "/NH"],
-            stderr=subprocess.DEVNULL, text=True, timeout=3,
+            stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace", timeout=3,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         return "CrimsonDesert.exe" in out
@@ -7635,7 +7635,7 @@ QCheckBox::indicator {{
                     args.extend([str(i), field, str(val)])
 
             result = subprocess.run(
-                args, capture_output=True, text=True, timeout=30,
+                args, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
                 creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0,
             )
 
