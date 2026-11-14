@@ -446,6 +446,31 @@ QPushButton:checked {{
     border-color: {c['accent']};
     color: {strong};
 }}
+QPushButton#chip {{
+    background-color: {c['panel']};
+    color: {c['text_dim']};
+    border: 1px solid {c['border']};
+    border-radius: 15px;
+    padding: 5px 14px;
+    font-weight: 600;
+}}
+QPushButton#chip:hover {{
+    color: {c['text']};
+    border-color: {c['accent']};
+}}
+QPushButton#chip:checked {{
+    background-color: {c['selected']};
+    color: {strong};
+    border-color: {c['accent']};
+}}
+QFrame#actionBar {{
+    background-color: {c['panel']};
+    border: 1px solid {c['border']};
+    border-radius: 12px;
+}}
+QFrame#actionBar QLabel {{
+    background: transparent;
+}}
 QPushButton#accentBtn {{
     background-color: {c['accent']};
     color: {c['on_accent']};

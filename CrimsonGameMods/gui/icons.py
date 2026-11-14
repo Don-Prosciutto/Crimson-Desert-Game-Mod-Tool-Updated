@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 
 from PySide6.QtCore import QByteArray, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
+from PySide6.QtWidgets import QLabel
 
 # Line icons, 24x24 viewBox, stroke-only paths.
 _ICONS: Dict[str, List[str]] = {
@@ -52,6 +53,7 @@ _ICONS: Dict[str, List[str]] = {
     "debug": ["M8 2l1.9 1.9", "M14.1 3.9 16 2", "M9 7.1V6a3 3 0 1 1 6 0v1.1",
               "M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6z", "M12 20v-9"],
     "dot": ["M12 15a3 3 0 1 0 0-6a3 3 0 0 0 0 6z"],
+    "folder": ["M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"],
 }
 
 # Page label (lower case, start of the name) -> icon. First match wins.
@@ -173,3 +175,28 @@ def window_icon(color: str = "#2DD4BF", tile: Optional[str] = "#0A101C") -> QIco
         p.end()
         ic.addPixmap(QPixmap.fromImage(img))
     return ic
+
+
+class ElidedLabel(QLabel):
+    """A one-line label that shortens a long text in the middle ("D:/Ste…
+    Desert") instead of cutting it off; text() returns the full text."""
+
+    def __init__(self, text: str = "", parent=None):
+        super().__init__(parent)
+        self._full = ""
+        self.setText(text)
+
+    def setText(self, text: str) -> None:  # noqa: N802
+        self._full = text or ""
+        self._elide()
+
+    def text(self) -> str:
+        return self._full
+
+    def resizeEvent(self, event):  # noqa: N802
+        super().resizeEvent(event)
+        self._elide()
+
+    def _elide(self) -> None:
+        w = max(20, self.width() - 16)
+        QLabel.setText(self, self.fontMetrics().elidedText(self._full, Qt.ElideMiddle, w))

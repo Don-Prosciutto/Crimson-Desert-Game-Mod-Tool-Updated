@@ -491,19 +491,51 @@ class MainWindow(SelfTestMixin, QMainWindow):
         right_layout.addWidget(self._center_status)
 
         self._global_info_widget = QWidget()
+        self._global_info_widget.setObjectName("topBar")
+        self._global_info_widget.setAttribute(Qt.WA_StyledBackground, True)
+        self._global_info_widget.setStyleSheet(
+            f"QWidget#topBar {{ background: {COLORS['bg']}; "
+            f"border-bottom: 1px solid {COLORS.get('border_soft', COLORS['border'])}; }}")
         info_layout = QHBoxLayout(self._global_info_widget)
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(4)
-        gp_icon = QLabel("Game:")
-        gp_icon.setStyleSheet(f"color: {COLORS['text_dim']}; font-weight: bold; padding: 0 4px;")
+        info_layout.setContentsMargins(22, 10, 14, 10)
+        info_layout.setSpacing(8)
+        # New look (2.5): the open page's name on the left, status pills and
+        # the game folder on the right.
+        _title_box = QVBoxLayout()
+        _title_box.setSpacing(0)
+        self._page_title = QLabel("Home")
+        self._page_title.setStyleSheet(
+            f"font-size: 18px; font-weight: 700; color: {COLORS.get('text_strong', COLORS['text'])};")
+        self._page_sub = QLabel("")
+        self._page_sub.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']};")
+        _title_box.addWidget(self._page_title)
+        _title_box.addWidget(self._page_sub)
+        info_layout.addLayout(_title_box)
+        info_layout.addStretch(1)
+        self._pill_game = QLabel("")
+        self._pill_save = QLabel("")
+        for _p in (self._pill_game, self._pill_save):
+            _p.setTextFormat(Qt.RichText)
+            info_layout.addWidget(_p)
+        gp_icon = QLabel()
+        try:
+            from gui.icons import icon as _icon
+            gp_icon.setPixmap(_icon("folder", COLORS["text_dim"], 16).pixmap(16, 16))
+        except Exception:  # noqa: BLE001
+            gp_icon.setText("Game:")
+        gp_icon.setToolTip("Game folder")
+        info_layout.addSpacing(6)
         info_layout.addWidget(gp_icon)
 
-        self._global_game_path = QLabel("Not set — click Browse")
+        from gui.icons import ElidedLabel as _ElidedLabel
+        self._global_game_path = _ElidedLabel("Not set — click Browse")
         self._global_game_path.setStyleSheet(
-            f"color: {COLORS['accent']}; padding: 2px 6px; "
-            f"border: 1px solid {COLORS['border']}; border-radius: 3px; "
+            f"color: {COLORS['text']}; padding: 6px 10px; "
+            f"border: 1px solid {COLORS['border']}; border-radius: 8px; "
             f"background-color: {COLORS['input_bg']};"
         )
+        self._global_game_path.setMinimumWidth(160)
+        self._global_game_path.setMaximumWidth(340)
         self._global_game_path.setToolTip("Game installation path used by Game Data, ItemBuffs, and Stores")
         info_layout.addWidget(self._global_game_path, 1)
 
@@ -520,6 +552,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
         self._global_hide_btn = QPushButton("▲")
         self._global_hide_btn.setFixedSize(24, 24)
+        self._global_hide_btn.setVisible(False)   # the bar is the page header now
         self._global_hide_btn.setCheckable(True)
         self._global_hide_btn.setToolTip("Hide game path bar (▲ collapse / ▼ expand)")
         self._global_hide_btn.setStyleSheet(
@@ -926,7 +959,8 @@ class MainWindow(SelfTestMixin, QMainWindow):
             _hv = ""
         self._home_page = HomePage(_hv, goto=self._home_goto, status=self._home_status,
                                    config=self._config, save_config=self._save_config,
-                                   support=self._create_support_package)
+                                   support=self._create_support_package,
+                                   check_mods=self._check_mods_dialog)
         _real_tabs.insertTab(0, self._home_page, "Home")
         self._build_save_editor_area()
         self._build_nav_sidebar()
@@ -1396,9 +1430,57 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
         self._nav = nav
         self._nav_watched = set()
+        self._pill_timer = QTimer(self)
+        self._pill_timer.setInterval(3000)
+        self._pill_timer.timeout.connect(self._refresh_top_pills)
+        self._pill_timer.start()
         nav.itemClicked.connect(self._nav_clicked)
         rt.currentChanged.connect(lambda _i: self._nav_sync())
         self._nav_rebuild()
+
+    def _set_page_title(self, item) -> None:
+        """Top bar: the open page's name and what it changes."""
+        if not hasattr(self, "_page_title"):
+            return
+        name = item.data(0, Qt.UserRole + 1) or item.text(0)
+        group = item.parent()
+        gtxt = group.data(0, Qt.UserRole)[1] if group is not None and group.data(0, Qt.UserRole) else ""
+        scope = self._nav_scope(item.data(0, Qt.UserRole)[1]) if item.data(0, Qt.UserRole) else ""
+        sub = {"game": f"{gtxt} · makes mods for the game files – load them in DMM",
+               "save": f"{gtxt} · changes your loaded save file"}.get(scope, gtxt)
+        self._page_title.setText(str(name))
+        self._page_sub.setText(sub)
+        self._page_sub.setVisible(bool(sub))
+        self._refresh_top_pills()
+
+    def _refresh_top_pills(self) -> None:
+        if not hasattr(self, "_pill_game"):
+            return
+        try:
+            game, version, _dlc, save = self._home_status()
+        except Exception:  # noqa: BLE001
+            game, version, save = "", "", ""
+        ok, warn = COLORS.get("success", "#5be0a0"), COLORS.get("warning", "#f5b547")
+        info = COLORS.get("scope_save", COLORS["accent"])
+
+        def pill(text, color):
+            return (f"<span style='color:{color}'>●</span>&nbsp;"
+                    f"<span style='color:{COLORS['text']}'>{text}</span>")
+        base = (f"QLabel {{ background: {COLORS['panel']}; border: 1px solid "
+                f"{COLORS.get('border_soft', COLORS['border'])}; border-radius: 14px; "
+                f"padding: 5px 12px; font-size: 12px; font-weight: 600; }}")
+        if game and os.path.isdir(game):
+            self._pill_game.setText(pill(f"Game {version}" if version and version != "unknown"
+                                         else "Game found", ok))
+        else:
+            self._pill_game.setText(pill("Game not set", warn))
+        if save:
+            name = os.path.basename(os.path.dirname(save)) or os.path.basename(save)
+            self._pill_save.setText(pill(f"Save: {name}", info))
+        else:
+            self._pill_save.setText(pill("No save loaded", COLORS["text_dim"]))
+        for _p in (self._pill_game, self._pill_save):
+            _p.setStyleSheet(base)
 
     def _nav_set_icon(self, item, label: str, on: bool) -> None:
         """Line icon in front of a page name; the open page's in the accent.
@@ -1528,6 +1610,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
                     nav.blockSignals(True)
                     nav.setCurrentItem(it)
                     nav.blockSignals(False)
+                    self._set_page_title(it)
             itr += 1
 
     def _apply_save_browser_mode(self, pinned: bool, show: bool) -> None:
@@ -3180,6 +3263,7 @@ QCheckBox {{
         for w in self._global_info_widget.findChildren(QWidget):
             if w is not self._global_hide_btn:
                 w.setVisible(not checked)
+        self._global_hide_btn.setVisible(False)
         self._global_hide_btn.setText("▼" if checked else "▲")
         self._global_hide_btn.setToolTip(
             ("Show game path bar (▼ expand)" if checked

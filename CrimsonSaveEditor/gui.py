@@ -65,6 +65,37 @@ from theme_support import (
 import quest_chapters
 
 
+def _pick_card_delegate(parent):
+    """Item delegate for the Add Mounts / Add Pets cards: a rounded card
+    behind each picture, tinted with an accent border when ticked."""
+    from PySide6.QtWidgets import QStyledItemDelegate, QStyle
+    from PySide6.QtGui import QPainter, QPen
+
+    class _CardDelegate(QStyledItemDelegate):
+        def paint(self, painter, option, index):
+            v = index.data(Qt.CheckStateRole)
+            try:
+                on = int(getattr(v, "value", v) or 0) == 2
+            except (TypeError, ValueError):
+                on = False
+            enabled = bool(index.flags() & Qt.ItemIsEnabled)
+            hover = bool(option.state & QStyle.State_MouseOver)
+            r = option.rect.adjusted(3, 3, -3, -3)
+            painter.save()
+            painter.setRenderHint(QPainter.Antialiasing)
+            if on and enabled:
+                painter.setPen(QPen(QColor(COLORS["accent"]), 2))
+                painter.setBrush(QColor(COLORS["selected"]))
+            else:
+                painter.setPen(QPen(QColor(COLORS["accent"] if hover and enabled else COLORS["border"]), 1))
+                painter.setBrush(QColor(COLORS["panel"]))
+            painter.drawRoundedRect(r, 12, 12)
+            painter.restore()
+            super().paint(painter, option, index)
+
+    return _CardDelegate(parent)
+
+
 class _SortKeyItem(QTableWidgetItem):
     """Table cell that sorts by its sort_key (story order) instead of its text."""
 
@@ -8256,6 +8287,7 @@ QCheckBox::indicator {{
         grp.setExclusive(True)
         for label in spec["filters"]:
             b = QPushButton(label)
+            b.setObjectName("chip")
             b.setCheckable(True)
             b.setChecked(label == "All")
             b.clicked.connect(lambda _c=False, a=label.split()[0], k=kind: self._pick_filter(k, a))
@@ -8269,9 +8301,18 @@ QCheckBox::indicator {{
             row.addWidget(cb)
         lay.addLayout(row)
         lw = QListWidget()
+        lw.setProperty("noIconPreview", True)
         lw.setViewMode(QListView.ViewMode.IconMode)
-        lw.setIconSize(QSize(64, 64))
-        lw.setGridSize(QSize(128, 104))
+        lw.setIconSize(QSize(72, 72))
+        lw.setGridSize(QSize(148, 128))
+        lw.setSpacing(6)
+        lw.setUniformItemSizes(True)
+        lw.setSelectionMode(QListView.SelectionMode.NoSelection)
+        lw.setStyleSheet(
+            "QListWidget { background: transparent; border: none; }"
+            f"QListWidget::item {{ border: none; border-radius: 12px; "
+            f"padding: 8px 4px 4px 4px; margin: 3px; color: {COLORS['text']}; background: transparent; }}")
+        lw.setItemDelegate(_pick_card_delegate(lw))
         lw.setResizeMode(QListView.ResizeMode.Adjust)
         lw.setMovement(QListView.Movement.Static)
         lw.setWordWrap(True)
@@ -8291,8 +8332,14 @@ QCheckBox::indicator {{
                 it.setIcon(QIcon(pic))
             lw.addItem(it)
         lw.itemChanged.connect(lambda _it, k=kind: self._pick_update_count(k))
+        lw.itemClicked.connect(lambda it: it.setCheckState(
+            Qt.Unchecked if it.checkState() == Qt.Checked else Qt.Checked)
+            if it.flags() & Qt.ItemIsEnabled else None)
         lay.addWidget(lw, 1)
-        row = QHBoxLayout()
+        bar = QFrame()
+        bar.setObjectName("actionBar")
+        row = QHBoxLayout(bar)
+        row.setContentsMargins(12, 8, 12, 8)
         b = QPushButton("All")
         b.setToolTip(f"Tick every {spec['one']} shown")
         b.clicked.connect(lambda _c=False, k=kind: self._pick_check_all(k, True))
@@ -8305,9 +8352,10 @@ QCheckBox::indicator {{
         row.addWidget(count)
         add = QPushButton(f"Add Selected {spec['noun'].title()}")
         add.setObjectName("accentBtn")
+        add.setMinimumHeight(36)
         add.clicked.connect(lambda _c=False, k=kind: self._pick_add(k))
         row.addWidget(add)
-        lay.addLayout(row)
+        lay.addWidget(bar)
         if not hasattr(self, "_pickers"):
             self._pickers = {}
         self._pickers[kind] = {"list": lw, "count": count, "area": "All", "variants": False}
@@ -8348,6 +8396,9 @@ QCheckBox::indicator {{
         self._pick_update_count(kind)
 
     def _pick_update_count(self, kind: str) -> None:
+        lw = getattr(self, "_pickers", {}).get(kind, {}).get("list")
+        if lw is not None:
+            lw.viewport().update()
         n = sum(1 for it in self._pick_items(kind)
                 if it.checkState() == Qt.Checked and it.flags() & Qt.ItemIsEnabled)
         lbl = getattr(self, "_pickers", {}).get(kind, {}).get("count")

@@ -1,9 +1,9 @@
-"""Home: the start page of the Game Mod Tool.
+"""Home: the start page of the Game Mod Tool (new layout, 2.5).
 
-Status of game / DLC / save, how a mod gets into the game, what is new, and
-one card per page (a click opens it). The page only reads; it changes
-nothing. The main window passes in callbacks so this file stays free of
-main-window internals.
+Status tiles (game, DLC, save, tool), the pages as cards with an icon, and
+on the right what is new, quick actions and how a mod gets into the game.
+The page only reads; it changes nothing. The main window passes in callbacks
+so this file stays free of main-window internals.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QScrollArea,
+    QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea,
     QSizePolicy, QVBoxLayout, QWidget,
 )
 
@@ -48,13 +48,25 @@ GAME_CARDS = [
     ("Game Browser", "Look into any game table (for tinkerers)."),
 ]
 SAVE_CARDS = [
-    ("Save Editor", "Inventory, equipment, sockets, refining, dyes, mercenaries."),
-    ("World", "Quests, knowledge, waypoints & abyss gates, factions."),
+    ("Inventory", "Items, stacks, give and delete items."),
+    ("Equipment", "Your gear, sockets, refining and dyes."),
+    ("Mercenary/Pets", "Add mounts and pets, rename companions."),
+    ("Quest Editor", "Complete or reset quests, story chapters."),
+    ("Knowledge", "Unlock knowledge, recipes and abyss gates."),
     ("Backup", "Backups of your save files."),
 ]
 MORE_CARDS = [
-    ("Items", "Item database with icons and item packs."),
+    ("Item Database", "Every item with icon, key and category."),
+    ("Item Packs", "Ready-made item lists to add to a save."),
 ]
+
+
+def _strong() -> str:
+    return COLORS.get("text_strong", COLORS["text"])
+
+
+def _soft() -> str:
+    return COLORS.get("border_soft", COLORS["border"])
 
 
 class _Card(QFrame):
@@ -63,19 +75,16 @@ class _Card(QFrame):
         self._on_click = on_click
         self.setCursor(Qt.PointingHandCursor)
         self.setObjectName("homeCard")
-        soft = COLORS.get("border_soft", COLORS["border"])
         self.setStyleSheet(
             f"QFrame#homeCard {{ background: {COLORS['panel']}; border: 1px solid "
-            f"{soft}; border-radius: 12px; }}"
+            f"{_soft()}; border-radius: 12px; }}"
             f"QFrame#homeCard:hover {{ border: 1px solid {COLORS['accent']}; }}"
             f"QFrame#homeCard QLabel {{ background: transparent; border: none; }}")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 14, 16, 14)
         lay.setSpacing(8)
-        top = QHBoxLayout()
-        top.setSpacing(0)
         tile = QLabel()
-        tile.setFixedSize(34, 34)
+        tile.setFixedSize(36, 36)
         tile.setAlignment(Qt.AlignCenter)
         tile.setStyleSheet(f"QLabel {{ background: {COLORS['selected']}; border-radius: 9px; }}")
         try:
@@ -83,17 +92,17 @@ class _Card(QFrame):
             tile.setPixmap(icon(icon_name_for(title), accent, 18).pixmap(18, 18))
         except Exception:  # noqa: BLE001
             pass
-        top.addWidget(tile)
-        top.addStretch()
-        lay.addLayout(top)
+        lay.addWidget(tile)
         t = QLabel(title)
-        t.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {COLORS.get('text_strong', COLORS['text'])};")
+        t.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {_strong()};")
         d = QLabel(desc)
         d.setWordWrap(True)
         d.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px;")
         lay.addWidget(t)
         lay.addWidget(d)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        lay.addStretch()
+        self.setMinimumHeight(124)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
     def mouseReleaseEvent(self, event):  # noqa: N802
         if event.button() == Qt.LeftButton:
@@ -101,18 +110,45 @@ class _Card(QFrame):
         super().mouseReleaseEvent(event)
 
 
+class _Tile(QFrame):
+    """A status tile: small label, big value, coloured note with a dot."""
+
+    def __init__(self, label: str):
+        super().__init__()
+        self.setObjectName("homeTile")
+        self.setStyleSheet(
+            f"QFrame#homeTile {{ background: {COLORS['panel']}; border: 1px solid {_soft()}; "
+            f"border-radius: 12px; }} QFrame#homeTile QLabel {{ background: transparent; }}")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(16, 14, 16, 14)
+        lay.setSpacing(4)
+        cap = QLabel(label)
+        cap.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px; font-weight: 600;")
+        self.value = QLabel("–")
+        self.value.setStyleSheet(f"color: {_strong()}; font-size: 19px; font-weight: 700;")
+        self.note = QLabel("")
+        self.note.setTextFormat(Qt.RichText)
+        lay.addWidget(cap)
+        lay.addWidget(self.value)
+        lay.addWidget(self.note)
+
+    def set(self, value: str, note: str, color: str) -> None:
+        self.value.setText(value)
+        self.note.setText(f"<span style='color:{color}'>●&nbsp; {note}</span>")
+
+
 def _box(title: str) -> tuple:
     f = QFrame()
     f.setObjectName("homeBox")
     f.setStyleSheet(
         f"QFrame#homeBox {{ background: {COLORS['panel']}; border: 1px solid "
-        f"{COLORS.get('border_soft', COLORS['border'])}; border-radius: 12px; }}"
+        f"{_soft()}; border-radius: 12px; }}"
         f"QFrame#homeBox QLabel {{ background: transparent; border: none; }}")
     lay = QVBoxLayout(f)
-    lay.setContentsMargins(18, 14, 18, 16)
-    lay.setSpacing(8)
+    lay.setContentsMargins(18, 16, 18, 16)
+    lay.setSpacing(10)
     h = QLabel(title)
-    h.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {COLORS.get('text_strong', COLORS['text'])};")
+    h.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {_strong()};")
     lay.addWidget(h)
     return f, lay
 
@@ -120,18 +156,21 @@ def _box(title: str) -> tuple:
 class HomePage(QWidget):
     """goto(label) opens a page; status() returns
     (game_path, game_version, dlc_installed, save_path or "");
-    the show-at-start setting lives in config['home_at_start']."""
+    the show-at-start setting lives in config['home_at_start'].
+    check_mods / support are optional quick actions."""
 
     def __init__(self, version: str, goto: Callable[[str], None],
                  status: Callable[[], tuple], config: dict,
                  save_config: Optional[Callable[[], None]] = None,
-                 support: Optional[Callable[[], None]] = None, parent=None):
+                 support: Optional[Callable[[], None]] = None,
+                 check_mods: Optional[Callable[[], None]] = None, parent=None):
         super().__init__(parent)
         self._support = support
         self._goto = goto
         self._status = status
         self._config = config
         self._save_config = save_config
+        self._version = version
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -143,87 +182,116 @@ class HomePage(QWidget):
         scroll.setWidget(body)
         v = QVBoxLayout(body)
         v.setContentsMargins(32, 26, 32, 26)
-        v.setSpacing(12)
+        v.setSpacing(18)
 
-        title = QLabel(f"Crimson Desert Game Mod Tool  "
-                       f"<span style='color:{COLORS['text_dim']}; font-size:13px; "
-                       f"font-weight:normal'>v{version}</span>")
-        title.setTextFormat(Qt.RichText)
-        title.setStyleSheet(f"font-size: 24px; font-weight: 700; "
-                            f"color: {COLORS.get('text_strong', COLORS['text'])};")
-        v.addWidget(title)
-        sub = QLabel("Make mods for DMM and edit your save. Pick a page on the left "
-                     "or click a card below.")
+        head = QVBoxLayout()
+        head.setSpacing(4)
+        title = QLabel("Welcome back")
+        title.setStyleSheet(f"font-size: 28px; font-weight: 700; color: {_strong()};")
+        sub = QLabel("Make mods for DMM and edit your save – pick a page on the left or a card below.")
         sub.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 14px;")
-        v.addWidget(sub)
-        v.addSpacing(6)
+        head.addWidget(title)
+        head.addWidget(sub)
+        v.addLayout(head)
 
-        row = QHBoxLayout()
-        row.setSpacing(14)
-        st_box, st_lay = _box("Status")
-        self._status_label = QLabel("")
-        self._status_label.setTextFormat(Qt.RichText)
-        self._status_label.setWordWrap(True)
-        st_lay.addWidget(self._status_label)
-        st_lay.addStretch()
+        tiles = QGridLayout()
+        tiles.setSpacing(12)
+        self._t_game = _Tile("Game version")
+        self._t_dlc = _Tile("DLC")
+        self._t_save = _Tile("Loaded save")
+        self._t_tool = _Tile("Tool")
+        for i, t in enumerate((self._t_game, self._t_dlc, self._t_save, self._t_tool)):
+            tiles.addWidget(t, 0, i)
+            tiles.setColumnStretch(i, 1)
+        v.addLayout(tiles)
+
+        cols = QHBoxLayout()
+        cols.setSpacing(24)
+        left = QVBoxLayout()
+        left.setSpacing(12)
+        left.addWidget(self._section("Game mods", "export a mod, load it in DMM", COLORS["scope_game"]))
+        left.addLayout(self._grid(GAME_CARDS, COLORS["accent"]))
+        left.addWidget(self._section("Save editor", "changes your loaded save – back it up first",
+                                     COLORS["scope_save"]))
+        left.addLayout(self._grid(SAVE_CARDS, COLORS["scope_save"]))
+        left.addWidget(self._section("More", "reference", COLORS["text_dim"]))
+        left.addLayout(self._grid(MORE_CARDS, COLORS["text_dim"]))
+        left.addStretch()
+        cols.addLayout(left, 1)
+
+        right_w = QWidget()
+        right_w.setFixedWidth(330)
+        right = QVBoxLayout(right_w)
+        right.setContentsMargins(0, 0, 0, 0)
+        right.setSpacing(16)
+
+        new_box, new_lay = _box(f"New in v{version}")
+        for x in WHATS_NEW:
+            lab = QLabel(f"<span style='color:{COLORS['accent']}'>●</span>&nbsp; {x}")
+            lab.setTextFormat(Qt.RichText)
+            lab.setWordWrap(True)
+            lab.setStyleSheet(f"color: {COLORS['text']};")
+            new_lay.addWidget(lab)
+        more = QLabel(f"<a href='{RELEASES_URL}' style='color:{COLORS['accent']}'>Full changelog…</a>")
+        more.setTextFormat(Qt.RichText)
+        more.setOpenExternalLinks(True)
+        new_lay.addWidget(more)
+        right.addWidget(new_box)
+
+        act_box, act_lay = _box("Quick actions")
+        if check_mods is not None:
+            b = QPushButton("Check my mods against this game")
+            b.setObjectName("accentBtn")
+            b.setMinimumHeight(40)
+            b.clicked.connect(lambda: check_mods())
+            act_lay.addWidget(b)
+        b = QPushButton("Back up my saves")
+        b.setMinimumHeight(40)
+        b.clicked.connect(lambda: self._goto("Backup"))
+        act_lay.addWidget(b)
         if support is not None:
-            sp = QLabel(f"<a href='support' style='color:{COLORS['accent']}'>Problems? "
-                        "Create a support package…</a>")
-            sp.setTextFormat(Qt.RichText)
-            sp.setToolTip("A zip with versions, the tool's and DMM's log, the settings and\n"
-                          "(if you want) the mod with the problem - to send when something\n"
-                          "goes wrong. No save files, no game files.")
-            sp.linkActivated.connect(lambda _l: self._support())
-            st_lay.addWidget(sp)
-        row.addWidget(st_box, 1)
+            b = QPushButton("Create a support package")
+            b.setMinimumHeight(40)
+            b.setToolTip("A zip with versions, the tool's and DMM's log, the settings and\n"
+                         "(if you want) the mod with the problem - to send when something\n"
+                         "goes wrong. No save files, no game files.")
+            b.clicked.connect(lambda: self._support())
+            act_lay.addWidget(b)
+        right.addWidget(act_box)
 
         how_box, how_lay = _box("How a mod gets into the game")
         how = QLabel(
-            f"1. Change something on a <span style='color:{COLORS['scope_game']}'>"
-            f"GAME FILES</span> page<br>"
-            "2. Click <b>Save as mod</b> / <b>Export Field JSON</b><br>"
-            "3. Load the file in <b>DMM</b> and mount – done. Disable it there to undo."
-            f"<br><br><span style='color:{COLORS['text_dim']}'>[DLC] = needs the DLC. "
-            "DMM skips such a mod without it.</span>")
+            f"<b style='color:{COLORS['accent']}'>1</b>&nbsp; Change something on a "
+            f"<span style='color:{COLORS['scope_game']}'>game mods</span> page<br>"
+            f"<b style='color:{COLORS['accent']}'>2</b>&nbsp; Click <b>Save as mod</b> / "
+            "<b>Export Field JSON</b><br>"
+            f"<b style='color:{COLORS['accent']}'>3</b>&nbsp; Load the file in <b>DMM</b> and mount "
+            "– disable it there to undo"
+            f"<br><br><span style='color:{COLORS['text_dim']}'>[DLC] = needs the DLC. DMM skips "
+            "such a mod without it.</span>")
         how.setTextFormat(Qt.RichText)
         how.setWordWrap(True)
         how_lay.addWidget(how)
-        how_lay.addStretch()
-        row.addWidget(how_box, 1)
+        right.addWidget(how_box)
 
-        new_box, new_lay = _box(f"New in v{version}")
-        new = QLabel("<br>".join(f"• {x}" for x in WHATS_NEW)
-                     + f"<br><br><a href='{RELEASES_URL}' style='color:{COLORS['accent']}'>"
-                     "Full changelog…</a>")
-        new.setTextFormat(Qt.RichText)
-        new.setOpenExternalLinks(True)
-        new.setWordWrap(True)
-        new_lay.addWidget(new)
-        new_lay.addStretch()
-        row.addWidget(new_box, 1)
-        v.addLayout(row)
-
-        v.addWidget(self._section("GAME FILES", "makes mods, load them in DMM",
-                                  COLORS["scope_game"]))
-        v.addLayout(self._grid(GAME_CARDS, COLORS["accent"]))
-        v.addWidget(self._section("SAVE FILE", "changes your loaded save (back it up first)",
-                                  COLORS["scope_save"]))
-        v.addLayout(self._grid(SAVE_CARDS, COLORS["scope_save"]))
-        v.addWidget(self._section("MORE", "reference", COLORS["text_dim"]))
-        v.addLayout(self._grid(MORE_CARDS, COLORS["accent"]))
-
-        self._start_cb = QCheckBox("Show this page at start (otherwise: the page used last)")
+        self._start_cb = QCheckBox("Show this page at start")
+        self._start_cb.setToolTip("Otherwise the tool opens on the page used last.")
         self._start_cb.setChecked(bool(self._config.get("home_at_start", True)))
         self._start_cb.toggled.connect(self._on_start_toggled)
-        v.addSpacing(6)
-        v.addWidget(self._start_cb)
-        v.addStretch()
+        right.addWidget(self._start_cb)
+        credit = QLabel("Credits: RicePaddySoftware / NattKh, AerowynX, exodiaprivate-eng (parser).")
+        credit.setWordWrap(True)
+        credit.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px;")
+        right.addWidget(credit)
+        right.addStretch()
+        cols.addWidget(right_w, 0, Qt.AlignTop)
+        v.addLayout(cols, 1)
 
     def _section(self, name: str, hint: str, color: str) -> QLabel:
-        lab = QLabel(f"<span style='color:{color}; font-size:12px; font-weight:700; letter-spacing:1px'>"
-                     f"{name}</span>&nbsp;&nbsp;<span style='color:{COLORS['text_dim']}'>{hint}</span>")
+        lab = QLabel(f"<span style='color:{_strong()}; font-size:17px; font-weight:700'>{name}</span>"
+                     f"&nbsp;&nbsp;<span style='color:{color}; font-size:12px'>{hint}</span>")
         lab.setTextFormat(Qt.RichText)
-        lab.setContentsMargins(0, 16, 0, 4)
+        lab.setContentsMargins(0, 6, 0, 0)
         return lab
 
     def _grid(self, cards, accent) -> QGridLayout:
@@ -244,30 +312,30 @@ class HomePage(QWidget):
                 pass
 
     def refresh(self) -> None:
-        ok, warn = COLORS.get("success", "#3fb950"), COLORS.get("warning", "#d29922")
+        ok = COLORS.get("success", "#3fb950")
+        warn = COLORS.get("warning", "#d29922")
+        dim = COLORS["text_dim"]
+        info = COLORS.get("scope_save", COLORS["accent"])
         try:
             game, version, dlc, save = self._status()
         except Exception:  # noqa: BLE001
             game, version, dlc, save = "", "", False, ""
-        lines = []
         if game and os.path.isdir(game):
-            lines.append(f"<span style='color:{ok}'>✔ Game found"
-                         + (f" – version {version}" if version and version != "unknown" else "")
-                         + "</span>")
-            lines.append(f"<span style='color:{ok}'>✔ DLC \"Charting the Unknown\" installed</span>"
-                         if dlc else
-                         f"<span style='color:{COLORS['text_dim']}'>– DLC not installed "
-                         "([DLC] entries stay hidden)</span>")
+            shown = version if version and version != "unknown" else "found"
+            self._t_game.set(shown, "Game folder found", ok)
+            if dlc:
+                self._t_dlc.set("Installed", "Charting the Unknown", ok)
+            else:
+                self._t_dlc.set("Not installed", "[DLC] entries stay hidden", dim)
         else:
-            lines.append(f"<span style='color:{warn}'>! Game not found – set the game "
-                         "folder (File menu)</span>")
+            self._t_game.set("Not found", "Set the game folder (File menu)", warn)
+            self._t_dlc.set("–", "needs the game folder", dim)
         if save:
-            lines.append(f"<span style='color:{ok}'>✔ Save loaded: "
-                         f"{os.path.basename(os.path.dirname(save)) or os.path.basename(save)}</span>")
+            name = os.path.basename(os.path.dirname(save)) or os.path.basename(save)
+            self._t_save.set(name, "Loaded", info)
         else:
-            lines.append(f"<span style='color:{warn}'>! No save loaded – the SAVE FILE "
-                         "pages need one (Save Browser)</span>")
-        self._status_label.setText("<br>".join(lines))
+            self._t_save.set("None", "Open one in the Save Browser", warn)
+        self._t_tool.set(f"v{self._version}", "Game Mod Tool + Save Editor", dim)
 
     def showEvent(self, event):  # noqa: N802
         self.refresh()
