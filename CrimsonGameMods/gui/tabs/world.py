@@ -80,31 +80,27 @@ class StoreEditorTab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
-        layout.addWidget(make_scope_label("game"))
-
-        info = QLabel(
-            "Edit vendor inventories — swap items, change purchase limits, "
-            "then Export Field JSON v3 and load it in DMM. "
-            "DLC items can be added to any shop (needs the DLC in game); prices come "
-            "from each item's price in the shop's currency. Added offers "
-            "appear in game after the shop restocks."
-        )
-        info.setWordWrap(True)
-        info.setStyleSheet(
-            f"color: {COLORS['accent']}; padding: 8px; "
-            f"border: 1px solid {COLORS['border']}; border-radius: 4px; "
-            f"background-color: rgba(218,168,80,0.08);"
-        )
-        layout.addWidget(info)
+        # New look 2.5: one toolbar, two cards.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
+        _strong = COLORS.get("text_strong", COLORS["text"])
+        _soft = COLORS.get("border_soft", COLORS["border"])
+        _info_text = (
+            "Edit vendor inventories - swap items, change purchase limits, add new offers, "
+            "then Export mod and load the file in DMM. DLC items can be added to any shop "
+            "(needs the DLC in game); prices come from each item's price in the shop's "
+            "currency. Added offers appear in game after the shop restocks.")
 
         top_row = QHBoxLayout()
-        store_extract_btn = QPushButton(tr("Load Store Data"))
+        top_row.setSpacing(8)
+        store_extract_btn = QPushButton("Load shops")
         store_extract_btn.setObjectName("accentBtn")
-        store_extract_btn.setToolTip(tr("Extract storeinfo.pabgb from the game PAZ archive"))
+        store_extract_btn.setToolTip("Read all shops from your game (\"Load Store Data\").")
         store_extract_btn.clicked.connect(self._store_extract)
         top_row.addWidget(store_extract_btn)
 
         import_json_btn = QPushButton(tr("Import JSON Patch"))
+        import_json_btn.setText("Import")
         import_json_btn.setToolTip(tr("Import a Pldada-format JSON vendor patch file"))
         import_json_btn.clicked.connect(self._store_import_json)
         top_row.addWidget(import_json_btn)
@@ -116,62 +112,70 @@ class StoreEditorTab(QWidget):
         top_row.addWidget(export_json_btn)
         self._dev_export_btn_store = export_json_btn
 
-        export_v3_btn = QPushButton("Export Field JSON v3")
-        export_v3_btn.setToolTip("Export store changes as DMM v3.1 field JSON (field-level, survives updates)")
-        export_v3_btn.clicked.connect(self._store_export_field_json_v3)
-        top_row.addWidget(export_v3_btn)
-
+        # Writing into the game folder is blocked since 2.04 (game_write_guard):
+        # Apply to Game, Restore and the overlay slot stay built but hidden.
         store_apply_btn = QPushButton(tr("Apply to Game"))
-        store_apply_btn.setObjectName("accentBtn")
-        store_apply_btn.setToolTip(
-            "Deploy modified storeinfo to the game as a PAZ overlay.\n"
-            "Original game files are NOT modified. Restart game to take effect.")
         store_apply_btn.clicked.connect(self._store_apply)
-        top_row.addWidget(store_apply_btn)
-
+        store_apply_btn.setVisible(False)
         store_restore_btn = QPushButton(tr("Restore"))
-        store_restore_btn.setStyleSheet(button_css("neutral") + " padding: 4px 8px;")
-        store_restore_btn.setToolTip("Remove the store overlay and restore vanilla storeinfo.")
         store_restore_btn.clicked.connect(self._store_restore)
-        top_row.addWidget(store_restore_btn)
-
-        top_row.addWidget(QLabel(tr("Overlay:")))
+        store_restore_btn.setVisible(False)
         self._store_overlay_spin = QSpinBox()
         self._store_overlay_spin.setRange(1, 9999)
         self._store_overlay_spin.setValue(self._config.get("store_overlay_dir", 60))
-        self._store_overlay_spin.setFixedWidth(70)
-        self._store_overlay_spin.setToolTip(
-            "PAZ group folder used when applying stores to game.\n"
-            "Default: 0060. Change if another mod already occupies 0060."
-        )
         self._store_overlay_spin.valueChanged.connect(
             lambda v: self._config.update({"store_overlay_dir": v}) or self.config_save_requested.emit()
         )
-        top_row.addWidget(self._store_overlay_spin)
+        self._store_overlay_spin.setVisible(False)
+        for _w in (store_apply_btn, store_restore_btn, self._store_overlay_spin):
+            _w.setParent(self)
 
         self._store_status = QLabel("")
-        self._store_status.setStyleSheet(f"color: {COLORS['accent']}; padding: 4px;")
+        self._store_status.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 0 6px;")
         top_row.addWidget(self._store_status, 1)
 
         self._store_changes_label = QLabel("")
-        self._store_changes_label.setStyleSheet(f"color: {COLORS['warning']}; font-weight: bold; padding: 4px;")
+        self._store_changes_label.setStyleSheet(
+            f"color: {COLORS['warning']}; font-weight: 700; padding: 0 6px;")
         top_row.addWidget(self._store_changes_label)
+        _info = QLabel("ⓘ")
+        _info.setToolTip(_info_text)
+        _info.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 16px; padding: 0 4px;")
+        _info.setCursor(Qt.WhatsThisCursor)
+        top_row.addWidget(_info)
         top_row.addWidget(make_help_btn("stores", self._show_guide_fn))
+        export_v3_btn = QPushButton("Export mod")
+        export_v3_btn.setObjectName("accentBtn")
+        export_v3_btn.setToolTip("Save your shop changes as a mod (DMM Field JSON v3.1) - "
+                                 "load the file in DMM.")
+        export_v3_btn.clicked.connect(self._store_export_field_json_v3)
+        top_row.addWidget(export_v3_btn)
         layout.addLayout(top_row)
 
+        def _card() -> tuple:
+            card = QFrame()
+            card.setObjectName("stCard")
+            card.setStyleSheet(
+                f"QFrame#stCard {{ background: {COLORS['panel']}; border: 1px solid {_soft}; "
+                f"border-radius: 12px; }}")
+            v = QVBoxLayout(card)
+            v.setContentsMargins(12, 10, 12, 12)
+            v.setSpacing(8)
+            return card, v
+
         splitter = QSplitter(Qt.Horizontal)
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(10)
 
-        store_frame = QFrame()
-        store_vlayout = QVBoxLayout(store_frame)
-        store_vlayout.setContentsMargins(0, 0, 0, 0)
-
-        store_search_row = QHBoxLayout()
-        store_search_row.addWidget(QLabel(tr("Search:")))
+        store_frame, store_vlayout = _card()
+        _shops_head = QLabel("Shops")
+        _shops_head.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {_strong}; background: transparent;")
+        store_vlayout.addWidget(_shops_head)
         self._store_search = QLineEdit()
-        self._store_search.setPlaceholderText(tr("Filter stores..."))
+        self._store_search.setPlaceholderText("Search shops, vendors or keys…")
+        self._store_search.setMinimumHeight(34)
         self._store_search.textChanged.connect(self._store_filter)
-        store_search_row.addWidget(self._store_search, 1)
-        store_vlayout.addLayout(store_search_row)
+        store_vlayout.addWidget(self._store_search)
 
         # The "Only shops that can sell DLC items" filter is gone (2.4.8): DLC
         # items work in every shop when the offer is written like the DLC
@@ -179,30 +183,39 @@ class StoreEditorTab(QWidget):
 
         self._store_list = QTableWidget()
         self._store_list.setColumnCount(5)
-        self._store_list.setHorizontalHeaderLabels(["Key", "Store Name", "Items", "Currency", "Vendor"])
+        self._store_list.setHorizontalHeaderLabels(["Key", "Shop", "Items", "Currency", "Vendor"])
         self._store_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._store_list.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._store_list.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._store_list.verticalHeader().setVisible(False)
+        self._store_list.setShowGrid(False)
         sh = self._store_list.horizontalHeader()
         sh.setSectionResizeMode(0, QHeaderView.Interactive)
-        self._store_list.setColumnWidth(0, 80)
-        sh.setSectionResizeMode(1, QHeaderView.Interactive)
-        self._store_list.setColumnWidth(1, 280)  # room for "[DLC items OK] "
+        self._store_list.setColumnWidth(0, 60)
+        sh.setSectionResizeMode(1, QHeaderView.Stretch)
         sh.setSectionResizeMode(2, QHeaderView.Interactive)
-        self._store_list.setColumnWidth(2, 60)
+        self._store_list.setColumnWidth(2, 54)
         sh.setSectionResizeMode(3, QHeaderView.Interactive)
         self._store_list.setColumnWidth(3, 80)
         sh.setSectionResizeMode(4, QHeaderView.Interactive)
-        self._store_list.setColumnWidth(4, 140)
-        self._store_list.verticalHeader().setDefaultSectionSize(24)
+        self._store_list.setColumnWidth(4, 130)
+        self._store_list.setColumnHidden(0, True)      # key: searchable, shown in the heading
+        self._store_list.setColumnHidden(3, True)      # currency: shown in the heading
+        self._store_list.verticalHeader().setDefaultSectionSize(30)
         self._store_list.selectionModel().selectionChanged.connect(self._store_selected)
+        self._store_list.selectionModel().selectionChanged.connect(self._store_update_heading)
         store_vlayout.addWidget(self._store_list)
         splitter.addWidget(store_frame)
 
-        items_frame = QFrame()
-        items_vlayout = QVBoxLayout(items_frame)
-        items_vlayout.setContentsMargins(0, 0, 0, 0)
-        items_vlayout.addWidget(QLabel(tr("Items in Store:")))
+        items_frame, items_vlayout = _card()
+        self._store_heading = QLabel("No shop selected")
+        self._store_heading.setStyleSheet(
+            f"font-size: 15px; font-weight: 700; color: {_strong}; background: transparent;")
+        self._store_subheading = QLabel("Pick a shop on the left")
+        self._store_subheading.setStyleSheet(
+            f"font-size: 12px; color: {COLORS['text_dim']}; background: transparent;")
+        items_vlayout.addWidget(self._store_heading)
+        items_vlayout.addWidget(self._store_subheading)
 
         self._store_items_table = QTableWidget()
         self._store_items_table.setColumnCount(9)
@@ -229,6 +242,8 @@ class StoreEditorTab(QWidget):
         )
         self._store_items_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._store_items_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._store_items_table.verticalHeader().setVisible(False)
+        self._store_items_table.setShowGrid(False)
         self._store_items_table.itemChanged.connect(self._store_cell_changed)
         self._store_items_table.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         ih = self._store_items_table.horizontalHeader()
@@ -238,79 +253,94 @@ class StoreEditorTab(QWidget):
         ih.setMinimumSectionSize(icon_col_w if self._icons_enabled else 20)
         ih.setSectionResizeMode(1, QHeaderView.Fixed)
         self._store_items_table.setColumnWidth(1, 70)
-        ih.setSectionResizeMode(2, QHeaderView.Interactive)
-        self._store_items_table.setColumnWidth(2, 200)
+        ih.setSectionResizeMode(2, QHeaderView.Stretch)
         ih.setSectionResizeMode(3, QHeaderView.Interactive)
-        self._store_items_table.setColumnWidth(3, 100)
-        ih.setSectionResizeMode(4, QHeaderView.Interactive)
-        self._store_items_table.setColumnWidth(4, 60)
-        ih.setSectionResizeMode(5, QHeaderView.Interactive)
-        self._store_items_table.setColumnWidth(5, 80)
-        ih.setSectionResizeMode(6, QHeaderView.Interactive)
-        self._store_items_table.setColumnWidth(6, 80)
-        ih.setSectionResizeMode(7, QHeaderView.Interactive)
-        self._store_items_table.setColumnWidth(7, 60)
-        ih.setSectionResizeMode(8, QHeaderView.Interactive)
-        self._store_items_table.setColumnWidth(8, 60)
-        row_h = max(ICON_SIZE + 6, 28) if self._icons_enabled else 24
+        self._store_items_table.setColumnWidth(3, 110)
+        for _c, _w in ((4, 70), (5, 90), (6, 90), (7, 64), (8, 64)):
+            ih.setSectionResizeMode(_c, QHeaderView.Interactive)
+            self._store_items_table.setColumnWidth(_c, _w)
+        row_h = max(ICON_SIZE + 6, 30) if self._icons_enabled else 30
         self._store_items_table.verticalHeader().setDefaultSectionSize(row_h)
-        items_vlayout.addWidget(self._store_items_table)
+        items_vlayout.addWidget(self._store_items_table, 1)
 
-        edit_row = QHBoxLayout()
-        swap_btn = QPushButton(tr("Swap Selected"))
-        swap_btn.setObjectName("accentBtn")
-        swap_btn.setToolTip(tr("Replace selected item(s) with a different item from the database"))
-        swap_btn.clicked.connect(self._store_swap_item)
-        edit_row.addWidget(swap_btn)
-
-        add_btn = QPushButton("Add Item")
+        bar = QFrame()
+        bar.setObjectName("actionBar")
+        edit_row = QHBoxLayout(bar)
+        edit_row.setContentsMargins(10, 6, 10, 6)
+        edit_row.setSpacing(6)
+        add_btn = QPushButton("Add item")
         add_btn.setObjectName("accentBtn")
         add_btn.setToolTip(
             "Add an item as a NEW offer to this shop (nothing is replaced).\n"
-            "Stock: the 'Set Limit' value.\n"
+            "Stock: the Limit value.\n"
             "In game the new offer shows up after the shop restocks\n"
             "(see 'Updated in ...' at the shop; sleeping or waiting is enough).")
         add_btn.clicked.connect(self._store_add_item)
         edit_row.addWidget(add_btn)
 
-        remove_btn = QPushButton("Remove Added")
+        swap_btn = QPushButton("Swap")
+        swap_btn.setToolTip(tr("Replace selected item(s) with a different item from the database"))
+        swap_btn.clicked.connect(self._store_swap_item)
+        edit_row.addWidget(swap_btn)
+
+        remove_btn = QPushButton("Remove added")
         remove_btn.setToolTip(
-            "Take offers you added with 'Add Item' out again (before exporting).\n"
+            "Take offers you added with 'Add item' out again (before exporting).\n"
             "The shop's own offers stay - to hide one of those, set its limit to 0.")
         remove_btn.clicked.connect(self._store_remove_added)
         edit_row.addWidget(remove_btn)
 
-        dlc_vendor_btn = QPushButton("DLC Vendor...")
+        _sep = QFrame()
+        _sep.setFrameShape(QFrame.VLine)
+        _sep.setStyleSheet(f"color: {_soft};")
+        edit_row.addSpacing(6)
+        edit_row.addWidget(_sep)
+        edit_row.addSpacing(6)
+        _lim = QLabel("Limit")
+        _lim.setStyleSheet("background: transparent;")
+        edit_row.addWidget(_lim)
+        self._store_limit_spin = QSpinBox()
+        self._store_limit_spin.setRange(0, 99999)
+        self._store_limit_spin.setValue(999)
+        self._store_limit_spin.setFixedWidth(84)
+        self._store_limit_spin.setToolTip("How many a player can buy (also the stock of new offers).")
+        edit_row.addWidget(self._store_limit_spin)
+
+        set_limit_btn = QPushButton("Set for selected")
+        set_limit_btn.setToolTip(tr("Set purchase limit for selected item(s)"))
+        set_limit_btn.clicked.connect(self._store_set_limit)
+        edit_row.addWidget(set_limit_btn)
+
+        set_all_limit_btn = QPushButton("Set for all")
+        set_all_limit_btn.setToolTip(tr("Set purchase limit for ALL items in this store"))
+        set_all_limit_btn.clicked.connect(self._store_set_all_limits)
+        edit_row.addWidget(set_all_limit_btn)
+
+        edit_row.addStretch()
+        dlc_vendor_btn = QPushButton("Make DLC vendor…")
         dlc_vendor_btn.setToolTip(
             "Turn the selected shop into a DLC vendor: adds the DLC's weapons,\n"
             "armor, materials, blueprints ... as new offers, optionally all at\n"
             "one price in Silver. Works in every shop (needs the DLC in game).")
         dlc_vendor_btn.clicked.connect(self._store_dlc_vendor)
         edit_row.addWidget(dlc_vendor_btn)
-
-        edit_row.addWidget(QLabel(tr("Set Limit:")))
-        self._store_limit_spin = QSpinBox()
-        self._store_limit_spin.setRange(0, 99999)
-        self._store_limit_spin.setValue(999)
-        self._store_limit_spin.setFixedWidth(80)
-        edit_row.addWidget(self._store_limit_spin)
-
-        set_limit_btn = QPushButton(tr("Apply Limit"))
-        set_limit_btn.setToolTip(tr("Set purchase limit for selected item(s)"))
-        set_limit_btn.clicked.connect(self._store_set_limit)
-        edit_row.addWidget(set_limit_btn)
-
-        set_all_limit_btn = QPushButton(tr("Set ALL Limits"))
-        set_all_limit_btn.setToolTip(tr("Set purchase limit for ALL items in this store"))
-        set_all_limit_btn.clicked.connect(self._store_set_all_limits)
-        edit_row.addWidget(set_all_limit_btn)
-
-        edit_row.addStretch()
-        items_vlayout.addLayout(edit_row)
-
+        items_vlayout.addWidget(bar)
 
         splitter.addWidget(items_frame)
-        splitter.setSizes([300, 500])
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        from PySide6.QtCore import QEvent, QObject
+
+        class _SplitOnce(QObject):
+            def eventFilter(self, obj, ev):  # noqa: N802
+                if ev.type() == QEvent.Show and obj.width() > 0:
+                    w = obj.width()
+                    left = max(320, int(w * 0.30))
+                    obj.setSizes([left, max(400, w - left)])
+                    obj.removeEventFilter(self)
+                return False
+        self._st_split_once = _SplitOnce(splitter)
+        splitter.installEventFilter(self._st_split_once)
         layout.addWidget(splitter, 1)
 
         self._store_dmm = None
@@ -567,8 +597,8 @@ class StoreEditorTab(QWidget):
             if not display:
                 display = sname.replace("Store_", "").replace("_", " ")
             origin = getattr(self, '_store_origin', {}).get(int(skey), "base")
-            tag = {"dlc_only": "[DLC shop] ", "dlc_plus": "[DLC items OK] "}.get(origin, "")
-            name_item = QTableWidgetItem(tag + display)
+            tag = {"dlc_only": "  (DLC shop)"}.get(origin, "")
+            name_item = QTableWidgetItem(display + tag)
             name_item.setToolTip(sname + {
                 "dlc_only": "\nOnly exists with the DLC - can sell DLC items.",
                 "dlc_plus": "\nThe DLC ships its own version of this shop - can sell DLC items.\n"
@@ -595,6 +625,30 @@ class StoreEditorTab(QWidget):
                                  if vendors else "No vendor found for this shop.")
             table.setItem(row, 4, vend_item)
         table.setSortingEnabled(True)
+
+    def _store_update_heading(self, *_args) -> None:
+        """Name, vendor, currency and size of the selected shop above its items."""
+        if not hasattr(self, "_store_heading"):
+            return
+        rows = self._store_list.selectionModel().selectedRows()
+        if not rows:
+            self._store_heading.setText("No shop selected")
+            self._store_subheading.setText("Pick a shop on the left")
+            return
+        r = rows[0].row()
+
+        def cell(c):
+            it = self._store_list.item(r, c)
+            return it.text() if it is not None else ""
+        vend = self._store_list.item(r, 4)
+        vendors = (vend.toolTip().split("\n")[0].replace("Run by: ", "")
+                   if vend is not None and vend.toolTip().startswith("Run by: ") else "")
+        bits = [b for b in (f"Run by {vendors}" if vendors else "",
+                            f"Pays in {cell(3)}" if cell(3) else "",
+                            f"{cell(2)} offers" if cell(2) else "",
+                            f"key {cell(0)}" if cell(0) else "") if b]
+        self._store_heading.setText(cell(1) or "Shop")
+        self._store_subheading.setText("  ·  ".join(bits))
 
     def _store_filter(self, text: str) -> None:
         self._store_populate_list(text)
