@@ -360,6 +360,9 @@ def sync(win) -> None:
     nav.blockSignals(True)
     nav.setCurrentItem(win._areas[found]["item"])
     nav.blockSignals(False)
+    if found != "Home":
+        from gui.page_polish import polish_safe
+        polish_safe(target)
     if found != win._area_current:
         win._area_current = found
         _fill_tabs(win, found, index)
