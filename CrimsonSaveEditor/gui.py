@@ -66,12 +66,31 @@ import quest_chapters
 
 
 def _pick_card_delegate(parent):
-    """Item delegate for the Add Mounts / Add Pets cards: a rounded card
-    behind each picture, tinted with an accent border when ticked."""
+    """Item delegate for the Add Mounts / Add Pets cards: a rounded card with
+    the picture, the name in up to two lines and a tick box; ticked cards get
+    an accent border and tint. A click anywhere on the card ticks it (the
+    list's itemClicked does that), so the delegate leaves mouse clicks alone."""
     from PySide6.QtWidgets import QStyledItemDelegate, QStyle
-    from PySide6.QtGui import QPainter, QPen
+    from PySide6.QtGui import QPainter, QPen, QFontMetrics
+    from PySide6.QtCore import QEvent, QRect, QRectF, QSize
 
     class _CardDelegate(QStyledItemDelegate):
+        @property
+        def ICON(self):  # noqa: N802 - the list's icon size
+            view = self.parent()
+            return view.iconSize().width() if view is not None else 72
+
+        def sizeHint(self, option, index):  # noqa: N802
+            view = self.parent()
+            g = view.gridSize() if view is not None else QSize()
+            return g if g.isValid() else QSize(150, 146)
+
+        def editorEvent(self, event, model, option, index):  # noqa: N802
+            if event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease,
+                                QEvent.MouseButtonDblClick):
+                return False
+            return super().editorEvent(event, model, option, index)
+
         def paint(self, painter, option, index):
             v = index.data(Qt.CheckStateRole)
             try:
@@ -83,15 +102,68 @@ def _pick_card_delegate(parent):
             r = option.rect.adjusted(3, 3, -3, -3)
             painter.save()
             painter.setRenderHint(QPainter.Antialiasing)
+            if not enabled:
+                painter.setOpacity(0.45)
             if on and enabled:
                 painter.setPen(QPen(QColor(COLORS["accent"]), 2))
                 painter.setBrush(QColor(COLORS["selected"]))
             else:
                 painter.setPen(QPen(QColor(COLORS["accent"] if hover and enabled else COLORS["border"]), 1))
                 painter.setBrush(QColor(COLORS["panel"]))
-            painter.drawRoundedRect(r, 12, 12)
+            painter.drawRoundedRect(QRectF(r), 12, 12)
+
+            # tick box, top left
+            box = QRectF(r.left() + 8, r.top() + 8, 18, 18)
+            if on:
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor(COLORS["accent"]))
+                painter.drawRoundedRect(box, 5, 5)
+                pen = QPen(QColor(COLORS.get("on_accent", "#04211d")), 2.2)
+                pen.setCapStyle(Qt.RoundCap)
+                pen.setJoinStyle(Qt.RoundJoin)
+                painter.setPen(pen)
+                painter.drawPolyline([box.topLeft() + _pt(4.5, 9.5), box.topLeft() + _pt(8, 13),
+                                      box.topLeft() + _pt(14, 5.5)])
+            else:
+                painter.setPen(QPen(QColor(COLORS["border"] if not hover else COLORS["accent"]), 1.4))
+                painter.setBrush(QColor(COLORS["bg"]))
+                painter.drawRoundedRect(box, 5, 5)
+
+            # picture
+            icon = index.data(Qt.DecorationRole)
+            top = r.top() + 10
+            if icon is not None and hasattr(icon, "pixmap"):
+                pm = icon.pixmap(self.ICON, self.ICON)
+                if not pm.isNull():
+                    x = r.left() + (r.width() - self.ICON) // 2
+                    painter.drawPixmap(QRect(x, top, self.ICON, self.ICON), pm)
+
+            # name: up to two lines, the rest as "…"
+            text = index.data(Qt.DisplayRole) or ""
+            f = painter.font()
+            f.setPointSizeF(max(8.0, f.pointSizeF() - 0.5))
+            f.setBold(True)
+            painter.setFont(f)
+            fm = QFontMetrics(f)
+            tr = QRect(r.left() + 6, top + self.ICON + 6, r.width() - 12, fm.lineSpacing() * 2 + 2)
+            flags = Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap
+            shown = text
+            if fm.boundingRect(tr, flags, shown).height() > tr.height():
+                lo, hi = 1, len(text)
+                while lo < hi:          # longest start that still fits in two lines
+                    mid = (lo + hi + 1) // 2
+                    if fm.boundingRect(tr, flags, text[:mid].rstrip() + "…").height() <= tr.height():
+                        lo = mid
+                    else:
+                        hi = mid - 1
+                shown = text[:lo].rstrip() + "…"
+            painter.setPen(QColor(COLORS.get("text_strong", COLORS["text"]) if enabled else COLORS["text_dim"]))
+            painter.drawText(tr, flags, shown)
             painter.restore()
-            super().paint(painter, option, index)
+
+    def _pt(x, y):
+        from PySide6.QtCore import QPointF
+        return QPointF(x, y)
 
     return _CardDelegate(parent)
 
@@ -8154,17 +8226,20 @@ QCheckBox::indicator {{
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
+        # New look 2.5: the pickers fill the page; the companion list with the
+        # rename buttons is the third tab.
+        rename_page = QWidget()
+        _rl = QVBoxLayout(rename_page)
+        _rl.setContentsMargins(4, 8, 4, 4)
+        _rl.setSpacing(8)
         info = QLabel(
-            "Mercenary/Pets — View, rename, and unlock mounts/companions.\n"
-            "Rename feature by Benreuveni (crimson-desert-companion-namer)."
+            "The mounts, pets and mercenaries in this save. Give them a name that shows in game.  "
+            "Rename feature by Benreuveni (crimson-desert-companion-namer), "
+            "name parser and rename engine by Tooltip."
         )
         info.setWordWrap(True)
-        info.setStyleSheet(
-            f"color: {COLORS['text']}; padding: 6px; "
-            f"border: 1px solid {COLORS['accent']}; border-radius: 4px; "
-            f"background-color: rgba(79,195,247,0.08);"
-        )
-        layout.addWidget(info)
+        info.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 2px;")
+        _rl.addWidget(info)
 
         self._merc_table = QTableWidget()
         self._merc_table.setColumnCount(6)
@@ -8177,8 +8252,8 @@ QCheckBox::indicator {{
         self._merc_table.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         self._merc_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Interactive)
         self._merc_table.setColumnWidth(5, 150)
-        self._merc_table.verticalHeader().setDefaultSectionSize(22)
-        layout.addWidget(self._merc_table, 1)
+        self._merc_table.verticalHeader().setDefaultSectionSize(26)
+        _rl.addWidget(self._merc_table, 1)
 
         btn_row1 = QHBoxLayout()
 
@@ -8210,7 +8285,7 @@ QCheckBox::indicator {{
         btn_row1.addWidget(clear_all_btn)
 
         btn_row1.addStretch()
-        layout.addLayout(btn_row1)
+        _rl.addLayout(btn_row1)
 
         from PySide6.QtWidgets import QGroupBox, QGridLayout
 
@@ -8225,6 +8300,7 @@ QCheckBox::indicator {{
         _pick_tabs = _QTabWidget()
         _pick_tabs.addTab(self._build_picker("mount"), "Add Mounts")
         _pick_tabs.addTab(self._build_picker("pet"), "Add Pets")
+        _pick_tabs.addTab(rename_page, "Rename companions")
         layout.addWidget(_pick_tabs, 1)
 
         self._merc_status = QLabel("")
@@ -8235,9 +8311,7 @@ QCheckBox::indicator {{
         # every DLC/bonus entitlement of the save to 0, also the ones the player
         # owns - not worth the risk for a button few need.
 
-        credits = QLabel("Credits to Tooltip for the mercenary name parser and rename engine.")
-        credits.setStyleSheet("color: #ff3333; font-size: 12px; font-weight: bold; padding: 4px;")
-        layout.addWidget(credits)
+        # The credits (Benreuveni, Tooltip) are in the Rename companions tab.
 
         self._tabs.addTab(tab, tr("tab.mercenary"))
         self._merc_entries = []
@@ -8254,7 +8328,7 @@ QCheckBox::indicator {{
                 "area": lambda g: g, "dlc": set(),
                 "note": ("Tick the pets you want, click Add Selected Pets, then save the file - they "
                          "show up in game with your pets, with full trust. Tick Show variants for the other "
-                         "looks (e.g. a black Loafy Cat). Tested in game 2.05 with all of them. Greyed out = this save has it already (after Refresh List). Abyss "
+                         "looks (e.g. a black Loafy Cat). Tested in game 2.05 with all of them. Greyed out = this save has it already. Abyss "
                          "Heuklang comes with its quest. Keep a backup of your save."),
                 "where": "with your pets",
             }
@@ -8264,8 +8338,8 @@ QCheckBox::indicator {{
             "area": lambda g: mu.AREA.get(g, "Land"), "dlc": mu.DLC_GROUPS,
             "note": ("Tick the mounts you want, click Add Selected Mounts, then save the file - they show up "
                      "in game with your special mounts (horses with your horses). Tested in game 2.05 with all "
-                     "of them. [DLC] = needs Charting the Unknown. Greyed out = this save has it already "
-                     "(after Refresh List). Blackstar comes with its quest. Keep a backup of your save."),
+                     "of them. [DLC] = needs Charting the Unknown. Greyed out = this save has it already. "
+                     "Blackstar comes with its quest. Keep a backup of your save."),
             "where": "with your special mounts",
         }
 
@@ -8303,8 +8377,8 @@ QCheckBox::indicator {{
         lw = QListWidget()
         lw.setProperty("noIconPreview", True)
         lw.setViewMode(QListView.ViewMode.IconMode)
-        lw.setIconSize(QSize(72, 72))
-        lw.setGridSize(QSize(148, 128))
+        lw.setIconSize(QSize(104, 104))
+        lw.setGridSize(QSize(178, 180))
         lw.setSpacing(6)
         lw.setUniformItemSizes(True)
         lw.setSelectionMode(QListView.SelectionMode.NoSelection)
@@ -8324,6 +8398,7 @@ QCheckBox::indicator {{
             it.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
             it.setCheckState(Qt.Unchecked)
             it.setTextAlignment(Qt.AlignHCenter | Qt.AlignTop)
+            it.setToolTip(name)
             it.setData(Qt.UserRole, key)
             it.setData(Qt.UserRole + 1, spec["area"](g))
             it.setData(Qt.UserRole + 2, variant)
