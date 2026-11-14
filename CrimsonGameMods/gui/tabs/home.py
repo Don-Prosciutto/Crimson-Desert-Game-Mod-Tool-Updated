@@ -63,18 +63,34 @@ class _Card(QFrame):
         self._on_click = on_click
         self.setCursor(Qt.PointingHandCursor)
         self.setObjectName("homeCard")
+        soft = COLORS.get("border_soft", COLORS["border"])
         self.setStyleSheet(
             f"QFrame#homeCard {{ background: {COLORS['panel']}; border: 1px solid "
-            f"{COLORS['border']}; border-radius: 6px; }}"
-            f"QFrame#homeCard:hover {{ border: 1px solid {accent}; }}")
+            f"{soft}; border-radius: 12px; }}"
+            f"QFrame#homeCard:hover {{ border: 1px solid {COLORS['accent']}; }}"
+            f"QFrame#homeCard QLabel {{ background: transparent; border: none; }}")
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(12, 9, 12, 10)
-        lay.setSpacing(3)
+        lay.setContentsMargins(16, 14, 16, 14)
+        lay.setSpacing(8)
+        top = QHBoxLayout()
+        top.setSpacing(0)
+        tile = QLabel()
+        tile.setFixedSize(34, 34)
+        tile.setAlignment(Qt.AlignCenter)
+        tile.setStyleSheet(f"QLabel {{ background: {COLORS['selected']}; border-radius: 9px; }}")
+        try:
+            from gui.icons import icon, icon_name_for
+            tile.setPixmap(icon(icon_name_for(title), accent, 18).pixmap(18, 18))
+        except Exception:  # noqa: BLE001
+            pass
+        top.addWidget(tile)
+        top.addStretch()
+        lay.addLayout(top)
         t = QLabel(title)
-        t.setStyleSheet("font-weight: bold; background: transparent; border: none;")
+        t.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {COLORS.get('text_strong', COLORS['text'])};")
         d = QLabel(desc)
         d.setWordWrap(True)
-        d.setStyleSheet(f"color: {COLORS['text_dim']}; background: transparent; border: none;")
+        d.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px;")
         lay.addWidget(t)
         lay.addWidget(d)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -90,13 +106,13 @@ def _box(title: str) -> tuple:
     f.setObjectName("homeBox")
     f.setStyleSheet(
         f"QFrame#homeBox {{ background: {COLORS['panel']}; border: 1px solid "
-        f"{COLORS['border']}; border-radius: 6px; }}"
+        f"{COLORS.get('border_soft', COLORS['border'])}; border-radius: 12px; }}"
         f"QFrame#homeBox QLabel {{ background: transparent; border: none; }}")
     lay = QVBoxLayout(f)
-    lay.setContentsMargins(14, 10, 14, 12)
-    lay.setSpacing(4)
+    lay.setContentsMargins(18, 14, 18, 16)
+    lay.setSpacing(8)
     h = QLabel(title)
-    h.setStyleSheet("font-weight: bold;")
+    h.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {COLORS.get('text_strong', COLORS['text'])};")
     lay.addWidget(h)
     return f, lay
 
@@ -126,22 +142,24 @@ class HomePage(QWidget):
         body = QWidget()
         scroll.setWidget(body)
         v = QVBoxLayout(body)
-        v.setContentsMargins(26, 20, 26, 20)
-        v.setSpacing(10)
+        v.setContentsMargins(32, 26, 32, 26)
+        v.setSpacing(12)
 
         title = QLabel(f"Crimson Desert Game Mod Tool  "
                        f"<span style='color:{COLORS['text_dim']}; font-size:13px; "
                        f"font-weight:normal'>v{version}</span>")
         title.setTextFormat(Qt.RichText)
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        title.setStyleSheet(f"font-size: 24px; font-weight: 700; "
+                            f"color: {COLORS.get('text_strong', COLORS['text'])};")
         v.addWidget(title)
         sub = QLabel("Make mods for DMM and edit your save. Pick a page on the left "
                      "or click a card below.")
-        sub.setStyleSheet(f"color: {COLORS['text_dim']};")
+        sub.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 14px;")
         v.addWidget(sub)
+        v.addSpacing(6)
 
         row = QHBoxLayout()
-        row.setSpacing(12)
+        row.setSpacing(14)
         st_box, st_lay = _box("Status")
         self._status_label = QLabel("")
         self._status_label.setTextFormat(Qt.RichText)
@@ -187,7 +205,7 @@ class HomePage(QWidget):
 
         v.addWidget(self._section("GAME FILES", "makes mods, load them in DMM",
                                   COLORS["scope_game"]))
-        v.addLayout(self._grid(GAME_CARDS, COLORS["scope_game"]))
+        v.addLayout(self._grid(GAME_CARDS, COLORS["accent"]))
         v.addWidget(self._section("SAVE FILE", "changes your loaded save (back it up first)",
                                   COLORS["scope_save"]))
         v.addLayout(self._grid(SAVE_CARDS, COLORS["scope_save"]))
@@ -202,15 +220,15 @@ class HomePage(QWidget):
         v.addStretch()
 
     def _section(self, name: str, hint: str, color: str) -> QLabel:
-        lab = QLabel(f"<span style='color:{color}; font-weight:bold; letter-spacing:1px'>"
-                     f"{name}</span>  <span style='color:{COLORS['text_dim']}'>– {hint}</span>")
+        lab = QLabel(f"<span style='color:{color}; font-size:12px; font-weight:700; letter-spacing:1px'>"
+                     f"{name}</span>&nbsp;&nbsp;<span style='color:{COLORS['text_dim']}'>{hint}</span>")
         lab.setTextFormat(Qt.RichText)
-        lab.setContentsMargins(0, 10, 0, 2)
+        lab.setContentsMargins(0, 16, 0, 4)
         return lab
 
     def _grid(self, cards, accent) -> QGridLayout:
         g = QGridLayout()
-        g.setSpacing(10)
+        g.setSpacing(12)
         for i, (label, desc) in enumerate(cards):
             g.addWidget(_Card(label, desc, accent, lambda l=label: self._goto(l)), i // 3, i % 3)
         for c in range(3):

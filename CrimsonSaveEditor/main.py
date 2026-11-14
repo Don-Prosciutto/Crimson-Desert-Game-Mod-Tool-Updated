@@ -132,8 +132,10 @@ def main() -> int:
     app.setApplicationName("Crimson Desert Save Editor")
     app.setApplicationVersion(APP_VERSION)
 
-    font = QFont("Consolas", 10)
-    font.setStyleHint(QFont.Monospace)
+    font = QFont()
+    font.setFamilies(["Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI",
+                      "Malgun Gothic", "Yu Gothic UI", "sans-serif"])
+    font.setPointSize(10)
     app.setFont(font)
 
     startup = create_startup_splash(APP_VERSION)

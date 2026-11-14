@@ -307,7 +307,7 @@ DARK_STYLESHEET = f"""
 QMainWindow, QWidget {{
     background-color: {COLORS['bg']};
     color: {COLORS['text']};
-    font-family: Consolas, 'Courier New', monospace;
+    font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Inter', 'Microsoft YaHei UI', sans-serif;
     font-size: 13px;
 }}
 QMenuBar {{
@@ -4237,7 +4237,7 @@ class MainWindow(QMainWindow):
 QMainWindow, QWidget {{
     background-color: {COLORS['bg']};
     color: {COLORS['text']};
-    font-family: Consolas, 'Courier New', monospace;
+    font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Inter', 'Microsoft YaHei UI', sans-serif;
     font-size: {s(font_main)}px;
 }}
 QMenuBar {{

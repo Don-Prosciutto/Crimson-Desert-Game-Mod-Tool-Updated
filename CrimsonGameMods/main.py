@@ -1,5 +1,16 @@
 import sys
 import os
+import time as _time
+
+_T0 = _time.perf_counter()
+
+
+def _t(label: str) -> None:
+    """Startup timing for logs.txt - shows which step is slow."""
+    try:
+        print(f"[startup] {label}: {_time.perf_counter() - _T0:.2f} s")
+    except Exception:
+        pass
 
 
 def _splash(text: str) -> None:
@@ -94,7 +105,7 @@ from gui import MainWindow
 
 
 _CJK_FONT_STACK = [
-    "Consolas",
+    "Segoe UI Variable Text",
     "Segoe UI",
     "Microsoft YaHei",
     "Microsoft JhengHei",
@@ -189,8 +200,13 @@ def main() -> None:
     font = QFont()
     font.setFamilies(_CJK_FONT_STACK)
     font.setPointSize(10)
-    font.setStyleHint(QFont.Monospace)
     app.setFont(font)
+    try:
+        from gui.icons import window_icon
+        app.setWindowIcon(window_icon())
+    except Exception as e:  # noqa: BLE001
+        print(f"[icon] {e}")
+    _t("Qt ready")
 
     chosen_language = _compute_startup_language()
     try:
@@ -207,7 +223,9 @@ def main() -> None:
         game_write_guard.install()
     except Exception as e:  # noqa: BLE001
         print(f"[game_write_guard] install failed: {e}")
+    _t("modules loaded")
     window = MainWindow()
+    _t("main window built")
     # The slow part of startup runs here, behind the splash screen, so the
     # window appears only when it can take clicks.
     _splash("Loading the Save Editor...")
@@ -215,12 +233,14 @@ def main() -> None:
         window.finish_startup_loading()
     except Exception as e:  # noqa: BLE001 - the window must still open
         print(f"[startup] Save Editor load failed: {e}")
+    _t("Save Editor built")
     _splash_close()
     try:
         game_write_guard.attach(window)
     except Exception as e:  # noqa: BLE001
         print(f"[game_write_guard] attach failed: {e}")
     window.show()
+    _t("window shown")
 
     try:
         from gui_i18n import needs_language_picker

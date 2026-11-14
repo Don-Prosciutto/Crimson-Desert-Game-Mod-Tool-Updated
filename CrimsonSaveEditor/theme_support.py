@@ -15,8 +15,16 @@ CLASSIC_COLORS = {
     "selected": "#5c4320", "border": "#554430", "input_bg": "#1e1610",
     "panel_text": "#f0e6d4", "primary_text": "#f0e6d4", "accent_text": "#111111", "selection_text": "#FFFFFF", "success": "#9cc470", "warning": "#f0b040", "error": "#d44f40",
 }
-# Graphite - neutral mid grey, the default since v2.3.0, same palette as the
-# Game Mod Tool.
+# Abyss Teal - deep navy with a teal accent, the default since v2.5, same
+# palette as the Game Mod Tool.
+ABYSS_COLORS = {
+    "bg": "#0a101c", "panel": "#132036", "header": "#182844",
+    "accent": "#2dd4bf", "text": "#e6eef8", "text_dim": "#93a4bd",
+    "selected": "#0f3434", "border": "#24365a", "input_bg": "#0e1626",
+    "panel_text": "#e6eef8", "primary_text": "#e6eef8", "accent_text": "#04211d", "selection_text": "#FFFFFF", "success": "#5be0a0", "warning": "#f5b547", "error": "#f87171",
+}
+# Graphite - neutral mid grey, the default from v2.3.0 to v2.4.9, same
+# palette as the Game Mod Tool.
 GRAPHITE_COLORS = {
     "bg": "#2b2d30", "panel": "#323438", "header": "#3c3f43",
     "accent": "#548af7", "text": "#dfe1e5", "text_dim": "#a0a3aa",
@@ -30,7 +38,7 @@ GITHUB_DARK_COLORS = {
     "selected": "#1f3a5f", "border": "#30363d", "input_bg": "#0a0d12",
     "panel_text": "#e6edf3", "primary_text": "#e6edf3", "accent_text": "#FFFFFF", "selection_text": "#FFFFFF", "success": "#3fb950", "warning": "#d29922", "error": "#f85149",
 }
-DARK_COLORS = GRAPHITE_COLORS
+DARK_COLORS = ABYSS_COLORS
 LIGHT_COLORS = {
     "bg": "#f5f5f5", "panel": "#ffffff", "header": "#d8d8d8",
     "accent": "#8B3A00", "text": "#111111", "text_dim": "#3d3d3d",
@@ -57,7 +65,9 @@ def _palette(bg, panel, header, accent, text, dim, selected, border, input_bg,
 
 
 THEME_PRESETS = {
-    "dark": {"name": "Graphite", "description": "Neutral mid grey with a calm blue accent. The default.",
+    "dark": {"name": "Abyss Teal", "description": "Deep navy with a teal accent. The default.",
+             "colors": ABYSS_COLORS, "tab": ("#0f3434", "#ffffff", "#2dd4bf")},
+    "graphite": {"name": "Graphite", "description": "Neutral mid grey with a calm blue accent.",
              "colors": GRAPHITE_COLORS, "tab": ("#3a4a66", "#ffffff", "#548af7")},
     "github_dark": {"name": "GitHub Dark", "description": "Very dark grey with a clear blue accent.",
              "colors": GITHUB_DARK_COLORS, "tab": ("#1f2a3a", "#ffffff", "#2f81f7")},

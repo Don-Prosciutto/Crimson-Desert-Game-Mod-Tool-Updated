@@ -1316,10 +1316,41 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
         side = QWidget()
         side.setObjectName("navSide")
-        side.setFixedWidth(215)
+        side.setFixedWidth(236)
         v = QVBoxLayout(side)
-        v.setContentsMargins(0, 0, 0, 6)
+        v.setContentsMargins(0, 0, 0, 8)
         v.setSpacing(6)
+        # Header: emblem, name, version (new look, 2.5).
+        try:
+            from gui.icons import emblem_pixmap
+            from updater import APP_VERSION as _nav_ver
+            head = QWidget()
+            head.setObjectName("navHead")
+            hl = QHBoxLayout(head)
+            hl.setContentsMargins(16, 14, 12, 10)
+            hl.setSpacing(10)
+            logo = QLabel()
+            logo.setPixmap(emblem_pixmap(30, COLORS["accent"]))
+            logo.setFixedSize(30, 30)
+            hl.addWidget(logo)
+            names = QVBoxLayout()
+            names.setSpacing(0)
+            t1 = QLabel("CrimsonGameMods")
+            t1.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {COLORS.get('text_strong', COLORS['text'])};")
+            gv = ""
+            try:
+                gv = self._home_status()[1] or ""
+            except Exception:  # noqa: BLE001
+                gv = ""
+            t2 = QLabel(f"v{_nav_ver}" + (f" · Game {gv}" if gv and gv != "unknown" else ""))
+            t2.setStyleSheet(f"font-size: 11px; color: {COLORS['text_dim']};")
+            self._nav_version_label = t2
+            names.addWidget(t1)
+            names.addWidget(t2)
+            hl.addLayout(names, 1)
+            v.addWidget(head)
+        except Exception:  # noqa: BLE001 - the header is decoration only
+            log.exception("navigation header")
         nav = QTreeWidget()
         nav.setObjectName("navTree")
         nav.setHeaderHidden(True)
@@ -1329,15 +1360,19 @@ class MainWindow(SelfTestMixin, QMainWindow):
         nav.header().setSectionResizeMode(0, _QHV.Stretch)
         nav.header().setSectionResizeMode(1, _QHV.ResizeToContents)
         nav.setRootIsDecorated(False)
-        nav.setIndentation(14)
+        nav.setIndentation(0)
         nav.setFocusPolicy(Qt.NoFocus)
+        nav.setIconSize(QSize(18, 18))
+        _side_bg = COLORS.get("side", COLORS["panel"])
         nav.setStyleSheet(
-            f"QTreeWidget#navTree {{ background: {COLORS['panel']}; border: none; "
-            f"padding-top: 6px; font-size: 12px; }}"
-            f"QTreeWidget#navTree::item {{ padding: 4px 6px; border-left: 3px solid transparent; }}"
+            f"QTreeWidget#navTree {{ background: {_side_bg}; border: none; border-radius: 0px; "
+            f"padding: 2px 10px; font-size: 13px; color: {COLORS['text']}; outline: none; }}"
+            f"QTreeWidget#navTree::item {{ padding: 6px 8px; border-radius: 8px; margin: 1px 0px; "
+            f"border: none; }}"
             f"QTreeWidget#navTree::item:hover {{ background: {COLORS['header']}; }}"
             f"QTreeWidget#navTree::item:selected {{ background: {COLORS['selected']}; "
-            f"color: {COLORS['text']}; border-left: 3px solid {COLORS['accent']}; }}")
+            f"color: {COLORS.get('text_strong', COLORS['text'])}; }}"
+            f"QTreeWidget#navTree::branch {{ background: transparent; border: none; }}")
         v.addWidget(nav, 1)
         # The Save Browser toggle used to sit in the tab bar corner.
         corner = rt.cornerWidget(Qt.TopRightCorner)
@@ -1347,8 +1382,9 @@ class MainWindow(SelfTestMixin, QMainWindow):
             v.addWidget(corner)
             corner.show()
         side.setStyleSheet(
-            f"QWidget#navSide {{ background: {COLORS['panel']}; "
-            f"border-right: 1px solid {COLORS['border']}; }}")
+            f"QWidget#navSide {{ background: {COLORS.get('side', COLORS['panel'])}; "
+            f"border-right: 1px solid {COLORS.get('border_soft', COLORS['border'])}; }}"
+            f"QWidget#navHead {{ background: transparent; }}")
 
         h.addWidget(side)
         h.addWidget(rt, 1)
@@ -1361,6 +1397,16 @@ class MainWindow(SelfTestMixin, QMainWindow):
         nav.itemClicked.connect(self._nav_clicked)
         rt.currentChanged.connect(lambda _i: self._nav_sync())
         self._nav_rebuild()
+
+    def _nav_set_icon(self, item, label: str, on: bool) -> None:
+        """Line icon in front of a page name; the open page's in the accent."""
+        try:
+            from gui.icons import icon, icon_name_for
+            item.setIcon(0, icon(icon_name_for(label),
+                                 COLORS["accent"] if on else COLORS["text_dim"], 18))
+            item.setData(0, Qt.UserRole + 1, on)
+        except Exception:  # noqa: BLE001 - icons are decoration only
+            pass
 
     def _nav_scope(self, page) -> str:
         if page is getattr(self, "_mods_tabs", None):
@@ -1411,6 +1457,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
                         continue
                     it = QTreeWidgetItem(grp, [page.tabText(j)])
                     it.setData(0, Qt.UserRole, ("page", page, page.widget(j)))
+                    self._nav_set_icon(it, page.tabText(j), False)
                     it.setFirstColumnSpanned(True)
                     tip = page.tabToolTip(j)
                     if tip:
@@ -1422,6 +1469,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
             else:
                 it = QTreeWidgetItem([label])
                 it.setData(0, Qt.UserRole, ("page", rt, page))
+                self._nav_set_icon(it, label, False)
                 if scope == "save":
                     it.setToolTip(0, "Changes your SAVE FILE")
                 nav.addTopLevelItem(it)
@@ -1468,11 +1516,14 @@ class MainWindow(SelfTestMixin, QMainWindow):
         while itr.value():
             it = itr.value()
             d = it.data(0, Qt.UserRole)
-            if d and d[0] == "page" and d[2] is target:
-                nav.blockSignals(True)
-                nav.setCurrentItem(it)
-                nav.blockSignals(False)
-                return
+            if d and d[0] == "page":
+                on = d[2] is target
+                if it.data(0, Qt.UserRole + 1) != on:
+                    self._nav_set_icon(it, it.text(0), on)
+                if on:
+                    nav.blockSignals(True)
+                    nav.setCurrentItem(it)
+                    nav.blockSignals(False)
             itr += 1
 
     def _apply_save_browser_mode(self, pinned: bool, show: bool) -> None:
