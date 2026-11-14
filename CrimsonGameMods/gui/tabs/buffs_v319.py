@@ -1333,6 +1333,7 @@ class ItemBuffsTab(QWidget):
         _iv.addLayout(_r2)
         items_frame = build_items_frame()
         self._buff_items_table.verticalHeader().setVisible(False)
+        self._buff_items_table.verticalHeader().setDefaultSectionSize(30)
         self._buff_items_table.setShowGrid(False)
         self._buff_items_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         _first_label = items_frame.layout().itemAt(0).widget()
@@ -1351,6 +1352,11 @@ class ItemBuffsTab(QWidget):
         self._buff_stats_table.verticalHeader().setVisible(False)
         self._buff_stats_table.setShowGrid(False)
         self._buff_stats_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        try:
+            from gui.stat_rows import install as _install_stat_rows
+            _install_stat_rows(self._buff_stats_table)
+        except Exception:  # noqa: BLE001 - drawing only
+            log.exception("stat rows")
         _cap = stats_table_frame.layout().itemAt(1).widget()
         if isinstance(_cap, QLabel):
             _cap.setText("Current stats and buffs")
@@ -4173,11 +4179,14 @@ class ItemBuffsTab(QWidget):
         display_name = self._name_db.get_name(item.item_key) if hasattr(self, '_name_db') else item.name
         if display_name.startswith("Unknown"):
             display_name = item.name
+        import html as _html
+        self._buff_selected_label.setTextFormat(Qt.RichText)
         self._buff_selected_label.setText(
-            f"Editing: {display_name}  (key {item.item_key}, {item.name})")
-        self._buff_selected_label.setStyleSheet(
-            f"color: {COLORS['accent']}; font-size: 15px; font-weight: 700; padding: 2px 2px;"
-        )
+            f"<div style='font-size:17px; font-weight:700; color:{COLORS.get('text_strong', COLORS['text'])}'>"
+            f"{_html.escape(display_name)}</div>"
+            f"<div style='font-size:12px; color:{COLORS['text_dim']}'>"
+            f"key {item.item_key} &nbsp;·&nbsp; {_html.escape(str(item.name))}</div>")
+        self._buff_selected_label.setStyleSheet("padding: 2px 2px 6px 2px; background: transparent;")
         self._buff_refresh_stats()
         self._buff_json_refresh()
 
