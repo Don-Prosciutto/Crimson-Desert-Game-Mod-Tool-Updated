@@ -1,4 +1,5 @@
 from __future__ import annotations
+import perf_log
 
 import importlib.util
 import json
@@ -393,6 +394,7 @@ class BagSpaceTab(QWidget):
             f"using {parser_name}."
         )
 
+    @perf_log.timed
     def _refresh_table(self) -> None:
         table = self._table
         self._updating_table = True

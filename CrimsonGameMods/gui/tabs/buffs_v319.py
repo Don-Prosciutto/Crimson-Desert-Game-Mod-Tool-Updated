@@ -1,4 +1,5 @@
 from __future__ import annotations
+import perf_log
 
 import datetime
 import json
@@ -3725,6 +3726,7 @@ class ItemBuffsTab(QWidget):
             QMessageBox.critical(self, "Extraction Failed", str(e))
 
 
+    @perf_log.timed
     def _buff_show_my_inventory(self, silent: bool = False) -> None:
         if self._buff_data is None:
             if silent:
@@ -3854,6 +3856,7 @@ class ItemBuffsTab(QWidget):
             labels[it.item_key] = name
         return labels, variant
 
+    @perf_log.timed
     def _buff_search_items(self) -> None:
         if self._buff_data is None:
             self._buff_extract_iteminfo(use_structural=False)
@@ -13145,6 +13148,7 @@ class ItemBuffsTab(QWidget):
         self.paz_refresh_requested.emit()
 
 
+    @perf_log.timed
     def _set_refresh_local(self) -> None:
         sets = self._set_mgr.scan_local()
         table = self._set_table
@@ -13661,6 +13665,7 @@ class ItemBuffsTab(QWidget):
             f"Imported: {key} from {path}\n\n"
             f"The imported values are now baked into your iteminfo data.")
 
+    @perf_log.timed
     def _render_items_into_table(self, results: list, status_text: str) -> None:
         """Mini renderer used by 'Find similar' — keeps the same columns/icons
         as `_buff_search_items` without needing a search query."""

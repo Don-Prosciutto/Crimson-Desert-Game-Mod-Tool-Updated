@@ -1,4 +1,5 @@
 from __future__ import annotations
+import perf_log
 
 import json
 import logging
@@ -990,6 +991,7 @@ class FieldEditTab(QWidget):
         import mount_list
         return mount_list.records_for(name, self._charinfo_mount_entries or [], self._fe_mount_name)
 
+    @perf_log.timed
     def _ml_populate(self) -> None:
         import mount_list
         t = self._ml_table
@@ -1756,6 +1758,7 @@ class FieldEditTab(QWidget):
             QMessageBox.critical(self, tr("Extract Failed"), str(e))
 
 
+    @perf_log.timed
     def _field_edit_populate(self):
         self._field_edit_editing = True
         entries = self._field_edit_entries
@@ -1819,6 +1822,7 @@ class FieldEditTab(QWidget):
         self._field_edit_modified = True
         self._field_edit_status.setText(f"Modified zone {e['key']}")
 
+    @perf_log.timed
     def _vehicle_populate(self):
         self._vehicle_editing = True
         entries = self._vehicle_entries
@@ -1913,6 +1917,7 @@ class FieldEditTab(QWidget):
         self._field_edit_modified = True
         self._field_edit_status.setText(f"Modified vehicle {e['name']}")
 
+    @perf_log.timed
     def _gptrigger_populate(self):
         self._gptrigger_editing = True
         show_all = self._gt_filter_combo.currentData() == "all"
@@ -1943,6 +1948,7 @@ class FieldEditTab(QWidget):
         self._gt_table.resizeColumnsToContents()
         self._gptrigger_editing = False
 
+    @perf_log.timed
     def _regioninfo_populate(self):
         self._regioninfo_editing = True
         show_all = self._ri_filter_combo.currentData() == "all"
@@ -2135,6 +2141,7 @@ class FieldEditTab(QWidget):
         log.info("DLC regions: %d, DLC mount types: %d",
                  len(self._fe_dlc_rows.get('regioninfo', [])), len(self._fe_dlc_rows.get('vehicleinfo', [])))
 
+    @perf_log.timed
     def _mount_populate(self):
         self._charinfo_editing = True
         from characterinfo_full_parser import MOUNT_VEHICLE_TYPES
@@ -2338,6 +2345,7 @@ class FieldEditTab(QWidget):
             key=lambda e: order.index(e['name']) if e.get('name') in order else 99,
         )
 
+    @perf_log.timed
     def _weapon_pkg_populate(self):
         self._weapon_pkg_editing = True
         try:

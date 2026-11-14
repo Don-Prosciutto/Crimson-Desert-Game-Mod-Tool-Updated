@@ -1,4 +1,5 @@
 from __future__ import annotations
+import perf_log
 
 import json as _json
 import logging
@@ -247,6 +248,7 @@ class DatabaseBrowserTab(QWidget):
                     pass
             self._icon_cache.request_icon(int(key), _arrived)
 
+    @perf_log.timed
     def _filter_database(self) -> None:
         table = self._db_table
         table.setSortingEnabled(False)
@@ -845,6 +847,7 @@ class RepurchaseTab(QWidget):
         self._filter_repurchase()
 
 
+    @perf_log.timed
     def _filter_repurchase(self) -> None:
         table = self._repurch_table
         table.setSortingEnabled(False)
@@ -1146,6 +1149,7 @@ class RepurchaseTab(QWidget):
         target_list.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         dl.addWidget(target_list, 1)
 
+        @perf_log.timed
         def refresh_list():
             text = search.text().strip()
             results = self._name_db.search(text) if text else self._name_db.get_all_sorted()[:200]
@@ -1311,6 +1315,7 @@ class RepurchaseTab(QWidget):
         target_list.setSortingEnabled(True)
         dl.addWidget(target_list, 1)
 
+        @perf_log.timed
         def refresh_list():
             text = search.text().strip()
             results = self._name_db.search(text) if text else self._name_db.get_all_sorted()[:200]

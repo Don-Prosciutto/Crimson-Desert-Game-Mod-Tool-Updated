@@ -1,4 +1,5 @@
 from __future__ import annotations
+import perf_log
 
 import datetime
 import json
@@ -521,6 +522,7 @@ class StoreEditorTab(QWidget):
         else:
             self._store_changes_label.setText("")
 
+    @perf_log.timed
     def _store_populate_list(self, filter_text: str = "") -> None:
         if not hasattr(self, '_store_dmm') or not self._store_dmm:
             return
@@ -609,6 +611,7 @@ class StoreEditorTab(QWidget):
         target_key = key_item.data(Qt.UserRole)
         return self._store_record(target_key)
 
+    @perf_log.timed
     def _store_selected(self, *_args) -> None:
         store = self._store_get_selected_store()
         if not store:
@@ -2233,6 +2236,7 @@ class SpawnTab(QWidget):
             self._spawn_status.setText(f"Error: {e}")
             QMessageBox.critical(self, tr("Extract Failed"), str(e))
 
+    @perf_log.timed
     def _spawn_filter(self):
         if not self._spawn_elements:
             return
@@ -3866,6 +3870,7 @@ class DropsetTab(QWidget):
             self._dropset_status.setText(f"Error: {e}")
             QMessageBox.critical(self, tr("Extract Failed"), str(e))
 
+    @perf_log.timed
     def _dropset_filter(self):
         if not self._dropset_editor:
             return
@@ -3928,6 +3933,7 @@ class DropsetTab(QWidget):
         self._dropset_set_label.setText(f"{name}  —  {len(ds.drops)} items")
         self._dropset_refresh_items(ds)
 
+    @perf_log.timed
     def _dropset_refresh_items(self, ds=None):
         if ds is None:
             if self._dropset_current_key is None:

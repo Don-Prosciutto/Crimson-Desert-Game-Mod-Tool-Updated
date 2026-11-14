@@ -1,4 +1,5 @@
 from __future__ import annotations
+import perf_log
 
 import datetime
 import json
@@ -183,6 +184,7 @@ class GiveItemDialog(QDialog):
 
         self._filter_targets("")
 
+    @perf_log.timed
     def _filter_targets(self, text: str) -> None:
         table = self._target_table
         table.setSortingEnabled(False)
@@ -256,6 +258,7 @@ class GiveItemDialog(QDialog):
         ]
         self._populate_donor_table(filtered)
 
+    @perf_log.timed
     def _populate_donor_table(self, donors) -> None:
         table = self._donor_table
         table.setSortingEnabled(False)
@@ -448,6 +451,7 @@ class AddItemDialog(QDialog):
 
         self._filter_items("")
 
+    @perf_log.timed
     def _filter_items(self, text: str) -> None:
         table = self._item_table
         table.setSortingEnabled(False)
@@ -813,6 +817,7 @@ class QuestEditorWindow(QDialog):
 
         self._filter()
 
+    @perf_log.timed
     def _filter(self, _text=None) -> None:
         table = self._table
         table.setSortingEnabled(False)
@@ -1279,6 +1284,7 @@ class DescriptionSearchDialog(QDialog):
             except Exception:
                 pass
 
+    @perf_log.timed
     def _filter(self):
         query = self._search.text().strip().lower()
         if len(query) < 2:
@@ -1411,6 +1417,7 @@ class ItemSearchDialog(QDialog):
             self._load_template_keys()
         self._filter(self._search.text())
 
+    @perf_log.timed
     def _filter(self, text: str) -> None:
         self._table.setSortingEnabled(False)
         results = self._name_db.search(text.strip()) if text.strip() else self._name_db.get_all_sorted()
@@ -1962,6 +1969,7 @@ class CreatePackDialog(QDialog):
         self._pack_items: List[PackItem] = []
         self._filter_items("")
 
+    @perf_log.timed
     def _filter_items(self, text: str) -> None:
         table = self._db_table
         table.setSortingEnabled(False)
@@ -2002,6 +2010,7 @@ class CreatePackDialog(QDialog):
                 self._pack_items.pop(row)
         self._refresh_pack_table()
 
+    @perf_log.timed
     def _refresh_pack_table(self) -> None:
         table = self._pack_table
         table.setRowCount(len(self._pack_items))

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import perf_log
 
 import datetime
 import json
@@ -735,6 +736,7 @@ class GiveItemDialog(QDialog):
 
         self._filter_targets("")
 
+    @perf_log.timed
     def _filter_targets(self, text: str) -> None:
         table = self._target_table
         table.setSortingEnabled(False)
@@ -808,6 +810,7 @@ class GiveItemDialog(QDialog):
         ]
         self._populate_donor_table(filtered)
 
+    @perf_log.timed
     def _populate_donor_table(self, donors) -> None:
         table = self._donor_table
         table.setSortingEnabled(False)
@@ -1005,6 +1008,7 @@ class AddItemDialog(QDialog):
 
         self._filter_items("")
 
+    @perf_log.timed
     def _filter_items(self, text: str) -> None:
         table = self._item_table
         table.setSortingEnabled(False)
@@ -1401,6 +1405,7 @@ class QuestEditorWindow(QDialog):
 
         self._filter()
 
+    @perf_log.timed
     def _filter(self, _text=None) -> None:
         table = self._table
         table.setSortingEnabled(False)
@@ -2063,6 +2068,7 @@ class DescriptionSearchDialog(QDialog):
             except Exception:
                 pass
 
+    @perf_log.timed
     def _filter(self):
         query = self._search.text().strip().lower()
         if len(query) < 2:
@@ -2199,6 +2205,7 @@ class ItemSearchDialog(QDialog):
             self._load_template_keys()
         self._filter(self._search.text())
 
+    @perf_log.timed
     def _filter(self, text: str) -> None:
         self._table.setSortingEnabled(False)
         results = self._name_db.search(text.strip()) if text.strip() else self._name_db.get_all_sorted()
@@ -2759,6 +2766,7 @@ class CreatePackDialog(QDialog):
         self._pack_items: List[PackItem] = []
         self._filter_items("")
 
+    @perf_log.timed
     def _filter_items(self, text: str) -> None:
         table = self._db_table
         table.setSortingEnabled(False)
@@ -2799,6 +2807,7 @@ class CreatePackDialog(QDialog):
                 self._pack_items.pop(row)
         self._refresh_pack_table()
 
+    @perf_log.timed
     def _refresh_pack_table(self) -> None:
         table = self._pack_table
         table.setRowCount(len(self._pack_items))
@@ -6434,6 +6443,7 @@ QCheckBox::indicator {{
         except Exception as e:
             self._community_status.setText(f"Template DB not loaded: {e}")
 
+    @perf_log.timed
     def _update_coverage_table(self) -> None:
         try:
             from template_sync import load_local_master
@@ -6682,6 +6692,7 @@ QCheckBox::indicator {{
         )
         self._update_community_status()
 
+    @perf_log.timed
     def _refresh_local_packs(self) -> None:
         packs = self._pack_mgr.scan_local()
         table = self._local_table
@@ -7360,6 +7371,7 @@ QCheckBox::indicator {{
         self._dye_current_part = None
         self._dye_updating = False
 
+    @perf_log.timed
     def _dye_load(self) -> None:
         if not self._save_data:
             QMessageBox.warning(self, "Dye", "Load a save file first.")
@@ -7494,6 +7506,7 @@ QCheckBox::indicator {{
         self._dye_current_part = None
         self._dye_refresh_parts()
 
+    @perf_log.timed
     def _dye_refresh_parts(self) -> None:
         if not self._dye_current_item:
             return
@@ -8440,6 +8453,7 @@ QCheckBox::indicator {{
             f"Added: {done}\n\nSave the file, then load it in game - they appear "
             f"{spec['where']}.")
 
+    @perf_log.timed
     def _merc_refresh(self) -> None:
         if not self._save_data:
             QMessageBox.warning(self, "Mercenary", "Load a save file first.")
@@ -9380,6 +9394,7 @@ QCheckBox::indicator {{
         self._repurchase_loaded = True
         self._update_status(f"Vendor repurchase: {len(self._repurch_items)} items loaded")
 
+    @perf_log.timed
     def _filter_repurchase(self) -> None:
         table = self._repurch_table
         table.setSortingEnabled(False)
@@ -9744,6 +9759,7 @@ QCheckBox::indicator {{
         target_list.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         dl.addWidget(target_list, 1)
 
+        @perf_log.timed
         def refresh_list():
             text = search.text().strip()
             results = self._name_db.search(text) if text else self._name_db.get_all_sorted()[:200]
@@ -9908,6 +9924,7 @@ QCheckBox::indicator {{
         target_list.setSortingEnabled(True)
         dl.addWidget(target_list, 1)
 
+        @perf_log.timed
         def refresh_list():
             text = search.text().strip()
             results = self._name_db.search(text) if text else self._name_db.get_all_sorted()[:200]
@@ -10634,6 +10651,7 @@ QCheckBox::indicator {{
 
         self._filter_quests()
 
+    @perf_log.timed
     def _filter_quests(self, _text=None) -> None:
         table = self._quest_table
         table.setSortingEnabled(False)
@@ -11210,6 +11228,7 @@ QCheckBox::indicator {{
             import traceback; traceback.print_exc()
             self._qe_status.setText(f"Error: {e}")
 
+    @perf_log.timed
     def _qe_filter(self, *_args) -> None:
         if not self._qe_entries:
             return
@@ -11861,6 +11880,7 @@ QCheckBox::indicator {{
             pass
         return self._qe_stage_names
 
+    @perf_log.timed
     def _qe_populate_stage_table(self, stages_list):
         STAGE_STATES = {1: 'Locked', 2: 'Available', 3: 'InProgress', 4: 'Ready', 5: 'Completed'}
 
@@ -12171,6 +12191,7 @@ QCheckBox::indicator {{
             pass
         return self._qe_gimmick_names
 
+    @perf_log.timed
     def _qe_filter_gimmicks(self, *_args):
         if not self._qe_deep_data or not self._qe_deep_data.gimmick_links:
             self._qe_gimmick_table.setRowCount(0)
@@ -12911,6 +12932,7 @@ QCheckBox::indicator {{
         dl.addWidget(copy_btn)
         dlg.exec()
 
+    @perf_log.timed
     def _qe_advanced_edit(self) -> None:
         entry = self._qe_get_selected_entry()
         if not entry:
@@ -13647,6 +13669,7 @@ QCheckBox::indicator {{
 
         self._filter_quest_db("")
 
+    @perf_log.timed
     def _filter_quest_db(self, text: str) -> None:
         table = self._qdb_table
         table.setSortingEnabled(False)
@@ -14200,6 +14223,7 @@ QCheckBox::indicator {{
         1000114: "Abyss Anchor",
     }
 
+    @perf_log.timed
     def _populate_waypoints(self) -> None:
         table = self._waypoint_table
 
@@ -14833,6 +14857,7 @@ QCheckBox::indicator {{
     def _know_filter_live(self, *_args) -> None:
         self._know_filter(max_rows=100)
 
+    @perf_log.timed
     def _know_filter(self, *_args, max_rows: int = 0) -> None:
         if not self._know_all_entries:
             return
@@ -15520,6 +15545,7 @@ QCheckBox::indicator {{
         except Exception:
             pass
 
+    @perf_log.timed
     def _player_load(self):
         if not self._save_data:
             QMessageBox.warning(self, "Player", "Load a save file first.")
@@ -15903,6 +15929,7 @@ QCheckBox::indicator {{
         self._update_status(f"Knowledge maxed: {len(need_upgrade)} entries set to Lv 5")
 
 
+    @perf_log.timed
     def _populate_bag_space(self) -> None:
         self._bag_categories = []
         self._bag_table.setRowCount(0)
@@ -16259,6 +16286,7 @@ QCheckBox::indicator {{
 
         return best or []
 
+    @perf_log.timed
     def _populate_faction_tab(self) -> None:
         if not hasattr(self, '_faction_elem_table'):
             return
@@ -16411,6 +16439,7 @@ QCheckBox::indicator {{
         self._populate_bonds()
         self._populate_sublevels()
 
+    @perf_log.timed
     def _populate_bonds(self) -> None:
         if not hasattr(self, '_bond_table') or not self._save_data:
             return
@@ -16483,6 +16512,7 @@ QCheckBox::indicator {{
         except Exception as e:
             log.warning("Bond populate failed: %s", e)
 
+    @perf_log.timed
     def _populate_sublevels(self) -> None:
         if not hasattr(self, '_sublevel_table') or not self._save_data:
             return
@@ -17118,6 +17148,7 @@ QCheckBox::indicator {{
             self._cmod_loader.ensure_folders()
         return self._cmod_loader
 
+    @perf_log.timed
     def _cmod_refresh(self) -> None:
         if not hasattr(self, '_cmod_table'):
             return
@@ -17313,6 +17344,7 @@ QCheckBox::indicator {{
             self._asi_manager = AsiManager(game_path)
         return self._asi_manager
 
+    @perf_log.timed
     def _asi_refresh(self) -> None:
         if not hasattr(self, '_asi_table'):
             return
@@ -17685,6 +17717,7 @@ QCheckBox::indicator {{
             self._skill_status.setText(f"Parse failed: {e}")
             QMessageBox.critical(self, "Parse Failed", str(e))
 
+    @perf_log.timed
     def _skill_search_items(self) -> None:
         if not self._skill_parser_result:
             QMessageBox.warning(self, "Skills", "Extract skills first.")
@@ -17752,6 +17785,7 @@ QCheckBox::indicator {{
         self._skill_current_entry = entry
         self._skill_refresh_fields(entry)
 
+    @perf_log.timed
     def _skill_refresh_fields(self, entry) -> None:
         self._skill_field_header.setText(
             f"{entry.name} (key={entry.key}, {entry.entry_size}B, "
@@ -18505,6 +18539,7 @@ QCheckBox::indicator {{
             self._field_edit_status.setText(f"Error: {e}")
             QMessageBox.critical(self, "Extract Failed", str(e))
 
+    @perf_log.timed
     def _field_edit_populate(self):
         self._field_edit_editing = True
         entries = self._field_edit_entries
@@ -18579,6 +18614,7 @@ QCheckBox::indicator {{
         self._field_edit_modified = True
         self._field_edit_status.setText(f"Modified zone {e['key']}")
 
+    @perf_log.timed
     def _vehicle_populate(self):
         self._vehicle_editing = True
         entries = self._vehicle_entries
@@ -18678,6 +18714,7 @@ QCheckBox::indicator {{
         self._field_edit_modified = True
         self._field_edit_status.setText(f"Modified vehicle {e['name']}")
 
+    @perf_log.timed
     def _gptrigger_populate(self):
         self._gptrigger_editing = True
         show_all = self._gt_filter_combo.currentData() == "all"
@@ -18742,6 +18779,7 @@ QCheckBox::indicator {{
         self._field_edit_status.setText(f"Modified trigger {e['name']}")
 
 
+    @perf_log.timed
     def _regioninfo_populate(self):
         self._regioninfo_editing = True
         show_all = self._ri_filter_combo.currentData() == "all"
@@ -18861,6 +18899,7 @@ QCheckBox::indicator {{
         self._field_edit_status.setText(f"Modified region {e.get('_stringKey', '?')} {field_name}={new_val}")
 
 
+    @perf_log.timed
     def _mount_populate(self):
         self._charinfo_editing = True
         from characterinfo_full_parser import MOUNT_VEHICLE_TYPES
@@ -21279,6 +21318,7 @@ QCheckBox::indicator {{
             pass
         self._buff_modified = False
 
+    @perf_log.timed
     def _paz_populate_table(self) -> None:
         table = self._paz_patch_table
         patches = self._paz_patches
@@ -22017,6 +22057,7 @@ QCheckBox::indicator {{
             ))
         return items
 
+    @perf_log.timed
     def _buff_show_my_inventory(self) -> None:
         if self._buff_data is None:
             self._buff_extract_iteminfo(use_structural=False)
@@ -22082,6 +22123,7 @@ QCheckBox::indicator {{
             f"(out of {len(save_keys)} save items, {len(iteminfo_keys)} iteminfo records)"
         )
 
+    @perf_log.timed
     def _buff_search_items(self) -> None:
         if self._buff_data is None:
             self._buff_extract_iteminfo(use_structural=False)
@@ -27379,6 +27421,7 @@ QCheckBox::indicator {{
         self._paz_refresh_status()
 
 
+    @perf_log.timed
     def _set_refresh_local(self) -> None:
         sets = self._set_mgr.scan_local()
         table = self._set_table
@@ -27888,6 +27931,7 @@ QCheckBox::indicator {{
             self._gd_status.setText(f"Error: {e}")
             import traceback; traceback.print_exc()
 
+    @perf_log.timed
     def _gd_populate_records(self, filter_text: str = "") -> None:
         if not self._gd_editor or not self._gd_current_file:
             return
@@ -28348,6 +28392,7 @@ QCheckBox::indicator {{
         else:
             self._store_changes_label.setText("")
 
+    @perf_log.timed
     def _store_populate_list(self, filter_text: str = "") -> None:
         if not hasattr(self, '_store_parser_v2') or not self._store_parser_v2:
             return
@@ -28410,6 +28455,7 @@ QCheckBox::indicator {{
             return None
         return self._store_parser_v2.get_store_by_key(key_item.data(Qt.UserRole))
 
+    @perf_log.timed
     def _store_selected(self, *_args) -> None:
         store = self._store_get_selected_store()
         if not store:
@@ -29684,6 +29730,7 @@ QCheckBox::indicator {{
             self._spawn_status.setText(f"Error: {e}")
             QMessageBox.critical(self, "Extract Failed", str(e))
 
+    @perf_log.timed
     def _spawn_filter(self):
         if not self._spawn_elements:
             return
@@ -30892,6 +30939,7 @@ QCheckBox::indicator {{
             self._dropset_status.setText(f"Error: {e}")
             QMessageBox.critical(self, "Extract Failed", str(e))
 
+    @perf_log.timed
     def _dropset_filter(self):
         if not self._dropset_editor:
             return
@@ -30946,6 +30994,7 @@ QCheckBox::indicator {{
         self._dropset_set_label.setText(f"{name}  —  {len(ds.drops)} items")
         self._dropset_refresh_items(ds)
 
+    @perf_log.timed
     def _dropset_refresh_items(self, ds=None):
         if ds is None:
             if self._dropset_current_key is None:
@@ -32031,6 +32080,7 @@ QCheckBox::indicator {{
             self._pabgb_status.setText(f"Load failed: {ex}")
             traceback.print_exc()
 
+    @perf_log.timed
     def _pabgb_filter_records(self, text: str = None) -> None:
         if text is None:
             text = self._pabgb_search.text()
@@ -32810,6 +32860,7 @@ QCheckBox::indicator {{
         self._inv_count_label.setText(str(len(self._items)))
 
 
+    @perf_log.timed
     def _populate_inventory(self) -> None:
         table = self._inv_table
         table.setSortingEnabled(False)
@@ -32890,6 +32941,7 @@ QCheckBox::indicator {{
     def _filter_equipment(self) -> None:
         self._populate_equipment()
 
+    @perf_log.timed
     def _populate_equipment(self) -> None:
         table = self._equip_table
         table.setSortingEnabled(False)
@@ -33954,6 +34006,7 @@ QCheckBox::indicator {{
             self._update_status(f"Set stack to {new_stack} for {len(edits)} equipment items.")
 
 
+    @perf_log.timed
     def _populate_swap_list(self, filter_text: str = "", category: str = "All") -> None:
         table = self._swap_list
         table.setSortingEnabled(False)
@@ -34470,6 +34523,7 @@ QCheckBox::indicator {{
 
         self._filter_database()
 
+    @perf_log.timed
     def _filter_database(self) -> None:
         table = self._db_table
         table.setSortingEnabled(False)

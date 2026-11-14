@@ -6,6 +6,7 @@ group 0063.
 """
 
 from __future__ import annotations
+import perf_log
 
 import json
 import logging
@@ -432,6 +433,7 @@ class SkillTreeTab(QWidget):
         walk(rec, "")
         return out
 
+    @perf_log.timed
     def _populate_table(self) -> None:
         if self._table is None:
             return
@@ -1020,6 +1022,7 @@ class SkillTreeTab(QWidget):
             self.status_message.emit(
                 f"Loaded {len(self._skill_entries)} skill entries from skill.pabgb")
 
+    @perf_log.timed
     def _populate_skill_table(self) -> None:
         """Fill the skill table from self._skill_entries."""
         import skillinfo_parser as sip
