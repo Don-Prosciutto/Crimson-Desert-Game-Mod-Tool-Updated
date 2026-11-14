@@ -557,17 +557,17 @@ class ItemBuffsTab(QWidget):
             start_open = self._config[config_key]
         wrapper = QWidget()
         vbox = QVBoxLayout(wrapper)
-        vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.setSpacing(0)
+        vbox.setContentsMargins(0, 4, 0, 4)
+        vbox.setSpacing(6)
 
         toggle = QPushButton(("▾ " if start_open else "▸ ") + label)
         toggle.setStyleSheet(
             f"QPushButton {{ text-align: left; font-weight: bold; font-size: 11px;"
-            f" padding: 3px 8px; background: transparent;"
-            f" color: {accent}; border: none; border-bottom: 1px solid {accent}; }}"
-            f"QPushButton:hover {{ background: rgba(218,168,80,0.10); }}")
+            f" padding: 2px 8px 4px 8px; background: transparent; border-radius: 0px;"
+            f" color: {accent}; border: none; border-bottom: 1px solid {COLORS.get('border_soft', accent)}; }}"
+            f"QPushButton:hover {{ background: {COLORS.get('panel', 'transparent')}; }}")
         toggle.setCursor(Qt.PointingHandCursor)
-        toggle.setFixedHeight(22)
+        toggle.setFixedHeight(28)
 
         content.setVisible(start_open)
         cfg = self._config
@@ -852,9 +852,6 @@ class ItemBuffsTab(QWidget):
             action_row.addWidget(make_help_btn("itembuffs", self._show_guide_fn))
             action_row.addStretch(1)
             
-            credit = QLabel("credit: Potter420 & LukeFZ")
-            credit.setStyleSheet("color: #FF5252; font-style: italic; padding: 2px;")
-            action_row.addWidget(credit)
             
             return action_row
 
@@ -960,9 +957,9 @@ class ItemBuffsTab(QWidget):
             stf_layout = QVBoxLayout(stats_table_frame)
             stf_layout.setContentsMargins(0, 0, 0, 0)
             stf_layout.setSpacing(2)
-            self._buff_selected_label = QLabel("No item selected — search and click an item on the left")
+            self._buff_selected_label = QLabel("No item selected – pick one in the list")
             self._buff_selected_label.setStyleSheet(
-                f"color: {COLORS['text_dim']}; font-weight: bold; padding: 2px 4px;"
+                f"color: {COLORS['text_dim']}; font-size: 15px; font-weight: 700; padding: 2px 2px;"
             )
             stf_layout.addWidget(self._buff_selected_label)
             stf_layout.addWidget(QLabel("Current Stats / Buffs:"))
@@ -1014,9 +1011,9 @@ class ItemBuffsTab(QWidget):
             # self._buff_action_tabs.addTab(
             #     self._build_buff_drop_data_page(), "Drop Data")
             self._buff_action_tabs.addTab(
-                self._build_buff_effects_page(), "Passives & Effects")
+                self._build_buff_effects_page(), "Passives && Effects")
             self._buff_action_tabs.addTab(
-                self._build_buff_stats_page(), "Stats & Buffs")
+                self._build_buff_stats_page(), "Stats && Buffs")
             self._buff_action_tabs.addTab(
                 self._build_buff_imbue_page(), "Imbue")
             self._buff_action_tabs.addTab(
@@ -1160,9 +1157,6 @@ class ItemBuffsTab(QWidget):
 
             bottom_bar.addStretch(1)
 
-            credit = QLabel("credit: Potter420 & LukeFZ")
-            credit.setStyleSheet("color: #FF5252; font-style: italic; padding: 2px;")
-            bottom_bar.addWidget(credit)
             
             return bottom_bar_wrap
         
@@ -1199,33 +1193,180 @@ class ItemBuffsTab(QWidget):
         self._dev_buff_widgets: list = getattr(self, '_dev_buff_widgets', [])
         self._buff_load_name_data()
 
-        warn_label = build_warn_label()
-        outer_layout.addWidget(
-            self._make_collapsible("Notice", warn_label,
-                                   start_open=True, config_key="buffs_show_notice"))
+        # ── New look 2.5: one toolbar and three cards ─────────────────────
+        # The buttons come from build_action_row()/build_search_row() as
+        # before (same handlers, same attribute names); only where they sit
+        # and how they look changed.
+        _strong = COLORS.get("text_strong", COLORS["text"])
+        _soft = COLORS.get("border_soft", COLORS["border"])
+        outer_layout.setContentsMargins(14, 12, 14, 10)
+        outer_layout.setSpacing(10)
 
-        action_row_layout = build_action_row()
-        action_row_widget = QWidget()
-        action_row_widget.setLayout(action_row_layout)
-        outer_layout.addWidget(
-            self._make_collapsible("Actions", action_row_widget,
-                                   start_open=True, config_key="buffs_show_actions"))
+        _actions_holder = QWidget()
+        _action_row = build_action_row()
+        _actions_holder.setLayout(_action_row)
+        _actions_holder.setVisible(False)
+        _by_text = {}
+        for _i in range(_action_row.count()):
+            _w = _action_row.itemAt(_i).widget()
+            if _w is not None and hasattr(_w, "text"):
+                _by_text[_w.text()] = _w
 
+        def _take(text):
+            w = _by_text.get(text)
+            if w is not None:
+                w.setParent(None)
+                w.setStyleSheet("")
+            return w
+
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(8)
+        _load = _take("Extract")
+        if _load is not None:
+            _load.setText("Load from game")
+            _load.setObjectName("accentBtn")
+            _load.setToolTip("Read all items from your game (\"Extract\").\n"
+                             "Uses your current item mod if there is one, otherwise the original files.")
+            toolbar.addWidget(_load)
+        _reset = _take("Reset")
+        if _reset is not None:
+            toolbar.addWidget(_reset)
+        toolbar.addStretch(1)
+        _tm = _take("Transmog (Armor / Weapon Visual Swap)")
+        if _tm is not None:
+            _tm.setText("Transmog")
+            toolbar.addWidget(_tm)
+        _create_btn = QPushButton("Create item")
+        _create_menu = QMenu(self)
+        _create_menu.setToolTipsVisible(True)
+        _a = _create_menu.addAction("Create a custom item…")
+        _a.setToolTip("Design a brand-new item by cloning an existing one.")
+        _a.triggered.connect(self._open_item_creator)
+        _a = _create_menu.addAction("Add a custom item to a save…")
+        _a.setToolTip("Put an already created custom item (key 999001+) into a save file.")
+        _a.triggered.connect(self._open_add_to_save_picker)
+        _create_btn.setMenu(_create_menu)
+        toolbar.addWidget(_create_btn)
+        _imp = _take("Import")
+        if _imp is not None:
+            toolbar.addWidget(_imp)
+        _more = _take("More")
+        if _more is not None and _more.menu() is not None:
+            _m = _more.menu()
+            _first = _m.actions()[0] if _m.actions() else None
+            _van = QAction("Load original items (clean start)", _m)
+            _van.setToolTip("Read the items from the original game files, ignoring any item mod (\"Extract Vanilla\").")
+            _van.triggered.connect(self._buff_extract_vanilla)
+            _m.insertAction(_first, _van)
+            _m.insertSeparator(_first)
+            for _act in list(_m.actions()):
+                if _act.text().startswith("Restore Original"):
+                    _act.setVisible(False)       # wrote into the game folder (blocked since 2.04)
+            toolbar.addWidget(_more)
+        _info = QLabel("ⓘ")
+        _info.setToolTip(build_warn_label().text())
+        _info.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 16px; padding: 0 4px;")
+        _info.setCursor(Qt.WhatsThisCursor)
+        toolbar.addWidget(_info)
+        for _w in list(_by_text.values()):
+            if _w.text() == "?":
+                _w.setParent(None)
+                toolbar.addWidget(_w)
+                break
+        _exp = _take("Export")
+        if _exp is not None:
+            _exp.setText("Export mod")
+            _exp.setObjectName("accentBtn")
+            toolbar.addWidget(_exp)
+        outer_layout.addLayout(toolbar)
+
+        def _card(title: str, body: QWidget, sub: str = "") -> QFrame:
+            card = QFrame()
+            card.setObjectName("ibCard")
+            card.setStyleSheet(
+                f"QFrame#ibCard {{ background: {COLORS['panel']}; border: 1px solid {_soft}; "
+                f"border-radius: 12px; }}")
+            v = QVBoxLayout(card)
+            v.setContentsMargins(12, 10, 12, 12)
+            v.setSpacing(8)
+            if title:
+                head = QLabel(title)
+                head.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {_strong}; "
+                                   f"background: transparent;")
+                v.addWidget(head)
+            if sub:
+                cap = QLabel(sub)
+                cap.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']}; background: transparent;")
+                v.addWidget(cap)
+            v.addWidget(body, 1)
+            return card
+
+        # Items card: search, filters, list
         search_row_layout = build_search_row()
-        search_row_widget = QWidget()
-        search_row_widget.setLayout(search_row_layout)
-        outer_layout.addWidget(
-            self._make_collapsible("Search", search_row_widget,
-                                   start_open=True, config_key="buffs_show_search"))
-
+        _sw = {}
+        for _i in range(search_row_layout.count()):
+            _w = search_row_layout.itemAt(_i).widget()
+            if _w is not None:
+                _sw[_w.text() if hasattr(_w, "text") and not isinstance(_w, QLineEdit) else id(_w)] = _w
+        _items_body = QWidget()
+        _iv = QVBoxLayout(_items_body)
+        _iv.setContentsMargins(0, 0, 0, 0)
+        _iv.setSpacing(8)
+        _r1 = QHBoxLayout()
+        _r1.setSpacing(6)
+        self._buff_search.setPlaceholderText("Search items, e.g. Earring, Sword…")
+        self._buff_search.setMinimumHeight(34)
+        _r1.addWidget(self._buff_search, 1)
+        if "Search" in _sw:
+            _r1.addWidget(_sw["Search"])
+        _iv.addLayout(_r1)
+        _r2 = QHBoxLayout()
+        _r2.setSpacing(6)
+        _r2.addWidget(self._buff_category_filter, 1)
+        self._buff_category_filter.setMinimumWidth(120)
+        for _key, _label, _tip in (("⭐", "★ Favourites", None), ("My Inventory", "In my save", None),
+                                   ("Icons", "Icons", None)):
+            _w = _sw.get(_key)
+            if _w is not None:
+                _w.setText(_label)
+                _r2.addWidget(_w)
+        _iv.addLayout(_r2)
         items_frame = build_items_frame()
-        inner_layout.addWidget(items_frame)
+        _first_label = items_frame.layout().itemAt(0).widget()
+        if isinstance(_first_label, QLabel):
+            _first_label.setVisible(False)          # "Matching Items:" - the card says it
+        _iv.addWidget(items_frame, 1)
+        inner_layout.addWidget(_card("Items", _items_body))
 
         stats_table_frame = build_stats_table_frame()
-        inner_layout.addWidget(stats_table_frame)
+        self._buff_selected_label.setWordWrap(True)
+        _cap = stats_table_frame.layout().itemAt(1).widget()
+        if isinstance(_cap, QLabel):
+            _cap.setText("Current stats and buffs")
+            _cap.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']};")
+        inner_layout.addWidget(_card("", stats_table_frame))
 
         build_buff_action_tabs()
-        inner_layout.addWidget(self._buff_action_tabs)
+        inner_layout.addWidget(_card("", self._buff_action_tabs))
+        inner_layout.setHandleWidth(10)
+        inner_layout.setStretchFactor(0, 0)
+        inner_layout.setStretchFactor(1, 0)
+        inner_layout.setStretchFactor(2, 1)
+        # setSizes() before the page is shown is ignored; split on first show:
+        # list and selected item about a fifth each, the editor the rest.
+        from PySide6.QtCore import QEvent, QObject
+
+        class _SplitOnce(QObject):
+            def eventFilter(self, obj, ev):  # noqa: N802
+                if ev.type() == QEvent.Show and obj.width() > 0:
+                    w = obj.width()
+                    left = max(300, int(w * 0.22))
+                    mid = max(300, int(w * 0.22))
+                    obj.setSizes([left, mid, max(400, w - left - mid)])
+                    obj.removeEventFilter(self)
+                return False
+        self._ib_split_once = _SplitOnce(inner_layout)
+        inner_layout.installEventFilter(self._ib_split_once)
 
         outer_layout.addWidget(inner_layout, 1)
 
@@ -3994,9 +4135,9 @@ class ItemBuffsTab(QWidget):
             self._buff_stats_table.setRowCount(0)
             self._buff_current_item = None
             if hasattr(self, '_buff_selected_label'):
-                self._buff_selected_label.setText("No item selected — search and click an item on the left")
+                self._buff_selected_label.setText("No item selected – pick one in the list")
                 self._buff_selected_label.setStyleSheet(
-                    f"color: {COLORS['text_dim']}; font-weight: bold; padding: 2px 4px;"
+                    f"color: {COLORS['text_dim']}; font-size: 15px; font-weight: 700; padding: 2px 2px;"
                 )
 
 
@@ -4021,7 +4162,7 @@ class ItemBuffsTab(QWidget):
         self._buff_selected_label.setText(
             f"Editing: {display_name}  (key {item.item_key}, {item.name})")
         self._buff_selected_label.setStyleSheet(
-            f"color: {COLORS['accent']}; font-weight: bold; padding: 2px 4px;"
+            f"color: {COLORS['accent']}; font-size: 15px; font-weight: 700; padding: 2px 2px;"
         )
         self._buff_refresh_stats()
         self._buff_json_refresh()
@@ -11204,9 +11345,9 @@ class ItemBuffsTab(QWidget):
                 pass
             if hasattr(self, '_buff_selected_label'):
                 try:
-                    self._buff_selected_label.setText("No item selected — search and click an item on the left")
+                    self._buff_selected_label.setText("No item selected – pick one in the list")
                     self._buff_selected_label.setStyleSheet(
-                        f"color: {COLORS['text_dim']}; font-weight: bold; padding: 2px 4px;"
+                        f"color: {COLORS['text_dim']}; font-size: 15px; font-weight: 700; padding: 2px 2px;"
                     )
                 except RuntimeError:
                     pass

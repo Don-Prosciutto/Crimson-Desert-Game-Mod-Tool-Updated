@@ -239,6 +239,11 @@ def main() -> None:
         game_write_guard.attach(window)
     except Exception as e:  # noqa: BLE001
         print(f"[game_write_guard] attach failed: {e}")
+    try:
+        from gui.fit_controls import attach as _fit_attach
+        _fit_attach(window)
+    except Exception as e:  # noqa: BLE001 - sizes only
+        print(f"[fit_controls] attach failed: {e}")
     window.show()
     _t("window shown")
 

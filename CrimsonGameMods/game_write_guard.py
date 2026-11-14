@@ -10,8 +10,8 @@ Two layers:
   * install() wraps the parser's write_papgt_file / write_pamt_file. A write
     whose target lies in a game installation raises GameWriteBlocked, so no
     code path can reach the game files, buttons or not.
-  * attach(window) disables every "Apply to Game" style button and explains
-    why in its tooltip. It re-checks every few seconds, because some pages
+  * attach(window) disables and hides every "Apply to Game" style button. It
+    re-checks every few seconds, because some pages
     build their buttons only when first opened.
 
 No Qt at import time; Qt is only touched inside attach().
@@ -89,15 +89,17 @@ def _norm(text: str) -> str:
 
 
 def switch_off(btn) -> None:
-    """Disable one button for good and say why."""
+    """Switch one button off for good: disabled and hidden (a greyed-out
+    button that can never work only confuses - new look 2.5)."""
     if getattr(btn, "_game_write_off", False):
         return
     btn.setEnabled(False)
     btn.setToolTip(MESSAGE)
-    # Some themes draw accent buttons the same when disabled; make "off" visible.
-    btn.setStyleSheet("color: #8a8a8a; background-color: #3a3a3a; border: 1px solid #4a4a4a;")
-    # Pages enable their buttons again after loading data; keep this one off.
+    type(btn).setVisible(btn, False)
+    # Pages enable or show their buttons again after loading data; keep this one off.
     btn.setEnabled = lambda *_a, _b=btn: type(_b).setEnabled(_b, False)
+    btn.setVisible = lambda *_a, _b=btn: type(_b).setVisible(_b, False)
+    btn.show = lambda *_a, _b=btn: type(_b).setVisible(_b, False)
     btn._game_write_off = True
 
 

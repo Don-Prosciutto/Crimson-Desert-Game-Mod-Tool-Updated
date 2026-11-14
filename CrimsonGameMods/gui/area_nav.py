@@ -102,7 +102,7 @@ def build_tab_row(win) -> QWidget:
     row.setObjectName("areaTabsRow")
     row.setAttribute(Qt.WA_StyledBackground, True)
     lay = QHBoxLayout(row)
-    lay.setContentsMargins(22, 0, 14, 0)
+    lay.setContentsMargins(20, 0, 14, 0)
     lay.setSpacing(0)
     bar = QTabBar()
     bar.setObjectName("areaTabs")
@@ -117,12 +117,13 @@ def build_tab_row(win) -> QWidget:
         f"QWidget#areaTabsRow {{ background: {COLORS['bg']}; "
         f"border-bottom: 1px solid {_c('border_soft', COLORS['border'])}; }}"
         f"QTabBar#areaTabs {{ background: transparent; border: none; }}"
-        f"QTabBar#areaTabs::tab {{ background: transparent; border: none; "
-        f"border-bottom: 2px solid transparent; border-radius: 0px; padding: 9px 2px 8px 2px; "
-        f"margin: 0px 22px 0px 0px; color: {COLORS['text_dim']}; font-size: 13px; font-weight: 600; }}"
-        f"QTabBar#areaTabs::tab:hover {{ color: {COLORS['text']}; }}"
-        f"QTabBar#areaTabs::tab:selected {{ color: {_strong()}; border-bottom: 2px solid {COLORS['accent']}; }}"
-        f"QTabBar#areaTabs::tab:disabled {{ color: {_c('border', '#3a4e72')}; }}")
+        f"QTabBar#areaTabs::tab {{ background: {COLORS['panel']}; "
+        f"border: 1px solid {COLORS['border']}; border-radius: 15px; padding: 6px 16px; "
+        f"margin: 9px 8px 9px 0px; color: {COLORS['text']}; font-size: 13px; font-weight: 600; }}"
+        f"QTabBar#areaTabs::tab:hover {{ border-color: {COLORS['accent']}; color: {_strong()}; }}"
+        f"QTabBar#areaTabs::tab:selected {{ background: {COLORS['selected']}; color: {_strong()}; "
+        f"border: 1px solid {COLORS['accent']}; }}"
+        f"QTabBar#areaTabs::tab:disabled {{ color: {COLORS['text_dim']}; }}")
     bar.currentChanged.connect(lambda i: _tab_changed(win, i))
     win._area_bar = bar
     win._area_row = row
@@ -298,7 +299,8 @@ def _fill_tabs(win, area_name: str, current: int = -1) -> None:
     if area:
         for k, e in enumerate(area["tabs"]):
             blocked = getattr(e["widget"], "_selftest_blocked", False)
-            bar.addTab(e["tab"] + ("  (blocked)" if blocked else ""))
+            # '&' would turn into a keyboard shortcut and vanish ("Skills  move sets")
+            bar.addTab(e["tab"].replace("&", "&&") + ("  (blocked)" if blocked else ""))
             tip = e["tip"]
             if blocked:
                 tip = (e["item"].toolTip(0) if e.get("item") is not None else "") or "Blocked by the game check"
