@@ -31,7 +31,9 @@ def _strong() -> str:
 
 def _kind(index) -> tuple:
     """('section'|'info'|'entry', clean text, hint) for the row of `index`."""
-    model = index.model()
+    model = index.model() if index is not None and index.isValid() else None
+    if model is None:
+        return "none", "", ""
     first = model.index(index.row(), 0).data(Qt.DisplayRole) or ""
     m = _SECTION.match(first)
     if m:
@@ -52,6 +54,8 @@ class StatRowDelegate(QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         kind, text, hint = _kind(index)
+        if kind == "none":
+            return super().paint(painter, option, index)
         r = option.rect
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
@@ -120,6 +124,8 @@ class StatRowDelegate(QStyledItemDelegate):
     def helpEvent(self, event, view, option, index):  # noqa: N802
         # the "click to …" hint as tooltip when the cell has none
         kind, _text, hint = _kind(index)
+        if kind == "none":
+            return False
         if kind == "entry" and hint and not index.data(Qt.ToolTipRole):
             from PySide6.QtWidgets import QToolTip
             QToolTip.showText(event.globalPos(), "← " + hint, view)

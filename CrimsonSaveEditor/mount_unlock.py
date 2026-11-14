@@ -467,6 +467,54 @@ def _stray_bytes(raw: bytes, out: bytes) -> int:
     return stray
 
 
+def _mark_rewrite(fields) -> None:
+    """Mark one field of an object so the serializer writes it anew (with
+    fresh payload pointers) instead of copying its old bytes."""
+    for f in fields:
+        if f.present and f.meta_kind in (4, 5, 6, 7):
+            f.note = (f.note or "") + " [modified]"
+            return
+    for f in fields:
+        if f.present and f.meta_kind in (0, 1, 2, 3) and not f.edit_format:
+            f.note = (f.note or "") + " [modified]"   # copied raw anyway
+            return
+    for f in fields:
+        if (f.present and f.edit_format in ("<b", "<B", "<h", "<H", "<i", "<I", "<q", "<Q")
+                and (f.value_repr or "").strip().lstrip("-").isdigit()):
+            f.note = (f.note or "") + " [modified]"   # writes the same number
+            return
+    for f in fields:
+        if not f.present:
+            f.note = (f.note or "") + " [modified]"   # absent fields are not written
+            return
+    raise MountError("An entry behind the new ones cannot be moved safely.")
+
+
+def _force_rewrite(fields) -> None:
+    """Every list element below `fields` is written anew: an element copied
+    unchanged keeps its absolute payload pointer, which is wrong once the
+    entry it sits in has moved."""
+    for f in fields or []:
+        if not f.present:
+            continue
+        for el in f.list_elements or []:
+            if el.child_fields:
+                _mark_rewrite(el.child_fields)
+                _force_rewrite(el.child_fields)
+        if f.child_fields:
+            _force_rewrite(f.child_fields)
+
+
+def _merc_count_by_renamer(raw: bytes):
+    """How many entries the rename parser reads (it follows the payload
+    pointers like the game); None if it cannot read this save at all."""
+    try:
+        from save_pet_rename import find_mercenary_bitmap_positions, parse_reflection_layout
+        return len(find_mercenary_bitmap_positions(raw, parse_reflection_layout(raw)))
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def add_mounts(raw: bytes, keys: Iterable[int]) -> Tuple[bytes, List[Tuple[int, int]]]:
     """Return (new blob, [(characterKey, mercenaryNo), ...]). Keys the save
     already has are skipped. Raises MountError if any check fails."""
@@ -509,6 +557,9 @@ def add_mounts(raw: bytes, keys: Iterable[int]) -> Tuple[bytes, List[Tuple[int, 
         for cf in lst.list_elements[-1].child_fields:
             if cf.present and cf.name == "_characterKey":
                 cf.note = (cf.note or "") + " [modified]"
+        # ... and so are the lists inside it (a ship's parts), else they keep
+        # pointers into their old place.
+        _force_rewrite(lst.list_elements[-1].child_fields)
         added.append((k, max_no))
     if not added:
         return raw, []
@@ -551,4 +602,9 @@ def add_mounts(raw: bytes, keys: Iterable[int]) -> Tuple[bytes, List[Tuple[int, 
             raise MountError(f"Check failed: {a.class_name} reads differently")
     if _stray_bytes(raw, out):
         raise MountError("Check failed: data outside pointers changed")
+    before = _merc_count_by_renamer(raw)
+    if before is not None:
+        after = _merc_count_by_renamer(out)
+        if after != before + len(added):
+            raise MountError("Check failed: the list does not read back like the game reads it")
     return out, added
