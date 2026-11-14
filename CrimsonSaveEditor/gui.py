@@ -4736,31 +4736,20 @@ QCheckBox::indicator {{
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
-        layout.addWidget(self._make_scope_label("save"))
-
-        inv_info = QLabel(
-            "This shows the raw save data. The game may display items differently — "
-            "e.g. a stack of 90 stones appears as multiple slots in-game, but the save stores it as one entry."
-        )
-        inv_info.setWordWrap(True)
-        inv_info.setStyleSheet(
-            f"color: {COLORS['text_dim']}; padding: 4px; font-size: 11px; "
-            f"border: 1px solid {COLORS['border']}; border-radius: 4px;"
-        )
-        help_row = QHBoxLayout()
-        help_row.addWidget(inv_info, 1)
-        help_row.addWidget(self._make_help_btn("inventory"))
-        layout.addLayout(help_row)
+        # New look 2.5: one bar, bag pills, a list card and a detail card.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
+        _strong = COLORS.get("text_strong", COLORS["text"])
+        _soft = COLORS.get("border_soft", COLORS["border"])
 
         top = QHBoxLayout()
-
-        top.addWidget(QLabel("Search:"))
+        top.setSpacing(8)
         self._inv_search = QLineEdit()
-        self._inv_search.setPlaceholderText("Filter by name, internal name, key, or category...")
+        self._inv_search.setPlaceholderText("Search by name, internal name, key or category…")
+        self._inv_search.setMinimumHeight(34)
         self._inv_search.textChanged.connect(self._filter_inventory)
-        top.addWidget(self._inv_search, 2)
+        top.addWidget(self._inv_search, 1)
 
-        top.addWidget(QLabel("Group:"))
         self._inv_group = QComboBox()
         self._inv_group.addItems([
             "All", "Equipment", "Inventory", "Sold to Vendor", "Mercenary",
@@ -4779,10 +4768,27 @@ QCheckBox::indicator {{
         top.addWidget(self._show_icons_btn)
         self._icons_enabled = self._config.get("show_icons", False)
 
+        _info = QLabel("ⓘ")
+        _info.setCursor(Qt.WhatsThisCursor)
+        _info.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 16px; padding: 0 4px;")
+        _info.setToolTip(
+            "This shows the raw save data. The game may display items differently - e.g. a stack "
+            "of 90 stones appears as multiple slots in game, but the save stores it as one entry.\n\n"
+            "Item swap tips:\n"
+            "- Swap within the same item type (sword to sword, glove to glove).\n"
+            "- Cross-type swaps show the right icon but the wrong 3D model.\n"
+            "- Items that don't exist in your game world yet may disappear on reload; selling "
+            "and buying back can help the game register them.\n"
+            "- Swapped equipment may need to be unequipped and equipped again for its stats.\n"
+            "- Each item has a unique ItemNo - use it to tell identical items apart.\n"
+            "- A backup is offered before every save.")
+        top.addWidget(_info)
+        top.addWidget(self._make_help_btn("inventory"))
         layout.addLayout(top)
 
         from PySide6.QtWidgets import QTabBar
         self._inv_subtabs = QTabBar()
+        self._inv_subtabs.setObjectName("invBags")
         # Labels follow the game's own names. In the game both storages are
         # just called "Storage" - the one at the camp and the one in towns.
         # Chests and bags that are empty in the loaded save are hidden.
@@ -4825,8 +4831,49 @@ QCheckBox::indicator {{
                 self._inv_subtabs.setTabVisible(i, label in self._inv_subtab_always)
         self._inv_subtabs.setExpanding(False)
         self._inv_subtabs.setDocumentMode(True)
+        self._inv_subtabs.setDrawBase(False)
+        self._inv_subtabs.setUsesScrollButtons(True)
+        self._inv_subtabs.setStyleSheet(
+            f"QTabBar#invBags::tab {{ background: {COLORS['panel']}; border: 1px solid {COLORS['border']}; "
+            f"border-radius: 14px; padding: 5px 14px; margin: 0px 6px 0px 0px; color: {COLORS['text']}; "
+            f"font-weight: 600; }}"
+            f"QTabBar#invBags::tab:hover {{ border-color: {COLORS['accent']}; }}"
+            f"QTabBar#invBags::tab:selected {{ background: {COLORS['selected']}; color: {_strong}; "
+            f"border-color: {COLORS['accent']}; }}")
         self._inv_subtabs.currentChanged.connect(self._on_inv_subtab_changed)
         layout.addWidget(self._inv_subtabs)
+
+        def _card(title: str):
+            card = QFrame()
+            card.setObjectName("invCard")
+            card.setStyleSheet(
+                f"QFrame#invCard {{ background: {COLORS['panel']}; border: 1px solid {_soft}; "
+                f"border-radius: 12px; }}"
+                f"QFrame#invCard QLabel {{ background: transparent; }}")
+            v = QVBoxLayout(card)
+            v.setContentsMargins(12, 10, 12, 12)
+            v.setSpacing(8)
+            if title:
+                h = QLabel(title)
+                h.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {_strong};")
+                v.addWidget(h)
+            return card, v
+
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        list_card, lv = _card("")
+        head_row = QHBoxLayout()
+        _items_head = QLabel("Items")
+        _items_head.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {_strong};")
+        head_row.addWidget(_items_head)
+        head_row.addStretch(1)
+        self._inv_count_label = QLabel("0")
+        self._inv_count_label.setStyleSheet(f"color: {COLORS['text_dim']}; font-weight: 600;")
+        _cnt_lab = QLabel("in this save:")
+        _cnt_lab.setStyleSheet(f"color: {COLORS['text_dim']};")
+        head_row.addWidget(_cnt_lab)
+        head_row.addWidget(self._inv_count_label)
+        lv.addLayout(head_row)
 
         self._inv_table = QTableWidget()
         self._inv_table.setColumnCount(9)
@@ -4838,34 +4885,57 @@ QCheckBox::indicator {{
         self._inv_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Interactive)
         icon_w = (ICON_SIZE + 12) if self._icons_enabled else 0
         self._inv_table.setColumnWidth(0, icon_w)
-        self._inv_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Interactive)
-        self._inv_table.setColumnWidth(1, 200)
+        self._inv_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self._inv_table.setColumnHidden(2, True)     # ItemNo: in the detail card
+        self._inv_table.setColumnHidden(3, True)     # Source: in the detail card
         self._inv_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._inv_table.setSortingEnabled(True)
-        self._inv_table.verticalHeader().setDefaultSectionSize(24)
+        self._inv_table.verticalHeader().setVisible(False)
+        self._inv_table.setShowGrid(False)
+        self._inv_table.verticalHeader().setDefaultSectionSize(30)
         self._inv_table.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         self._inv_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._inv_table.customContextMenuRequested.connect(self._inv_context_menu)
-        layout.addWidget(self._inv_table, 1)
+        self._inv_table.itemSelectionChanged.connect(self._inv_update_detail)
+        lv.addWidget(self._inv_table, 1)
+        body.addWidget(list_card, 1)
 
-        bottom = QHBoxLayout()
+        det_card, dv = _card("")
+        det_card.setFixedWidth(340)
+        self._inv_detail_name = QLabel("No item selected")
+        self._inv_detail_name.setWordWrap(True)
+        self._inv_detail_name.setStyleSheet(f"font-size: 17px; font-weight: 700; color: {_strong};")
+        dv.addWidget(self._inv_detail_name)
+        self._inv_detail_sub = QLabel("Click an item in the list. Ctrl or Shift for several.")
+        self._inv_detail_sub.setWordWrap(True)
+        self._inv_detail_sub.setTextFormat(Qt.RichText)
+        self._inv_detail_sub.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']};")
+        dv.addWidget(self._inv_detail_sub)
 
-        bottom.addWidget(QLabel("New Stack:"))
+        _sep = QFrame()
+        _sep.setFrameShape(QFrame.HLine)
+        _sep.setStyleSheet(f"color: {_soft};")
+        dv.addWidget(_sep)
+
+        _stack_lab = QLabel("Amount (stack)")
+        _stack_lab.setStyleSheet(f"color: {COLORS['text_dim']}; font-weight: 600;")
+        dv.addWidget(_stack_lab)
+        srow = QHBoxLayout()
         self._inv_stack_input = QSpinBox()
         self._inv_stack_input.setRange(1, 999999999)
         self._inv_stack_input.setValue(1)
-        bottom.addWidget(self._inv_stack_input)
-
-        set_stack_btn = QPushButton("Set Stack")
+        srow.addWidget(self._inv_stack_input, 1)
+        set_stack_btn = QPushButton("Set stack")
         set_stack_btn.setObjectName("accentBtn")
+        set_stack_btn.setToolTip("Set this amount for every selected item")
         set_stack_btn.clicked.connect(self._set_stack)
-        bottom.addWidget(set_stack_btn)
+        srow.addWidget(set_stack_btn)
+        dv.addLayout(srow)
 
-        give_btn = QPushButton("Give Item")
+        give_btn = QPushButton("Give item…")
         give_btn.setToolTip("Add a new item by transforming a donor item from your inventory")
-        give_btn.setObjectName("accentBtn")
         give_btn.clicked.connect(self._give_item)
-        bottom.addWidget(give_btn)
+        dv.addWidget(give_btn)
 
         add_item_btn = QPushButton("Add Item")
         add_item_btn.setObjectName("accentBtn")
@@ -4873,44 +4943,59 @@ QCheckBox::indicator {{
         self._add_item_btn = add_item_btn
         add_item_btn.setVisible(False)
 
-        del_btn = QPushButton("Delete Item")
+        dv.addStretch(1)
+        del_btn = QPushButton("Delete item")
         del_btn.setToolTip("Zero out selected items (set key=0, stack=0). Game will skip them on load.")
-        del_btn.setStyleSheet(f"color: {COLORS['error']};")
+        del_btn.setStyleSheet(
+            f"QPushButton {{ background: transparent; color: {COLORS['error']}; "
+            f"border: 1px solid {COLORS['error']}; border-radius: 8px; padding: 6px 12px; font-weight: 600; }}"
+            f"QPushButton:hover {{ background: rgba(248,113,113,0.12); }}")
         del_btn.clicked.connect(self._delete_items)
-        bottom.addWidget(del_btn)
+        dv.addWidget(del_btn)
+        body.addWidget(det_card)
+        layout.addLayout(body, 1)
 
-        bottom.addStretch()
-
-        bottom.addWidget(QLabel(f"Items loaded: "))
-        self._inv_count_label = QLabel("0")
-        self._inv_count_label.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
-        bottom.addWidget(self._inv_count_label)
-
-        layout.addLayout(bottom)
-
-        swap_warn = QLabel(
-            "Item Swap Tips & Warnings:\n"
-            "- Swapping works best within the SAME item type (sword to sword, glove to glove, shield to shield).\n"
-            "- Cross-type swaps (e.g. shield to glove) will show the correct icon but the wrong 3D model in-game.\n"
-            "- Some swapped items may show a placeholder icon — this usually means the swap partially worked.\n"
-            "- Items that don't exist in your game world yet may disappear on reload. "
-            "Selling an item to a vendor and buying it back can help the game 'register' it.\n"
-            "- Swapped equipment may need to be unequipped and re-equipped for correct stats.\n"
-            "- 'Swap (Single Item)' only changes the selected item. 'Swap All (Global)' changes every copy of that item.\n"
-            "- Each item has a unique ItemNo — use it to tell identical items apart.\n"
-            "- ALWAYS back up your save before swapping. The editor creates backups automatically if you accept the prompt."
-        )
-        swap_warn.setWordWrap(True)
+        # The old swap tips box: kept (other code restyles it), not shown -
+        # the tips are in the (i) tooltip now.
+        swap_warn = QLabel("")
+        swap_warn.setVisible(False)
         self._inv_swap_warn = swap_warn
-        swap_warn.setStyleSheet(
-            f"color: {COLORS.get('panel_text', COLORS['text'])}; background-color: {COLORS['panel']}; "
-            f"border: 1px solid {COLORS['accent']}; border-radius: 4px; "
-            f"padding: 6px; font-size: 10px;"
-        )
-        layout.addWidget(swap_warn)
 
         self._tabs.addTab(tab, tr("tab.inventory"))
 
+
+    def _inv_update_detail(self) -> None:
+        """Selected item(s) in the Inventory list -> the detail card."""
+        if not hasattr(self, "_inv_detail_name"):
+            return
+        t = self._inv_table
+        rows = sorted({i.row() for i in t.selectedIndexes()})
+        if not rows:
+            self._inv_detail_name.setText("No item selected")
+            self._inv_detail_sub.setText("Click an item in the list. Ctrl or Shift for several.")
+            return
+
+        def cell(r, c):
+            it = t.item(r, c)
+            return it.text() if it is not None else ""
+        if len(rows) > 1:
+            self._inv_detail_name.setText(f"{len(rows)} items selected")
+            self._inv_detail_sub.setText("Set stack and Delete work on all of them.")
+            return
+        r = rows[0]
+        import html as _h
+        self._inv_detail_name.setText(cell(r, 1) or "Item")
+        bits = [("Key", cell(r, 5)), ("Category", cell(r, 4)), ("Where", cell(r, 3)),
+                ("Slot", cell(r, 6)), ("Refine", cell(r, 8)), ("ItemNo", cell(r, 2))]
+        self._inv_detail_sub.setText("<br>".join(
+            f"{k}: <span style='color:{COLORS.get('text_strong', COLORS['text'])}'>{_h.escape(v)}</span>"
+            for k, v in bits if v))
+        try:
+            stack = int((cell(r, 7) or "").replace(",", "").split()[0])
+            if stack >= 1:
+                self._inv_stack_input.setValue(stack)
+        except (ValueError, IndexError):
+            pass
 
     def _build_equipment_tab(self) -> None:
         tab = QWidget()
