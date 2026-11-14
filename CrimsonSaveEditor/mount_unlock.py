@@ -108,8 +108,9 @@ MOUNTS: List[Tuple[int, str, str]] = [
 # records; the "npc" crew ships and monster ships are left out). Names as in
 # game (vulkk.com ship list): Small/Medium/Large <region> Ship; the Assault
 # Ship of the East has a "Turtle Ship Bow Cannon" slot (TurtleShip record),
-# the Flagship of the East is then the PanokSeon record. Galley and ship_02
-# are probably the Phantom Ship and The Drunken Catfish - not confirmed.
+# the Flagship of the East is then the PanokSeon record. 1004625 is called
+# "Galley" in game; ship_02 (1004438, "Ships", no crew stations) is a
+# placeholder and left out.
 # The six rowboats are left out (cheap at the ship managers).
 # EXPERIMENTAL: inserted like mounts, without parts (_equipItemList) or crew
 # stations (_shipStationSaveList) - not tested in game yet.
@@ -128,8 +129,7 @@ SHIPS: List[Tuple[int, str, str]] = [
     (1004547, "Large Delesyian Ship", "Large"),
     (1004623, "Assault Ship of the East", "Legendary"),
     (1004624, "Flagship of the East", "Legendary"),
-    (1004625, "Phantom Ship or Drunken Catfish? (Galley)", "Legendary"),
-    (1004438, "Phantom Ship or Drunken Catfish? (ship 02)", "Legendary"),
+    (1004625, "Galley", "Legendary"),
 ]
 SHIP_GROUPS = ("Small", "Medium", "Large", "Legendary")
 DLC_GROUPS = {"Aquatic", "Mechanical"}

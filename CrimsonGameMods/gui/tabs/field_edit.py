@@ -772,7 +772,17 @@ class FieldEditTab(QWidget):
     def _fe_is_player_ship(rec) -> bool:
         sk = (rec.get('string_key') or '')
         return (rec.get('vehicle_info') == 16970 and 'Player' in sk
-                and '_npc_' not in sk.lower())
+                and '_npc_' not in sk.lower()
+                and bool(rec.get('ship_station_data_list')))     # ship_02 is a placeholder
+
+    _SHIP_CARGO_INVENTORY = 21      # inventory_info_list entry: slots << 16 | 21
+
+    @classmethod
+    def _fe_ship_cargo(cls, rec) -> int:
+        for v in rec.get('inventory_info_list') or []:
+            if int(v) & 0xFFFF == cls._SHIP_CARGO_INVENTORY:
+                return int(v) >> 16
+        return 0
 
     def _fe_build_ships(self, lay) -> None:
         from PySide6.QtWidgets import QAbstractItemView, QHeaderView
@@ -785,14 +795,48 @@ class FieldEditTab(QWidget):
         g.addWidget(self._fe_hint(
             "Your ships take no damage that sinks them (all player ships of the DLC). "
             "The mod then needs the DLC (DMM skips it without).", True))
+        cargo_row = QHBoxLayout()
+        self._fe_ship_cargo_cb = QCheckBox("Bigger cargo hold:")
+        self._fe_ship_cargo_cb.setStyleSheet("font-weight: bold;")
+        self._fe_ship_cargo_cb.toggled.connect(lambda _c: self._fe_refresh_summary())
+        cargo_row.addWidget(self._fe_ship_cargo_cb)
+        self._fe_ship_cargo_spin = QSpinBox()
+        self._fe_ship_cargo_spin.setRange(14, 200)
+        self._fe_ship_cargo_spin.setValue(int(self._config.get("ship_cargo_slots", 60)))
+        self._fe_ship_cargo_spin.setSuffix(" slots")
+        self._fe_ship_cargo_spin.valueChanged.connect(
+            lambda v: (self._config.update({"ship_cargo_slots": v}), self._fe_refresh_summary()))
+        cargo_row.addWidget(self._fe_ship_cargo_spin)
+        cargo_row.addStretch(1)
+        g.addLayout(cargo_row)
+        g.addWidget(self._fe_hint(
+            "Cargo slots of every player ship (in game: small 14, medium 22, large 36). "
+            "Ships that already have more keep theirs. Needs the DLC.", True))
+        speed_row = QHBoxLayout()
+        self._fe_ship_speed_cb = QCheckBox("Faster ships:")
+        self._fe_ship_speed_cb.setStyleSheet("font-weight: bold;")
+        self._fe_ship_speed_cb.toggled.connect(lambda _c: self._fe_refresh_summary())
+        speed_row.addWidget(self._fe_ship_speed_cb)
+        self._fe_ship_speed_spin = QSpinBox()
+        self._fe_ship_speed_spin.setRange(110, 300)
+        self._fe_ship_speed_spin.setSingleStep(10)
+        self._fe_ship_speed_spin.setValue(int(self._config.get("ship_speed_pct", 150)))
+        self._fe_ship_speed_spin.setSuffix(" %")
+        self._fe_ship_speed_spin.valueChanged.connect(
+            lambda v: (self._config.update({"ship_speed_pct": v}), self._fe_refresh_summary()))
+        speed_row.addWidget(self._fe_ship_speed_spin)
+        speed_row.addStretch(1)
+        g.addLayout(speed_row)
+        g.addWidget(self._fe_hint(
+            "Movement and swim speed rate of every player ship (100 % = normal). "
+            "On top of what the ship's parts give. Needs the DLC.", True))
         lay.addWidget(grp)
         lay.addWidget(self._fe_hint(
-            "Faster ships: the speed, acceleration and handling levels come from the ship's "
-            "parts (sails, bow, stern ...). Raise a part's stats in Items & Gear > Edit items. "
-            "A switch for speed and a bigger cargo hold are planned.", False))
+            "The speed, acceleration and handling levels shown in game come from the ship's "
+            "parts (sails, bow, stern ...) - their stats can be raised in Items & Gear > Edit items.", False))
         self._fe_ships_table = QTableWidget()
         self._fe_ships_table.setColumnCount(4)
-        self._fe_ships_table.setHorizontalHeaderLabels(["Ship", "Record", "Crew stations", "Cargo hold"])
+        self._fe_ships_table.setHorizontalHeaderLabels(["Ship", "Record", "Crew stations", "Cargo slots"])
         self._fe_ships_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._fe_ships_table.verticalHeader().setVisible(False)
         self._fe_ships_table.setShowGrid(False)
@@ -814,8 +858,9 @@ class FieldEditTab(QWidget):
             k = r.get('key')
             stations = r.get('ship_station_data_list') or []
             inv = r.get('inventory_info_list') or []
+            cargo = self._fe_ship_cargo(r)
             vals = (names.get(k) or names.get(str(k)) or "", f"{r.get('string_key', '')} ({k})",
-                    str(len(stations)), ", ".join(str(x) for x in inv) or "-")
+                    str(len(stations)), str(cargo) if cargo else (", ".join(str(x) for x in inv) or "-"))
             for c, v in enumerate(vals):
                 tbl.setItem(i, c, QTableWidgetItem(v))
         if ships:
@@ -1346,6 +1391,12 @@ class FieldEditTab(QWidget):
         if getattr(self, '_fe_ship_inv', None) is not None and self._fe_ship_inv.isChecked():
             lines.append("Ships can't sink")
             needs_dlc = True
+        if getattr(self, '_fe_ship_cargo_cb', None) is not None and self._fe_ship_cargo_cb.isChecked():
+            lines.append(f"Ship cargo hold: {self._fe_ship_cargo_spin.value()} slots")
+            needs_dlc = True
+        if getattr(self, '_fe_ship_speed_cb', None) is not None and self._fe_ship_speed_cb.isChecked():
+            lines.append(f"Faster ships: {self._fe_ship_speed_spin.value()} %")
+            needs_dlc = True
         if getattr(self, '_fe_cb_killable', None) is not None and self._fe_cb_killable.isChecked():
             kdlc = self._fe_cb_killable_dlc.isChecked()
             lines.append("All NPCs can be attacked" + (" (incl. DLC characters)" if kdlc else ""))
@@ -1400,6 +1451,12 @@ class FieldEditTab(QWidget):
         ride, cool, inv = q['ride'].isChecked(), q['cool'].isChecked(), q['invincible'].isChecked()
         killable = self._fe_cb_killable.isChecked()
         ship_inv = getattr(self, '_fe_ship_inv', None) is not None and self._fe_ship_inv.isChecked()
+        ship_speed = (self._fe_ship_speed_spin.value()
+                      if getattr(self, '_fe_ship_speed_cb', None) is not None
+                      and self._fe_ship_speed_cb.isChecked() else 0)
+        ship_cargo = (self._fe_ship_cargo_spin.value()
+                      if getattr(self, '_fe_ship_cargo_cb', None) is not None
+                      and self._fe_ship_cargo_cb.isChecked() else 0)
 
         def _cow(items, fn):
             out, n = [], 0
@@ -1488,6 +1545,40 @@ class FieldEditTab(QWidget):
                                      lambda it: {'send_damage_to': 1} if it.get('send_damage_to', 1) == 0 else {})
                 quick_used += _extra('regioninfo.pabgb', dlc_rows.get('regioninfo', []),
                                      lambda it: {f: 0 for f in ('is_wild', 'is_town', 'limit_vehicle_run') if it.get(f, 0)})
+            if ship_speed:
+                raw = int(ship_speed) * 10_000_000            # 1,000,000,000 = 100 %
+                for r in getattr(self, '_charinfo_dlc_all', None) or []:
+                    if not self._fe_is_player_ship(r):
+                        continue
+                    for li, lv in enumerate(r.get('character_level_data_list') or []):
+                        st = lv.get('stat_list_data_defined_static') or []
+                        for idx in (10, 12):                  # MoveSpeedRate, SwimSpeedRate
+                            if len(st) <= idx:
+                                continue
+                            base = f'character_level_data_list[{li}].stat_list_data_defined_static[{idx}]'
+                            its = extra.setdefault('characterinfo.pabgb', [])
+                            if int(st[idx].get('initial_stat', 0) or 0) != raw:
+                                its.append({'entry': r.get('string_key', ''), 'key': r.get('key'),
+                                            'field': base + '.initial_stat', 'op': 'set', 'new': raw})
+                                quick_used += 1
+                            if int(st[idx].get('max_stat', 0) or 0) < raw:
+                                its.append({'entry': r.get('string_key', ''), 'key': r.get('key'),
+                                            'field': base + '.max_stat', 'op': 'set', 'new': raw})
+            if ship_cargo:
+                # one value per ship ("inventory_info_list[0]"), like the
+                # Speed % intents, not the whole list
+                inv_id = self._SHIP_CARGO_INVENTORY
+                for r in getattr(self, '_charinfo_dlc_all', None) or []:
+                    if not self._fe_is_player_ship(r):
+                        continue
+                    for i, v in enumerate(r.get('inventory_info_list') or []):
+                        v = int(v)
+                        if (v & 0xFFFF) == inv_id and (v >> 16) < ship_cargo:
+                            extra.setdefault('characterinfo.pabgb', []).append({
+                                'entry': r.get('string_key', ''), 'key': r.get('key'),
+                                'field': f'inventory_info_list[{i}]', 'op': 'set',
+                                'new': ship_cargo << 16 | inv_id})
+                            quick_used += 1
             if ship_inv:
                 quick_used += _extra('characterinfo.pabgb',
                                      [r for r in getattr(self, '_charinfo_dlc_all', None) or []
