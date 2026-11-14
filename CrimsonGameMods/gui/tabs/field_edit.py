@@ -172,17 +172,25 @@ class FieldEditTab(QWidget):
         adv_scroll.setWidget(adv_inner)
         adv_l = QVBoxLayout(adv_inner)
         self._fe_pages.addTab(quick_w, tr("Quick"))
+        ships_w = QWidget()
+        ships_l = QVBoxLayout(ships_w)
+        self._fe_pages.addTab(ships_w, "Ships")
+        self._fe_pages.setTabToolTip(self._fe_pages.indexOf(ships_w),
+                                     "The player ships of the DLC Charting the Unknown.")
         ml_w = QWidget()
         ml_l = QVBoxLayout(ml_w)
         self._fe_pages.addTab(ml_w, tr("Mounts"))
-        self._fe_pages.setTabToolTip(1, "Only the 58 mounts you can ride (as on crimsondesert.gg/mounts).")
+        self._fe_pages.setTabToolTip(self._fe_pages.indexOf(ml_w),
+                                     "Only the 58 mounts you can ride (as on crimsondesert.gg/mounts).")
         self._fe_pages.addTab(mounts_w, tr("Mounts one by one"))
-        self._fe_pages.setTabToolTip(2, "Every record with a mount type: also wild animals, wagons, ships, cannons ...")
+        self._fe_pages.setTabToolTip(self._fe_pages.indexOf(mounts_w),
+                                     "Every record with a mount type: also wild animals, wagons, ships, cannons ...")
         self._fe_pages.addTab(adv_scroll, tr("Advanced"))
         outer.addWidget(self._fe_pages, 1)
         outer.addWidget(self._fe_make_footer())
 
         self._fe_build_quick(quick_l)
+        self._fe_build_ships(ships_l)
         self._ml_build(ml_l)
         self._fe_build_mount_filters(mounts_l)
         adv_note = QLabel("For tinkerers: the raw game tables behind Quick. "
@@ -756,6 +764,68 @@ class FieldEditTab(QWidget):
             "'Mounts one by one' stay, unless an option here sets the same value.", False))
         lay.addStretch()
 
+    # ── Ships (DLC) ──────────────────────────────────────────────────────────
+
+    _SHIP_VEHICLE = 16970
+
+    @staticmethod
+    def _fe_is_player_ship(rec) -> bool:
+        sk = (rec.get('string_key') or '')
+        return (rec.get('vehicle_info') == 16970 and 'Player' in sk
+                and '_npc_' not in sk.lower())
+
+    def _fe_build_ships(self, lay) -> None:
+        from PySide6.QtWidgets import QAbstractItemView, QHeaderView
+        grp = QGroupBox("Pick what you want")
+        g = QVBoxLayout(grp)
+        self._fe_ship_inv = QCheckBox("Ships can't sink")
+        self._fe_ship_inv.setStyleSheet("font-weight: bold;")
+        self._fe_ship_inv.toggled.connect(lambda _c: self._fe_refresh_summary())
+        g.addWidget(self._fe_ship_inv)
+        g.addWidget(self._fe_hint(
+            "Your ships take no damage that sinks them (all player ships of the DLC). "
+            "The mod then needs the DLC (DMM skips it without).", True))
+        lay.addWidget(grp)
+        lay.addWidget(self._fe_hint(
+            "Faster ships: the speed, acceleration and handling levels come from the ship's "
+            "parts (sails, bow, stern ...). Raise a part's stats in Items & Gear > Edit items. "
+            "A switch for speed and a bigger cargo hold are planned.", False))
+        self._fe_ships_table = QTableWidget()
+        self._fe_ships_table.setColumnCount(4)
+        self._fe_ships_table.setHorizontalHeaderLabels(["Ship", "Record", "Crew stations", "Cargo hold"])
+        self._fe_ships_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._fe_ships_table.verticalHeader().setVisible(False)
+        self._fe_ships_table.setShowGrid(False)
+        self._fe_ships_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self._fe_ships_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self._fe_ships_table.verticalHeader().setDefaultSectionSize(28)
+        lay.addWidget(self._fe_ships_table, 1)
+
+    def _fe_ships_fill(self) -> None:
+        """List the player ships (after the DLC records are loaded) and log
+        the fields that may hold their speed and cargo size."""
+        tbl = getattr(self, '_fe_ships_table', None)
+        if tbl is None:
+            return
+        ships = [r for r in getattr(self, '_charinfo_dlc_all', None) or [] if self._fe_is_player_ship(r)]
+        names = getattr(self, '_charinfo_dlc_names', {}) or {}
+        tbl.setRowCount(len(ships))
+        for i, r in enumerate(ships):
+            k = r.get('key')
+            stations = r.get('ship_station_data_list') or []
+            inv = r.get('inventory_info_list') or []
+            vals = (names.get(k) or names.get(str(k)) or "", f"{r.get('string_key', '')} ({k})",
+                    str(len(stations)), ", ".join(str(x) for x in inv) or "-")
+            for c, v in enumerate(vals):
+                tbl.setItem(i, c, QTableWidgetItem(v))
+        if ships:
+            r = ships[0]
+            interesting = {f: v for f, v in r.items()
+                           if any(w in f for w in ('stat', 'speed', 'move', 'inventory', 'equip',
+                                                   'status', 'level', 'station', 'cargo', 'weight'))}
+            log.info("[ships] %d player ships; fields of %s: %s", len(ships), r.get('string_key'),
+                     str(interesting)[:4000])
+
     # Groups of the "Mounts one by one" table (by mount type name).
     _FE_GROUPS = [
         ("land", "🐎 Land", {"Horse", "Boar", "GolemHorse", "Wolf", "Camel", "Bear", "Deer",
@@ -1273,6 +1343,9 @@ class FieldEditTab(QWidget):
             if cb is not None and cb.isChecked():
                 lines.append(cb.text() + (" (incl. DLC)" if dlc else ""))
         needs_dlc = dlc and any(q[k].isChecked() for k in ('everywhere', 'ride', 'cool', 'invincible'))
+        if getattr(self, '_fe_ship_inv', None) is not None and self._fe_ship_inv.isChecked():
+            lines.append("Ships can't sink")
+            needs_dlc = True
         if getattr(self, '_fe_cb_killable', None) is not None and self._fe_cb_killable.isChecked():
             kdlc = self._fe_cb_killable_dlc.isChecked()
             lines.append("All NPCs can be attacked" + (" (incl. DLC characters)" if kdlc else ""))
@@ -1326,6 +1399,7 @@ class FieldEditTab(QWidget):
         everywhere = q['everywhere'].isChecked()
         ride, cool, inv = q['ride'].isChecked(), q['cool'].isChecked(), q['invincible'].isChecked()
         killable = self._fe_cb_killable.isChecked()
+        ship_inv = getattr(self, '_fe_ship_inv', None) is not None and self._fe_ship_inv.isChecked()
 
         def _cow(items, fn):
             out, n = [], 0
@@ -1414,6 +1488,13 @@ class FieldEditTab(QWidget):
                                      lambda it: {'send_damage_to': 1} if it.get('send_damage_to', 1) == 0 else {})
                 quick_used += _extra('regioninfo.pabgb', dlc_rows.get('regioninfo', []),
                                      lambda it: {f: 0 for f in ('is_wild', 'is_town', 'limit_vehicle_run') if it.get(f, 0)})
+            if ship_inv:
+                quick_used += _extra('characterinfo.pabgb',
+                                     [r for r in getattr(self, '_charinfo_dlc_all', None) or []
+                                      if self._fe_is_player_ship(r)
+                                      and not (dlc and inv and r in (getattr(self, '_charinfo_dlc_items', None) or []))],
+                                     lambda it: {'of_origin_invincibility': 1}
+                                     if 'of_origin_invincibility' in it and not it.get('of_origin_invincibility') else {})
             if killable and self._fe_cb_killable_dlc.isChecked():
                 mounts_dlc = {id(x) for x in getattr(self, '_charinfo_dlc_items', None) or []}
                 rows = [r for r in getattr(self, '_charinfo_dlc_all', None) or [] if id(r) not in mounts_dlc]
@@ -2108,6 +2189,10 @@ class FieldEditTab(QWidget):
                 '_dlc': True,
             })
         log.info("DLC mounts: %d", len(self._charinfo_dlc_items))
+        try:
+            self._fe_ships_fill()
+        except Exception:  # noqa: BLE001 - list only
+            log.exception("ships list")
 
     def _fe_load_dlc_tables(self, game_path: str) -> None:
         """Regions and mount types that only a DLC has (regioninfo.dlc_01,
