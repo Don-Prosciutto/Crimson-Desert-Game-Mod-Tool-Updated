@@ -8,6 +8,16 @@ sys.path.insert(0, str(Path(__file__).parent))
 from ben_save_decrypt import decrypt_save, encrypt_save
 
 
+def _bit(bmp, index: int) -> int:
+    """Presence bit of field `index`; a field past the end of a short bitmap is
+    absent (as in save_parser._field_present). A plain bmp[index // 8] raised
+    'list index out of range' on such saves."""
+    byte = index // 8
+    if byte >= len(bmp):
+        return 0
+    return (bmp[byte] >> (index & 7)) & 1
+
+
 def parse_reflection_layout(data: bytes) -> dict:
     off = 0
 
@@ -112,7 +122,7 @@ def find_mercenary_bitmap_positions(data: bytes, layout: dict) -> list:
     results = []
 
     for pi, prop in enumerate(clan_props):
-        bit_missing = ((bmp[pi // 8] >> (pi & 7)) & 1) == 0
+        bit_missing = _bit(bmp, pi) == 0
 
         if ser_ver >= 9 and (prop['flags'] & ((1 << 7) | (1 << 1))):
             continue
@@ -189,7 +199,7 @@ def _parse_single_mercenary(data, off, layout, merc_type, name_prop_idx):
             tag_len = struct.unpack_from('<I', data, off)[0]; off += 4
             off += tag_len
 
-    name_bit = (bmp[name_prop_idx // 8] >> (name_prop_idx & 7)) & 1
+    name_bit = _bit(bmp, name_prop_idx)
     merc_no = None
     name_insert_pos = None
     name_current_value = None
@@ -205,7 +215,7 @@ def _parse_single_mercenary(data, off, layout, merc_type, name_prop_idx):
     }
 
     for pi, prop in enumerate(props):
-        bit_missing = ((bmp[pi // 8] >> (pi & 7)) & 1) == 0
+        bit_missing = _bit(bmp, pi) == 0
 
         if ser_ver >= 9 and (prop['flags'] & ((1 << 7) | (1 << 1))):
             continue
@@ -354,7 +364,7 @@ def _skip_object(data, off, layout):
                 off += tag_len
 
     for pi, prop in enumerate(type_info['properties']):
-        bit_missing = ((bmp[pi // 8] >> (pi & 7)) & 1) == 0
+        bit_missing = _bit(bmp, pi) == 0
         if ser_ver >= 9 and (prop['flags'] & ((1 << 7) | (1 << 1))):
             continue
         is_array = prop['prop_type'] in (3, 6, 7, 9, 10)
@@ -467,7 +477,7 @@ def _fix_offsets_in_object_properties(data, off, type_info, layout, insertion_po
                 off += tag_len
 
     for pi, prop in enumerate(type_info['properties']):
-        bit_missing = ((bmp[pi // 8] >> (pi & 7)) & 1) == 0
+        bit_missing = _bit(bmp, pi) == 0
         if ser_ver >= 9 and (prop['flags'] & ((1 << 7) | (1 << 1))):
             continue
         is_array = prop['prop_type'] in (3, 6, 7, 9, 10)

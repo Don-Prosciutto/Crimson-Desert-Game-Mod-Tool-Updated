@@ -8446,6 +8446,12 @@ QCheckBox::indicator {{
             self._merc_refresh()
         except Exception:  # noqa: BLE001
             pass
+        # The mercenary list above is read by a separate parser; if it cannot
+        # read this save, its "Error: ..." must not hide that the add worked.
+        if self._merc_status.text().startswith("Error"):
+            self._merc_status.setText(
+                f"Added {len(added)} {noun} - save the file to keep them. "
+                f"(The list above could not be read: {self._merc_status.text()[7:]})")
         if len(added) > 25:
             done = f"{len(added)} {noun}"
         QMessageBox.information(
