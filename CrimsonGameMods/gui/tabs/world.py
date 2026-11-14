@@ -334,7 +334,7 @@ class StoreEditorTab(QWidget):
 
         class _SplitOnce(QObject):
             def eventFilter(self, obj, ev):  # noqa: N802
-                if ev.type() == QEvent.Show and obj.width() > 0:
+                if ev.type() == QEvent.Resize and obj.width() > 900:
                     w = obj.width()
                     left = max(320, int(w * 0.30))
                     obj.setSizes([left, max(400, w - left)])

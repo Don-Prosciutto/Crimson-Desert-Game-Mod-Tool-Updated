@@ -1364,6 +1364,31 @@ class ItemBuffsTab(QWidget):
         inner_layout.addWidget(_card("", stats_table_frame))
 
         build_buff_action_tabs()
+        # Each editor page scrolls instead of being cut off when the column
+        # is narrower than the page (Quick Edit wants ~750 px).
+        from PySide6.QtWidgets import QScrollArea as _QSA
+        _tabs = self._buff_action_tabs
+        _tabs.blockSignals(True)
+        for _i in range(_tabs.count()):
+            _pg = _tabs.widget(_i)
+            if isinstance(_pg, _QSA):
+                continue
+            _txt, _tip = _tabs.tabText(_i), _tabs.tabToolTip(_i)
+            _vis = _tabs.isTabVisible(_i)
+            _sa = _QSA()
+            _sa.setWidgetResizable(True)
+            _sa.setFrameShape(QFrame.NoFrame)
+            _sa.setObjectName("ibPageScroll")
+            _sa.setStyleSheet("QScrollArea#ibPageScroll { background: transparent; border: none; }")
+            _sa.viewport().setAutoFillBackground(False)
+            _tabs.removeTab(_i)
+            _sa.setWidget(_pg)
+            _pg.setAutoFillBackground(False)
+            _tabs.insertTab(_i, _sa, _txt)
+            _tabs.setTabToolTip(_i, _tip)
+            _tabs.setTabVisible(_i, _vis)
+        _tabs.setCurrentIndex(0)
+        _tabs.blockSignals(False)
         self._buff_action_tabs.setStyleSheet(
             "QTabWidget::pane { background: transparent; border: none; border-top: 1px solid "
             + COLORS.get("border_soft", COLORS["border"]) + "; border-radius: 0px; }")
@@ -1378,10 +1403,10 @@ class ItemBuffsTab(QWidget):
 
         class _SplitOnce(QObject):
             def eventFilter(self, obj, ev):  # noqa: N802
-                if ev.type() == QEvent.Show and obj.width() > 0:
+                if ev.type() == QEvent.Resize and obj.width() > 900:
                     w = obj.width()
-                    left = max(300, int(w * 0.22))
-                    mid = max(300, int(w * 0.22))
+                    left = max(300, int(w * 0.21))
+                    mid = max(300, int(w * 0.24))
                     obj.setSizes([left, mid, max(400, w - left - mid)])
                     obj.removeEventFilter(self)
                 return False

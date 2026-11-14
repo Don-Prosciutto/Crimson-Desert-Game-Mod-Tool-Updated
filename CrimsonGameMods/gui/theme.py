@@ -524,7 +524,7 @@ QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabl
     background-color: {c['panel']};
 }}
 QSpinBox, QDoubleSpinBox {{
-    padding-right: 22px;
+    padding: 5px 4px 5px 8px;
 }}
 QSpinBox::up-button, QDoubleSpinBox::up-button,
 QSpinBox::down-button, QDoubleSpinBox::down-button {{
