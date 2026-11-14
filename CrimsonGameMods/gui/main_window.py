@@ -1399,12 +1399,14 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._nav_rebuild()
 
     def _nav_set_icon(self, item, label: str, on: bool) -> None:
-        """Line icon in front of a page name; the open page's in the accent."""
+        """Line icon in front of a page name; the open page's in the accent.
+        Its state sits in UserRole + 10 (UserRole + 1/+2 belong to the
+        self-test, which keeps the page's plain name and tooltip there)."""
         try:
             from gui.icons import icon, icon_name_for
             item.setIcon(0, icon(icon_name_for(label),
                                  COLORS["accent"] if on else COLORS["text_dim"], 18))
-            item.setData(0, Qt.UserRole + 1, on)
+            item.setData(0, Qt.UserRole + 10, on)
         except Exception:  # noqa: BLE001 - icons are decoration only
             pass
 
@@ -1518,7 +1520,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
             d = it.data(0, Qt.UserRole)
             if d and d[0] == "page":
                 on = d[2] is target
-                if it.data(0, Qt.UserRole + 1) != on:
+                if it.data(0, Qt.UserRole + 10) != on:
                     self._nav_set_icon(it, it.text(0), on)
                 if on:
                     nav.blockSignals(True)
