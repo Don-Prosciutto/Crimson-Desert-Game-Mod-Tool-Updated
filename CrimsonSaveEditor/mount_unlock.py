@@ -103,6 +103,30 @@ MOUNTS: List[Tuple[int, str, str]] = [
     (1002042, 'Cloudcruiser', 'Flying'),
     (1002043, 'Skystreaker', 'Flying'),
 ]
+# (characterKey, name, group) - the player ships of the DLC "Charting the
+# Unknown" (dlc_characterinfo, vehicle type 16970 'Ship', "Riding_..._Player_..."
+# records; the "npc" crew ships and monster ships are left out). The game's
+# own names are not known yet, so these describe size and home region.
+# EXPERIMENTAL: inserted like mounts, without parts (_equipItemList) or crew
+# stations (_shipStationSaveList) - not tested in game yet.
+SHIPS: List[Tuple[int, str, str]] = [
+    (1004537, "Small Ship (Greymane)", "Small"),
+    (1004540, "Small Ship (Hernand)", "Small"),
+    (1004538, "Small Ship (Demeniss)", "Small"),
+    (1004539, "Small Ship (Delesyia)", "Small"),
+    (1004541, "Ship (Greymane)", "Medium"),
+    (1004544, "Ship (Hernand)", "Medium"),
+    (1004542, "Ship (Demeniss)", "Medium"),
+    (1004543, "Ship (Delesyia)", "Medium"),
+    (1004545, "Large Ship (Greymane)", "Large"),
+    (1004548, "Large Ship (Hernand)", "Large"),
+    (1004546, "Large Ship (Demeniss)", "Large"),
+    (1004547, "Large Ship (Delesyia)", "Large"),
+    (1004623, "Turtle Ship", "Special"),
+    (1004624, "Panokseon", "Special"),
+    (1004625, "Galley", "Special"),
+]
+SHIP_GROUPS = ("Small", "Medium", "Large", "Special")
 DLC_GROUPS = {"Aquatic", "Mechanical"}
 # Filter buttons on the page: group -> area
 AREA = {"Horses": "Land", "Predators": "Land", "Bears": "Land", "Camels": "Land",

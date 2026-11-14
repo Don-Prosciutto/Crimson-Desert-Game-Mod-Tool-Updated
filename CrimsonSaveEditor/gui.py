@@ -65,6 +65,41 @@ from theme_support import (
 import quest_chapters
 
 
+def _ship_pixmap(size: int):
+    """A simple drawn ship for cards without a picture (the ships have none)."""
+    from PySide6.QtGui import QPainter, QPainterPath, QPixmap, QPen
+    from PySide6.QtCore import QPointF
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.Antialiasing)
+    u = size / 24.0
+    accent = QColor(COLORS["accent"])
+    hull = QPainterPath()
+    hull.moveTo(QPointF(3 * u, 15 * u))
+    hull.lineTo(QPointF(21 * u, 15 * u))
+    hull.lineTo(QPointF(18 * u, 19.5 * u))
+    hull.lineTo(QPointF(6 * u, 19.5 * u))
+    hull.closeSubpath()
+    p.setPen(Qt.NoPen)
+    p.setBrush(accent)
+    p.drawPath(hull)
+    p.setPen(QPen(accent, 1.2 * u))
+    p.drawLine(QPointF(12 * u, 3.5 * u), QPointF(12 * u, 15 * u))
+    sail = QPainterPath()
+    sail.moveTo(QPointF(12.8 * u, 4.5 * u))
+    sail.lineTo(QPointF(19 * u, 13 * u))
+    sail.lineTo(QPointF(12.8 * u, 13 * u))
+    sail.closeSubpath()
+    c = QColor(accent)
+    c.setAlpha(150)
+    p.setPen(Qt.NoPen)
+    p.setBrush(c)
+    p.drawPath(sail)
+    p.end()
+    return pm
+
+
 def _pick_card_delegate(parent):
     """Item delegate for the Add Mounts / Add Pets cards: a rounded card with
     the picture, the name in up to two lines and a tick box; ticked cards get
@@ -8300,6 +8335,7 @@ QCheckBox::indicator {{
         _pick_tabs = _QTabWidget()
         _pick_tabs.addTab(self._build_picker("mount"), "Add Mounts")
         _pick_tabs.addTab(self._build_picker("pet"), "Add Pets")
+        _pick_tabs.addTab(self._build_picker("ship"), "Add Ships (DLC, test)")
         _pick_tabs.addTab(rename_page, "Rename companions")
         layout.addWidget(_pick_tabs, 1)
 
@@ -8320,6 +8356,17 @@ QCheckBox::indicator {{
 
     def _picker_spec(self, kind: str) -> dict:
         import mount_unlock as mu
+        if kind == "ship":
+            return {
+                "title": "Add Ships", "noun": "ships", "one": "ship",
+                "entries": mu.SHIPS, "filters": ("All",) + tuple(mu.SHIP_GROUPS),
+                "area": lambda g: g, "dlc": set(),
+                "note": ("TEST - not tried in game yet. Needs the DLC Charting the Unknown. Ships are "
+                         "added like mounts: a new entry in your list, without ship parts or crew "
+                         "stations. Try one ship on a copy of your save first. Greyed out = this save "
+                         "has it already."),
+                "where": "with your ships",
+            }
         if kind == "pet":
             return {
                 "title": "Add Pets", "noun": "pets", "one": "pet",
@@ -8405,6 +8452,8 @@ QCheckBox::indicator {{
             pic = _portrait(key)
             if pic:
                 it.setIcon(QIcon(pic))
+            elif kind == "ship":
+                it.setIcon(QIcon(_ship_pixmap(104)))
             lw.addItem(it)
         lw.itemChanged.connect(lambda _it, k=kind: self._pick_update_count(k))
         lw.itemClicked.connect(lambda it: it.setCheckState(
