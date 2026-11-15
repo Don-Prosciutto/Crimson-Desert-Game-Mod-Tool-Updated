@@ -11,7 +11,7 @@ import html
 import os
 import tempfile
 
-from PySide6.QtCore import QEvent, QObject, Qt, QPoint
+from PySide6.QtCore import QEvent, QObject, Qt, QPoint, QModelIndex
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (QAbstractItemView, QDialog, QLabel, QToolTip,
                                QVBoxLayout)
@@ -43,7 +43,11 @@ class IconPreview(QObject):
     @staticmethod
     def _row_name(index) -> str:
         model = index.model()
-        for col in range(model.columnCount()):
+        try:
+            cols = model.columnCount(QModelIndex())  # list models need the parent argument
+        except Exception:  # noqa: BLE001
+            cols = 1
+        for col in range(cols):
             text = model.index(index.row(), col).data(Qt.DisplayRole)
             if isinstance(text, str) and any(ch.isalpha() for ch in text):
                 return text
