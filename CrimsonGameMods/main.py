@@ -139,6 +139,9 @@ def _compute_startup_language() -> str:
 
 
 def _autodetect_locale_if_unset() -> None:
+    # English until the user picks a language (2.5): with all packs inside the
+    # tool, following the Windows language started e.g. German by surprise.
+    return
     try:
         try:
             from gui_i18n import current_language
