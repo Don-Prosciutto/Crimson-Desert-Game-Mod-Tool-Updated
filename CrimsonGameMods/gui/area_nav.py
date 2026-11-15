@@ -34,9 +34,10 @@ SECTIONS = [
             ("Edit items", "ItemBuffs", "Formerly “ItemBuffs”"),
             ("Quick presets", "Presets", "Formerly “Presets”"),
             ("Combine mods", "Stacker Tool", "Formerly “Stacker Tool”")]),
-        ("Shops & Loot", "stores", "game", "What vendors sell and what enemies, chests and gathering drop", [
+        ("Shops & Loot", "stores", "game", "What vendors sell, what enemies, chests and gathering drop, and your business bonuses", [
             ("Shops", "Stores", "Formerly “Stores” – incl. the DLC Vendor"),
-            ("Drops", "DropSets", "Formerly “DropSets”")]),
+            ("Drops", "DropSets", "Formerly “DropSets”"),
+            ("Businesses (DLC)", "Businesses", "Bonuses for selling goods with the same tag, e.g. 4 Furniture goods")]),
         ("Characters & Mounts", "mounts", "game", "Mount speed and cooldowns, NPC behaviour, looks, move sets and skills", [
             ("Mounts", "Mounts", ""),
             ("Characters", "Characters", ""),

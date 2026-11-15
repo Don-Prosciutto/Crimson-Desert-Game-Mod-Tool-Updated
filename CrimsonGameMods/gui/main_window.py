@@ -841,6 +841,12 @@ class MainWindow(SelfTestMixin, QMainWindow):
                 pass
         self._mods_tabs.addTab(self._store_tab, tr("tab.stores"))
 
+        # Businesses (DLC): tag bonuses of restaurant, sawmill, smithy ... (2.5)
+        from gui.tabs.business import BusinessTab
+        self._business_tab = BusinessTab(config=self._config)
+        self._business_tab.status_message.connect(self._update_status)
+        self._mods_tabs.addTab(self._business_tab, "Businesses")
+
         self._bagspace_tab = BagSpaceTab(
             config=self._config,
             rebuild_papgt_fn=self._rebuild_papgt_without,
@@ -3088,6 +3094,8 @@ QCheckBox {{
         if hasattr(self, '_store_tab'):
             self._store_tab.set_game_path(path)
             self._store_parser_v2 = getattr(self._store_tab, '_store_parser_v2', None)
+        if hasattr(self, '_business_tab'):
+            self._business_tab.set_game_path(path)
         self._cmod_loader = None
         self._asi_manager = None
         if hasattr(self, '_cmod_refresh'):
