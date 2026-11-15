@@ -5000,130 +5000,186 @@ QCheckBox::indicator {{
     def _build_equipment_tab(self) -> None:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
         layout.addWidget(self._make_scope_label("save"))
+        # New look 2.5: one bar, a list card and a card for the selected item.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
+        _strong = COLORS.get("text_strong", COLORS["text"])
+        _soft = COLORS.get("border_soft", COLORS["border"])
 
         top = QHBoxLayout()
-        top.addWidget(QLabel("Search:"))
+        top.setSpacing(8)
         self._equip_search = QLineEdit()
-        self._equip_search.setPlaceholderText("Filter by name, internal name, key, or category...")
+        self._equip_search.setPlaceholderText("Search by name, internal name, key or category…")
+        self._equip_search.setMinimumHeight(34)
         self._equip_search.textChanged.connect(self._filter_equipment)
         top.addWidget(self._equip_search, 1)
+        _info = QLabel("ⓘ")
+        _info.setCursor(Qt.WhatsThisCursor)
+        _info.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 16px; padding: 0 4px;")
+        _howto = (
+            "Only items with refine data appear here. If your item is missing, refine it once "
+            "at the blacksmith in the game, then save and reload.\n\n"
+            "New gear with Duplicate + Swap:\n"
+            "1. Set Copies (2-3) and click 'Duplicate all gear'.\n"
+            "2. Save, then load the save in the game.\n"
+            "3. Unequip the gear - the extra copies drop into your inventory.\n"
+            "4. Save in the game again and reload the save here.\n"
+            "5. Items tab: right-click the item you want to change, then 'Swap'.\n"
+            "6. Item swap tab: pick the new item and click 'Swap (Single Item)'.\n"
+            "7. Save and load in the game.\n\n"
+            "Swap works best within the same type (sword to sword, helm to helm).\n"
+            "Editing gear is tested and usually safe - a backup is offered before every save.")
+        _info.setToolTip(_howto)
+        top.addWidget(_info)
         top.addWidget(self._make_help_btn("equipment"))
         layout.addLayout(top)
 
-        equip_info = QLabel(
-            "Only items with enchant data appear here. If your item is missing, "
-            "enchant it once at the blacksmith in-game first, then save and reload."
-        )
-        equip_info.setWordWrap(True)
-        equip_info.setStyleSheet(
-            f"color: {COLORS['text']}; padding: 6px; "
-            f"border: 1px solid {COLORS['accent']}; border-radius: 4px; "
-            f"background-color: rgba(79,195,247,0.08);"
-        )
-        layout.addWidget(equip_info)
+        def _card():
+            card = QFrame()
+            card.setObjectName("eqCard")
+            card.setStyleSheet(
+                f"QFrame#eqCard {{ background: {COLORS['panel']}; border: 1px solid {_soft}; "
+                f"border-radius: 12px; }}"
+                f"QFrame#eqCard QLabel, QFrame#eqCard QCheckBox {{ background: transparent; }}")
+            v = QVBoxLayout(card)
+            v.setContentsMargins(12, 10, 12, 12)
+            v.setSpacing(8)
+            return card, v
+
+        def _dim(text: str, bold: bool = False) -> QLabel:
+            lab = QLabel(text)
+            lab.setWordWrap(True)
+            lab.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px;"
+                              + (" font-weight: 600;" if bold else ""))
+            return lab
+
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        list_card, lv = _card()
+        head_row = QHBoxLayout()
+        _head = QLabel("Gear")
+        _head.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {_strong};")
+        head_row.addWidget(_head)
+        head_row.addStretch(1)
+        _cnt_lab = QLabel("in this save:")
+        _cnt_lab.setStyleSheet(f"color: {COLORS['text_dim']};")
+        head_row.addWidget(_cnt_lab)
+        self._equip_count_label = QLabel("0")
+        self._equip_count_label.setStyleSheet(f"color: {COLORS['text_dim']}; font-weight: 600;")
+        head_row.addWidget(self._equip_count_label)
+        lv.addLayout(head_row)
+        lv.addWidget(_dim("Only gear with refine data is listed. Missing an item? Refine it once at "
+                          "the blacksmith, save, and load the save again."))
 
         self._equip_table = QTableWidget()
         self._equip_table.setColumnCount(9)
         self._equip_table.setHorizontalHeaderLabels([
-            "", "Name", "ItemKey", "Slot", "Enchant", "Endurance", "Sharpness", "Stack", "ItemNo"
+            "", "Name", "ItemKey", "Slot", "Refine", "Endurance", "Sharpness", "Stack", "ItemNo"
         ])
         self._equip_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._equip_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._equip_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Interactive)
-        self._equip_table.setColumnWidth(0, 0)
-        self._equip_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Interactive)
-        self._equip_table.setColumnWidth(1, 200)
+        self._equip_table.setColumnWidth(0, (ICON_SIZE + 12) if getattr(self, "_icons_enabled", False) else 0)
+        self._equip_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        for _c in (2, 3, 8):                       # key, slot, ItemNo: in the card on the right
+            self._equip_table.setColumnHidden(_c, True)
         self._equip_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._equip_table.setSortingEnabled(True)
-        self._equip_table.verticalHeader().setDefaultSectionSize(24)
+        self._equip_table.verticalHeader().setVisible(False)
+        self._equip_table.setShowGrid(False)
+        self._equip_table.verticalHeader().setDefaultSectionSize(30)
         self._equip_table.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
-        layout.addWidget(self._equip_table, 1)
+        self._equip_table.itemSelectionChanged.connect(self._equip_update_detail)
+        lv.addWidget(self._equip_table, 1)
+        body.addWidget(list_card, 1)
 
-        edit_group = QGroupBox("Edit Selected Equipment")
-        edit_layout = QGridLayout(edit_group)
+        det_card, dv = _card()
+        det_card.setFixedWidth(340)
+        self._equip_detail_name = QLabel("No item selected")
+        self._equip_detail_name.setWordWrap(True)
+        self._equip_detail_name.setStyleSheet(f"font-size: 17px; font-weight: 700; color: {_strong};")
+        dv.addWidget(self._equip_detail_name)
+        self._equip_detail_sub = QLabel("Click an item in the list. Ctrl or Shift for several.")
+        self._equip_detail_sub.setWordWrap(True)
+        self._equip_detail_sub.setTextFormat(Qt.RichText)
+        self._equip_detail_sub.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']};")
+        dv.addWidget(self._equip_detail_sub)
 
-        edit_layout.addWidget(QLabel("Enchant Level:"), 0, 0)
+        def _sep():
+            f = QFrame()
+            f.setFrameShape(QFrame.HLine)
+            f.setStyleSheet(f"color: {_soft};")
+            return f
+        dv.addWidget(_sep())
+
+        dv.addWidget(_dim("Refine level", True))
+        erow = QHBoxLayout()
         self._equip_enchant = QSpinBox()
         self._equip_enchant.setRange(0, 10)
-        edit_layout.addWidget(self._equip_enchant, 0, 1)
-        enchant_btn = QPushButton("Set Enchant")
+        erow.addWidget(self._equip_enchant, 1)
+        enchant_btn = QPushButton("Set refine")
         enchant_btn.setObjectName("accentBtn")
+        enchant_btn.setToolTip("Set this refine level on every selected item (safe up to +10)")
         enchant_btn.clicked.connect(self._set_enchant)
-        edit_layout.addWidget(enchant_btn, 0, 2)
-        enc_warn = QLabel("Safe — Max: 10")
-        enc_warn.setStyleSheet(f"color: {COLORS['success']}; font-size: 10px;")
-        edit_layout.addWidget(enc_warn, 0, 3)
+        erow.addWidget(enchant_btn)
+        dv.addLayout(erow)
+        _safe = QLabel("Safe up to +10")
+        _safe.setStyleSheet(f"color: {COLORS['success']}; font-size: 11px;")
+        dv.addWidget(_safe)
+        dv.addSpacing(6)
 
-        edit_layout.addWidget(QLabel("Stack:"), 1, 0)
+        dv.addWidget(_dim("Amount (stack)", True))
+        srow = QHBoxLayout()
         self._equip_stack = QSpinBox()
         self._equip_stack.setRange(1, 999999999)
-        self._equip_stack.setValue(3)
-        edit_layout.addWidget(self._equip_stack, 1, 1)
-        stack_btn = QPushButton("Set Stack")
+        self._equip_stack.setValue(1)
+        srow.addWidget(self._equip_stack, 1)
+        stack_btn = QPushButton("Set stack")
+        stack_btn.setToolTip("Set this amount on every selected item")
         stack_btn.clicked.connect(self._set_equip_stack)
-        edit_layout.addWidget(stack_btn, 1, 2)
+        srow.addWidget(stack_btn)
+        dv.addLayout(srow)
 
-        dupe_btn = QPushButton("Duplicate All Equipment")
-        dupe_btn.setObjectName("accentBtn")
-        dupe_btn.setToolTip(
-            "Set stack on ALL equipment. Load game, unequip to get copies, "
-            "then swap them to whatever you want."
-        )
-        dupe_btn.clicked.connect(self._duplicate_all_equipment)
-        edit_layout.addWidget(dupe_btn, 1, 3)
-
-        edit_layout.addWidget(QLabel("Dupe Limit:"), 2, 0)
-        limit_row = QHBoxLayout()
-        self._dupe_limit_check = QCheckBox("Limit total items duplicated to:")
+        dv.addStretch(1)
+        dv.addWidget(_sep())
+        _dh = QLabel("Duplicate all gear")
+        _dh.setStyleSheet(f"font-size: 14px; font-weight: 700; color: {_strong};")
+        dv.addWidget(_dh)
+        dv.addWidget(_dim("Every equipped item gets extra copies. Unequip it in the game "
+                          "and the copies drop into your inventory."))
+        crow = QHBoxLayout()
+        crow.addWidget(_dim("Copies"))
+        self._equip_dupe_copies = QSpinBox()
+        self._equip_dupe_copies.setRange(2, 999)
+        self._equip_dupe_copies.setValue(3)
+        crow.addWidget(self._equip_dupe_copies)
+        crow.addStretch(1)
+        dv.addLayout(crow)
+        lrow = QHBoxLayout()
+        self._dupe_limit_check = QCheckBox("Only the first")
         self._dupe_limit_check.setChecked(False)
         self._dupe_limit_check.setToolTip("Cap how many equipped items get duplicated (to avoid filling inventory)")
-        limit_row.addWidget(self._dupe_limit_check)
+        lrow.addWidget(self._dupe_limit_check)
         self._dupe_limit_spin = QSpinBox()
         self._dupe_limit_spin.setRange(1, 230)
         self._dupe_limit_spin.setValue(50)
         self._dupe_limit_spin.setEnabled(False)
         self._dupe_limit_check.toggled.connect(self._dupe_limit_spin.setEnabled)
-        limit_row.addWidget(self._dupe_limit_spin)
-        limit_w = QWidget()
-        limit_w.setLayout(limit_row)
-        edit_layout.addWidget(limit_w, 2, 1, 1, 3)
+        lrow.addWidget(self._dupe_limit_spin)
+        lrow.addWidget(_dim("items"))
+        lrow.addStretch(1)
+        dv.addLayout(lrow)
+        dupe_btn = QPushButton("Duplicate all gear")
+        dupe_btn.setToolTip(_howto)
+        dupe_btn.clicked.connect(self._duplicate_all_equipment)
+        dv.addWidget(dupe_btn)
+        body.addWidget(det_card)
+        layout.addLayout(body, 1)
 
-        layout.addWidget(edit_group)
-
-        howto_label = QLabel(
-            "How to get new gear using Duplicate + Swap:\n"
-            "1. Click 'Duplicate All Equipment' above (set stack to 2-3 copies).\n"
-            "2. Save your file, then load your save in-game.\n"
-            "3. Unequip the duplicated gear — the extra copies will drop into your inventory.\n"
-            "4. Save in-game again, then reload the save in this editor.\n"
-            "5. Go to the Inventory tab, right-click the item you want to swap, and click 'Swap'.\n"
-            "6. In the Item Swap tab, pick your desired item and hit 'Swap (Single Item)'.\n"
-            "7. Save and load in-game — your new gear is ready!\n\n"
-            "Tip: Swap works best within the same type (sword → sword, helm → helm)."
-        )
-        howto_label.setWordWrap(True)
-        self._equipment_howto_label = howto_label
-        howto_label.setStyleSheet(
-            f"color: {COLORS.get('panel_text', COLORS['text'])}; background-color: {COLORS['panel']}; "
-            f"border: 1px solid {COLORS['accent']}; border-radius: 4px; "
-            f"padding: 8px; font-size: 11px;"
-        )
-        layout.addWidget(howto_label)
-
-        warn_label = QLabel(
-            "Warning: Editing equipment stats is tested and usually safe, but may crash your save. "
-            "Please make a backup before saving."
-        )
-        warn_label.setWordWrap(True)
-        warn_label.setStyleSheet(
-            f"color: {COLORS['warning']}; background-color: #2a2200; "
-            f"border: 1px solid {COLORS['warning']}; border-radius: 4px; "
-            f"padding: 6px; font-size: 11px;"
-        )
-        layout.addWidget(warn_label)
+        # Old how-to box: other code restyles it; the text is in the (i) tooltip now.
+        self._equipment_howto_label = QLabel("")
+        self._equipment_howto_label.setVisible(False)
 
         self._tabs.addTab(tab, tr("tab.equipment"))
 
@@ -33272,6 +33328,46 @@ QCheckBox::indicator {{
             table.setItem(row, 8, _num_item(item.item_no))
 
         table.setSortingEnabled(True)
+        if hasattr(self, "_equip_count_label"):
+            self._equip_count_label.setText(str(len(equip_items)))
+        self._equip_update_detail()
+
+    def _equip_update_detail(self) -> None:
+        """Selected item(s) in the Equipped list -> the card on the right."""
+        if not hasattr(self, "_equip_detail_name"):
+            return
+        t = self._equip_table
+        rows = sorted({i.row() for i in t.selectedIndexes()})
+        if not rows:
+            self._equip_detail_name.setText("No item selected")
+            self._equip_detail_sub.setText("Click an item in the list. Ctrl or Shift for several.")
+            return
+
+        def cell(r, c):
+            it = t.item(r, c)
+            return it.text() if it is not None else ""
+        if len(rows) > 1:
+            self._equip_detail_name.setText(f"{len(rows)} items selected")
+            self._equip_detail_sub.setText("Set refine and Set stack work on all of them.")
+            return
+        r = rows[0]
+        import html as _h
+        self._equip_detail_name.setText(cell(r, 1) or "Item")
+        bits = [("Key", cell(r, 2)), ("Refine", cell(r, 4)), ("Endurance", cell(r, 5)),
+                ("Sharpness", cell(r, 6)), ("Amount", cell(r, 7)), ("Slot", cell(r, 3)),
+                ("ItemNo", cell(r, 8))]
+        self._equip_detail_sub.setText("<br>".join(
+            f"{k}: <span style='color:{COLORS.get('text_strong', COLORS['text'])}'>{_h.escape(v)}</span>"
+            for k, v in bits if v and v != "-"))
+        try:
+            lvl = int(cell(r, 4).lstrip("+").split("/")[0])
+            self._equip_enchant.setValue(max(0, min(10, lvl)))
+        except (ValueError, IndexError):
+            pass
+        try:
+            self._equip_stack.setValue(max(1, int(cell(r, 7).replace(",", ""))))
+        except ValueError:
+            pass
 
     def _toggle_icons(self) -> None:
         self._icons_enabled = not self._icons_enabled
@@ -33823,7 +33919,8 @@ QCheckBox::indicator {{
             if len(equipped) > max_items:
                 equipped = equipped[:max_items]
 
-        count = self._equip_stack.value()
+        count = (self._equip_dupe_copies if hasattr(self, "_equip_dupe_copies")
+                 else self._equip_stack).value()
         if count < 2:
             QMessageBox.information(self, "Duplicate", "Set the Stack value to 2 or higher first.")
             return
