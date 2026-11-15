@@ -11649,7 +11649,11 @@ QCheckBox::indicator {{
         tab = getattr(self, "_quest_editor_tab", None)
         if tab is not None and not tab.isVisible():
             return
-        self._qe_load()
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            self._qe_load()
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def _qe_load(self) -> None:
         if not self._save_data:

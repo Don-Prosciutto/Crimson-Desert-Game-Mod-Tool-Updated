@@ -186,7 +186,18 @@ def _i64(blob: bytes, offset: int) -> int:
     return struct.unpack_from("<q", blob, offset)[0]
 
 
+_EDIT_FORMAT_CACHE: dict[tuple[str, int], str] = {}
+
+
 def _type_to_edit_format(type_name: str, size: int) -> str:
+    key = (type_name, size)
+    hit = _EDIT_FORMAT_CACHE.get(key)
+    if hit is None:
+        hit = _EDIT_FORMAT_CACHE[key] = _type_to_edit_format_uncached(type_name, size)
+    return hit
+
+
+def _type_to_edit_format_uncached(type_name: str, size: int) -> str:
     lower = type_name.lower()
     if lower == "bool":
         return "bool"
@@ -535,6 +546,23 @@ def _compute_undecoded_ranges(
     return spans
 
 
+_PAYLOAD_PLANS: dict[int, tuple] = {}
+
+
+def _payload_plan(type_def: TypeDef) -> list:
+    """Per type: (field, index, name, type_name, meta_kind, meta_size, meta_aux,
+    mask byte, mask bit) for each field - looked up once per type and parse."""
+    hit = _PAYLOAD_PLANS.get(id(type_def))
+    if hit is not None and hit[0] is type_def:
+        return hit[1]
+    plan = [(f, i, f.name, f.type_name, f.meta_kind, f.meta_size, f.meta_aux, i // 8, 1 << (i % 8))
+            for i, f in enumerate(type_def.fields)]
+    if len(_PAYLOAD_PLANS) > 4096:
+        _PAYLOAD_PLANS.clear()
+    _PAYLOAD_PLANS[id(type_def)] = (type_def, plan)
+    return plan
+
+
 def _decode_inline_object_payload(
     raw: bytes,
     type_def: TypeDef,
@@ -548,22 +576,15 @@ def _decode_inline_object_payload(
     reserved_u32 = _u32(raw, payload_start)
     cursor = payload_start + 4
     fields: list[GenericFieldValue] = []
+    n_mask = len(mask_bytes)
+    _GFV = GenericFieldValue
 
-    for index, field in enumerate(type_def.fields):
-        present = _field_present(mask_bytes, index)
-        target = GenericFieldValue(
-            field_index=index,
-            name=field.name,
-            type_name=field.type_name,
-            meta_kind=field.meta_kind,
-            meta_size=field.meta_size,
-            meta_aux=field.meta_aux,
-            present=present,
-        )
-        fields.append(target)
-        if not present:
-            target.decode_kind = "absent"
+    for field, index, f_name, f_type, f_kind, f_size, f_aux, m_byte, m_bit in _payload_plan(type_def):
+        if m_byte >= n_mask or not (mask_bytes[m_byte] & m_bit):
+            fields.append(_GFV(index, f_name, f_type, f_kind, f_size, f_aux, False, "absent"))
             continue
+        target = _GFV(index, f_name, f_type, f_kind, f_size, f_aux, True)
+        fields.append(target)
 
         if field.meta_kind in (0, 2) and field.meta_size > 0:
             if cursor + field.meta_size > tail_cursor:
@@ -1373,6 +1394,28 @@ def build_result(
 
 
 def build_result_from_raw(
+    raw: bytes | bytearray,
+    load_meta: dict[str, Any],
+    include_legacy: bool = False,
+) -> dict[str, Any]:
+    # The parse builds about a million small objects; the cyclic garbage
+    # collector would walk the growing tree again and again (more than half
+    # the time), so it pauses meanwhile and runs normally again afterwards.
+    import gc as _gc
+    was_on = _gc.isenabled()
+    _gc.disable()
+    try:
+        return _build_result_from_raw(raw, load_meta, include_legacy)
+    finally:
+        if was_on:
+            # Hand the new objects straight to the oldest generation, so the
+            # next young collections do not walk the whole tree once more.
+            _gc.freeze()
+            _gc.unfreeze()
+            _gc.enable()
+
+
+def _build_result_from_raw(
     raw: bytes | bytearray,
     load_meta: dict[str, Any],
     include_legacy: bool = False,
