@@ -498,6 +498,11 @@ QPushButton#accentBtn:hover {{
     background-color: {c['accent_hover']};
     border-color: {c['accent_hover']};
 }}
+QPushButton#accentBtn:disabled {{
+    background-color: {c['panel']};
+    color: {c['text_dim']};
+    border-color: {soft};
+}}
 QToolButton {{
     background: transparent;
     border: 1px solid transparent;
