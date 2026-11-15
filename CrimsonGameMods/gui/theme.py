@@ -249,12 +249,76 @@ SLATE_INDIGO_COLORS = {
     "text_strong": "#ffffff",
 }
 
+
+def _mix(a: str, b: str, t: float) -> str:
+    """Colour between a and b (t = 0 -> a, 1 -> b)."""
+    a, b = a.lstrip("#"), b.lstrip("#")
+    ca = [int(a[i:i + 2], 16) for i in (0, 2, 4)]
+    cb = [int(b[i:i + 2], 16) for i in (0, 2, 4)]
+    return "#" + "".join(f"{round(x + (y - x) * t):02x}" for x, y in zip(ca, cb))
+
+
+def _is_light(c: str) -> bool:
+    c = c.lstrip("#")
+    r, g, b = (int(c[i:i + 2], 16) for i in (0, 2, 4))
+    return (r * 299 + g * 587 + b * 114) / 1000 >= 150
+
+
+def _derive_palette(bg, panel, header, accent, text, dim, selected, border, input_bg,
+                    tab, success="#78d49a", warning="#e6ba59", error="#e26972"):
+    """A full Game Mod Tool palette from the Save Editor's base colours."""
+    on_accent = _mix(bg, "#000000", 0.4) if _is_light(accent) else "#ffffff"
+
+    def role(c):
+        return (_mix(bg, c, 0.28), _mix(c, "#ffffff", 0.55), _mix(bg, c, 0.55))
+    return {
+        "bg": bg, "panel": panel, "header": header,
+        "accent": accent, "accent_hover": _mix(accent, "#ffffff", 0.25), "on_accent": on_accent,
+        "text": text, "text_dim": dim, "selected": selected, "border": border, "input_bg": input_bg,
+        "success": success, "warning": warning, "error": error,
+        "scope_save": _mix(accent, "#7fb2ff", 0.6), "scope_game": warning,
+        "tab_bg": tab[0], "tab_text": tab[1], "tab_border": tab[2],
+        "btn_primary": (accent, on_accent, accent),
+        "btn_success": role(success), "btn_warn": role(warning), "btn_danger": role(error),
+        "btn_neutral": (header, text, border),
+        "side": input_bg, "border_soft": _mix(panel, border, 0.55),
+        "alt_row": _mix(bg, panel, 0.6), "text_strong": "#ffffff",
+    }
+
+
+# Same base colours as the Save Editor presets of the same name.
+OBSIDIAN_BLUE_COLORS = _derive_palette(
+    "#0b111b", "#111c2b", "#172a42", "#4da3ff", "#e8f2ff", "#91a8c2", "#234d75", "#2e4968", "#0d1724",
+    ("#193b5d", "#e8f4ff", "#4da3ff"))
+FOREST_EMERALD_COLORS = _derive_palette(
+    "#0d1712", "#15241b", "#203a2a", "#55c983", "#e6f4e9", "#9ab6a1", "#285f3e", "#365c43", "#101c15",
+    ("#214e34", "#edfff2", "#55c983"))
+ROYAL_PURPLE_COLORS = _derive_palette(
+    "#15101d", "#21182d", "#352348", "#b67cff", "#f2eaff", "#b6a3ca", "#57357b", "#574069", "#191222",
+    ("#482b66", "#f6edff", "#b67cff"))
+CRIMSON_NIGHT_COLORS = _derive_palette(
+    "#170c0f", "#281318", "#431d24", "#e05262", "#f8e9eb", "#c0a0a5", "#702b37", "#63323a", "#1d0e12",
+    ("#5a222d", "#fff0f2", "#e05262"))
+SLATE_CYAN_COLORS = _derive_palette(
+    "#101619", "#182327", "#24383e", "#4fc6c8", "#e6f3f3", "#9cb5b7", "#286267", "#36575c", "#121c20",
+    ("#214f54", "#efffff", "#4fc6c8"))
+# True black for OLED screens, sky-blue accent.
+MIDNIGHT_BLACK_COLORS = _derive_palette(
+    "#000000", "#0b0c0e", "#15171a", "#38bdf8", "#e6e8eb", "#9aa1ab", "#0c2a3a", "#2a2e34", "#060708",
+    ("#0c2a3a", "#ffffff", "#38bdf8"))
+
 DARK_COLORS = ABYSS_COLORS
 
 THEMES = {
     "dark": ("Abyss Teal (default)", ABYSS_COLORS),
     "desert_bronze": ("Desert Bronze", DESERT_BRONZE_COLORS),
     "slate_indigo": ("Slate Indigo", SLATE_INDIGO_COLORS),
+    "midnight_black": ("Midnight Black (OLED)", MIDNIGHT_BLACK_COLORS),
+    "obsidian_blue": ("Obsidian Blue", OBSIDIAN_BLUE_COLORS),
+    "slate_cyan": ("Slate Cyan", SLATE_CYAN_COLORS),
+    "forest_emerald": ("Forest Emerald", FOREST_EMERALD_COLORS),
+    "royal_purple": ("Royal Purple", ROYAL_PURPLE_COLORS),
+    "crimson_night": ("Crimson Night", CRIMSON_NIGHT_COLORS),
     "parchment": ("Parchment Light", PARCHMENT_COLORS),
     "graphite": ("Graphite", GRAPHITE_COLORS),
     "github_dark": ("GitHub Dark", GITHUB_DARK_COLORS),

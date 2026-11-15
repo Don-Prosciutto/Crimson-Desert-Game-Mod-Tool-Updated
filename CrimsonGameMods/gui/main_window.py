@@ -1322,7 +1322,10 @@ class MainWindow(SelfTestMixin, QMainWindow):
     _SE_THEME_KEYS = {"dark": "dark", "graphite": "graphite", "github_dark": "github_dark",
                       "classic": "classic_gold", "light": "light",
                       "desert_bronze": "desert_bronze", "slate_indigo": "slate_indigo",
-                      "parchment": "parchment"}
+                      "parchment": "parchment", "midnight_black": "midnight_black",
+                      "obsidian_blue": "obsidian_blue", "slate_cyan": "slate_cyan",
+                      "forest_emerald": "forest_emerald", "royal_purple": "royal_purple",
+                      "crimson_night": "crimson_night"}
 
     def _se_seed_config(self, se_gui) -> None:
         """Hand the Save Editor this tool's game path on its first start, and

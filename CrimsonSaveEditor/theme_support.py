@@ -117,6 +117,9 @@ THEME_PRESETS = {
     "slate_cyan": {"name": "Slate Cyan", "description": "Neutral charcoal-slate panels with cool cyan highlights.",
         "colors": _palette("#101619", "#182327", "#24383e", "#4fc6c8", "#e6f3f3", "#9cb5b7", "#286267", "#36575c", "#121c20"),
         "tab": ("#214f54", "#efffff", "#4fc6c8")},
+    "midnight_black": {"name": "Midnight Black", "description": "True black for OLED screens, sky-blue accent.",
+        "colors": _palette("#000000", "#0b0c0e", "#15171a", "#38bdf8", "#e6e8eb", "#9aa1ab", "#0c2a3a", "#2a2e34", "#060708"),
+        "tab": ("#0c2a3a", "#ffffff", "#38bdf8")},
     "light": {"name": "Daylight", "description": "A bright, high-contrast theme for daytime use.",
               "colors": LIGHT_COLORS, "tab": ("#cfe3ff", "#103060", "#2277dd")},
 }
