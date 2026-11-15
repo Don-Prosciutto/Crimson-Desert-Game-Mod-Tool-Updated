@@ -440,38 +440,37 @@ class SaveLoadWorker(QObject):
         timings = {}
         try:
             self.progress.emit("Validating current save layout with C++ backend...", 1)
-            stage = perf_counter()
-            native_report = native_backend.validate_save(self.path)
-            timings["native_validation"] = perf_counter() - stage
-            timings["native_report"] = native_report
+            # Faster load (2.5): the C++ check runs beside the Python reading.
+            # The DLL works without Python's lock, so both really run at once;
+            # its verdict still decides (see the join below).
+            import threading as _threading
+            _native = {}
 
-            self.progress.emit("Decrypting and decompressing save...", 2)
-            stage = perf_counter()
-            save_data = load_save_file(self.path)
-            timings["decrypt"] = perf_counter() - stage
+            def _native_check():
+                t0 = perf_counter()
+                try:
+                    _native["report"] = native_backend.validate_save(self.path)
+                except BaseException as e:  # noqa: BLE001 - re-raised below
+                    _native["error"] = e
+                _native["time"] = perf_counter() - t0
 
-            # Faster load (2.5): the scans build ~100 000 small objects; the
-            # garbage collector pauses meanwhile (as in save_parser).
-            import gc as _gc
-            _gc_was_on = _gc.isenabled()
-            _gc.disable()
+            _check_thread = _threading.Thread(target=_native_check, name="save-check",
+                                              daemon=True)
+            _check_thread.start()
             try:
-                self.progress.emit("Indexing items...", 3)
-                stage = perf_counter()
-                items = scan_items(save_data.decompressed_blob)
-                timings["index"] = perf_counter() - stage
-
-                self.progress.emit("Reading exact item and socket fields...", 4)
-                stage = perf_counter()
-                enriched, parc_status = enrich_items_with_parc(
-                    save_data.decompressed_blob, items
-                )
-                timings["details"] = perf_counter() - stage
-            finally:
-                if _gc_was_on:
-                    _gc.freeze()
-                    _gc.unfreeze()
-                    _gc.enable()
+                self._read_items(timings)
+            except Exception as e:  # noqa: BLE001
+                _py_error = e
+            else:
+                _py_error = None
+            _check_thread.join()
+            if "error" in _native:
+                raise _native["error"]          # the check's message comes first
+            if _py_error is not None:
+                raise _py_error
+            timings["native_validation"] = _native.get("time", 0.0)
+            timings["native_report"] = _native.get("report", {})
+            save_data, items, enriched, parc_status = self._result
             timings["worker_total"] = perf_counter() - started
             self.finished.emit(
                 self.path, save_data, items, enriched, parc_status, timings
@@ -482,6 +481,37 @@ class SaveLoadWorker(QObject):
                 self.path, exc, traceback.format_exc(),
             )
             self.failed.emit(self.path, str(exc), traceback.format_exc())
+
+    def _read_items(self, timings: dict) -> None:
+        """Decrypt the save and read its items (Python side of the load)."""
+        self.progress.emit("Decrypting and decompressing save...", 2)
+        stage = perf_counter()
+        save_data = load_save_file(self.path)
+        timings["decrypt"] = perf_counter() - stage
+
+        # Faster load (2.5): the scans build ~100 000 small objects; the
+        # garbage collector pauses meanwhile (as in save_parser).
+        import gc as _gc
+        _gc_was_on = _gc.isenabled()
+        _gc.disable()
+        try:
+            self.progress.emit("Indexing items...", 3)
+            stage = perf_counter()
+            items = scan_items(save_data.decompressed_blob)
+            timings["index"] = perf_counter() - stage
+
+            self.progress.emit("Reading exact item and socket fields...", 4)
+            stage = perf_counter()
+            enriched, parc_status = enrich_items_with_parc(
+                save_data.decompressed_blob, items
+            )
+            timings["details"] = perf_counter() - stage
+        finally:
+            if _gc_was_on:
+                _gc.freeze()
+                _gc.unfreeze()
+                _gc.enable()
+        self._result = (save_data, items, enriched, parc_status)
 
 
 class SaveLoadBridge(QObject):
@@ -10051,11 +10081,18 @@ QCheckBox::indicator {{
         return items
 
     def _populate_repurchase(self) -> None:
+        # Only while the Repurchase page is open or was opened (the page is
+        # hidden in 2.5): refreshes after a load, icon toggle or name lookup
+        # no longer scan the save for vendor items each time.
+        if not getattr(self, "_repurchase_loaded", False):
+            tab = getattr(self, "_repurchase_tab", None)
+            if tab is None or self._save_tabs.currentWidget() is not tab:
+                return
         self._repurch_items = self._scan_repurchase_items()
         log.info("Repurchase scan: found %d vendor items", len(self._repurch_items))
         for it in self._repurch_items[:5]:
-            log.info("  vendor item: key=%d name=%s vendor=%s off=0x%X",
-                     it.item_key, it.name, it.source, it.offset)
+            log.debug("  vendor item: key=%d name=%s vendor=%s off=0x%X",
+                      it.item_key, it.name, it.source, it.offset)
         self._filter_repurchase()
 
     def _on_save_subtab_changed(self, _index: int) -> None:

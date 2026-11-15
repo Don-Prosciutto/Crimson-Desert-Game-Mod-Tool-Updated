@@ -871,8 +871,8 @@ class FieldEditTab(QWidget):
             interesting = {f: v for f, v in r.items()
                            if any(w in f for w in ('stat', 'speed', 'move', 'inventory', 'equip',
                                                    'status', 'level', 'station', 'cargo', 'weight'))}
-            log.info("[ships] %d player ships; fields of %s: %s", len(ships), r.get('string_key'),
-                     str(interesting)[:4000])
+            log.info("[ships] %d player ships", len(ships))
+            log.debug("[ships] fields of %s: %s", r.get('string_key'), str(interesting)[:4000])
 
     # Groups of the "Mounts one by one" table (by mount type name).
     _FE_GROUPS = [
