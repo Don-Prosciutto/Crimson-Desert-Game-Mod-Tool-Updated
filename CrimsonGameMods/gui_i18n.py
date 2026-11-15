@@ -18,6 +18,7 @@ _translations: Dict[str, str] = {}
 _legacy_translations: Dict[str, str] = {}
 _english_to_key: Dict[str, str] = {}
 _names_data: Dict[str, Any] = {}
+_reverse: Dict[str, str] = {}        # translation -> English (tab names)
 
 _harvest: Set[str] = set()
 
@@ -129,7 +130,8 @@ def _looks_like_legacy_key(k: str) -> bool:
 
 
 def _load_translations(lang: str) -> None:
-    global _translations, _legacy_translations, _english_to_key, _names_data
+    global _translations, _legacy_translations, _english_to_key, _names_data, _reverse
+    _reverse = {}
 
     _translations = {}
     _legacy_translations = {}
@@ -160,6 +162,9 @@ def _load_translations(lang: str) -> None:
         else:
             _translations[k] = v
 
+    _reverse = {}
+    for _en, _loc in _translations.items():
+        _reverse.setdefault(_loc, _en)
     _names_data = _load_names(lang)
     log.info("gui_i18n: loaded %d english-keyed, %d legacy-keyed, %d english->key, %d names",
              len(_translations), len(_legacy_translations),
@@ -371,6 +376,84 @@ def _patch_staticmethod(cls, name: str, str_arg_positions=(0, 1)) -> bool:
         return False
 
 
+_TAB_EN = "__gui_i18n_en__"
+
+
+def _install_tab_patches(W) -> None:
+    """Tab texts are translated on screen, but the code keeps seeing the
+    English name: it is stored as the tab's data and tabText() returns it.
+    (The tool finds its pages by their English tab names.)"""
+    global _patched_count
+
+    def _bar(obj):
+        return obj.tabBar() if isinstance(obj, W.QTabWidget) else obj
+
+    def _english(args):
+        for a in args:
+            if isinstance(a, str):
+                if a.startswith(_BYPASS):
+                    return a[len(_BYPASS):]
+                if a in _translations or a in _legacy_translations:
+                    return a
+                # some callers pass an already translated text (tr("Mounts"))
+                return _reverse.get(a, a)
+        return None
+
+    def _store(obj, idx, english):
+        try:
+            if english is not None and isinstance(idx, int) and idx >= 0:
+                _bar(obj).setTabData(idx, (_TAB_EN, english))
+        except Exception:
+            pass
+
+    def _wrap(cls, name, index_pos=None):
+        global _patched_count
+        orig = getattr(cls, name, None)
+        if orig is None or getattr(orig, "__gui_i18n_patched__", False):
+            return
+
+        def wrapper(self, *args, **kw):
+            english = _english(args)
+            new_args = tuple(tr(a) if isinstance(a, str) else a for a in args)
+            res = orig(self, *new_args, **kw)
+            idx = res if index_pos is None else (args[index_pos] if len(args) > index_pos else -1)
+            _store(self, idx, english)
+            return res
+
+        wrapper.__gui_i18n_patched__ = True
+        wrapper.__name__ = name
+        try:
+            setattr(cls, name, wrapper)
+            _patched_count += 1
+        except (TypeError, AttributeError):
+            pass
+
+    for cls in (W.QTabWidget, W.QTabBar):
+        _wrap(cls, "addTab")
+        _wrap(cls, "insertTab")
+        _wrap(cls, "setTabText", index_pos=0)
+        orig_tt = getattr(cls, "tabText", None)
+        if orig_tt is None or getattr(orig_tt, "__gui_i18n_patched__", False):
+            continue
+
+        def tab_text(self, index, _orig=orig_tt):
+            try:
+                d = _bar(self).tabData(index)
+                if isinstance(d, tuple) and len(d) == 2 and d[0] == _TAB_EN:
+                    return d[1]
+            except Exception:
+                pass
+            return _orig(self, index)
+
+        tab_text.__gui_i18n_patched__ = True
+        tab_text.__name__ = "tabText"
+        try:
+            setattr(cls, "tabText", tab_text)
+            _patched_count += 1
+        except (TypeError, AttributeError):
+            pass
+
+
 def _install_qt_patches() -> None:
     global _patched_count
     from PySide6 import QtWidgets, QtGui, QtCore
@@ -407,14 +490,9 @@ def _install_qt_patches() -> None:
     _patch_method(W.QMenu, "addMenu", arg_indices=(0,))
     _patch_method(W.QMenuBar, "addMenu", arg_indices=(0,))
 
-    _patch_method(W.QTabWidget, "addTab", arg_indices=(1,))
-    _patch_method(W.QTabWidget, "insertTab", arg_indices=(2,))
-    _patch_method(W.QTabWidget, "setTabText", arg_indices=(1,))
+    _install_tab_patches(W)
     _patch_method(W.QTabWidget, "setTabToolTip", arg_indices=(1,))
     _patch_method(W.QTabWidget, "setTabWhatsThis", arg_indices=(1,))
-    _patch_method(W.QTabBar, "addTab", arg_indices=(0,))
-    _patch_method(W.QTabBar, "insertTab", arg_indices=(1,))
-    _patch_method(W.QTabBar, "setTabText", arg_indices=(1,))
     _patch_method(W.QTabBar, "setTabToolTip", arg_indices=(1,))
 
     def _patch_header_labels(cls, name):

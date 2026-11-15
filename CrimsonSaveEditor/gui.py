@@ -115,6 +115,16 @@ _QUEST_CHIP_LABELS = {
 }
 
 
+def _quest_chip_label(kind: str) -> str:
+    """State chip text, translated when the Game Mod Tool's translation runs."""
+    label = _QUEST_CHIP_LABELS.get(kind, kind)
+    try:
+        from gui_i18n import tr as _tr
+        return _tr(label)
+    except Exception:  # noqa: BLE001 - standalone Save Editor: English
+        return label
+
+
 def _quest_chip_colors(kind: str):
     """(text colour, background colour, dashed border?) for a quest state chip."""
     if kind == "done":
@@ -210,7 +220,7 @@ def _quest_list_delegate(parent):
                 cf.setBold(True)
                 cf.setPointSizeF(max(7.0, cf.pointSizeF() - 1.5))
                 cfm = QFontMetrics(cf)
-                label = _QUEST_CHIP_LABELS.get(kind, kind)
+                label = _quest_chip_label(kind)
                 chw = cfm.horizontalAdvance(label) + 18
                 chip = QRectF(box.right() - 10 - chw, box.center().y() - 10, chw, 20)
                 fg, bg, dashed = _quest_chip_colors(kind)

@@ -18,6 +18,21 @@ import logging
 log = logging.getLogger(__name__)
 
 _BANNER_STARTS = ("This tab modifies", "This tab makes mods", "This tab is READ-ONLY")
+_BANNER_TEXTS = (
+    "This tab modifies your SAVE FILE", "This tab modifies your SAVE FILE / GAME FILES",
+    "This tab modifies GAME FILES (requires admin + restart)",
+    "This tab makes mods for the GAME FILES (save as mod, load it in DMM)",
+    "This tab is READ-ONLY (browse only)", "This tab is READ-ONLY",
+)
+
+
+def _banner_starts() -> tuple:
+    """The banner beginnings in English and in the language in use."""
+    try:
+        from gui_i18n import tr as _tr
+        return _BANNER_STARTS + tuple(t for t in (_tr(b) for b in _BANNER_TEXTS) if t)
+    except Exception:  # noqa: BLE001
+        return _BANNER_STARTS
 
 
 def _danger_marks():
@@ -54,12 +69,13 @@ def polish(page) -> int:
     from PySide6.QtWidgets import QLabel, QPushButton, QTableView, QLayout
     from gui.theme import COLORS
     n = 0
+    banner_starts = _banner_starts()
     danger = _danger_marks()
     err = COLORS.get("error", "#f87171")
 
     for lab in page.findChildren(QLabel):
         t = lab.text() or ""
-        if t.startswith(_BANNER_STARTS):
+        if t.startswith(banner_starts):
             lab.setVisible(False)
             n += 1
             continue
