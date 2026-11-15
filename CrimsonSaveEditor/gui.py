@@ -15131,8 +15131,8 @@ QCheckBox::indicator {{
         info = QLabel(
             "MAP & ABYSS GATES\n\n"
             "Reveal Map — removes fog of war.\n"
-            "Unlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\n"
-            "Lock Abyss Gates Again — sets those entries back to not learned.\n"
+            "Unlock Abyss Gates — unlocks the gates of the areas you choose (398, +37 with the DLC).\n"
+            "Lock Abyss Gates Again — sets the chosen areas back to not learned.\n"
             "Re-Fog Map — covers the map in fog again."
         )
         info.setWordWrap(True)
@@ -15167,18 +15167,18 @@ QCheckBox::indicator {{
         reveal_map_btn.clicked.connect(self._debug_reveal_map)
         abyss_btn_row.addWidget(reveal_map_btn)
 
-        unlock_abyss_btn = QPushButton("Unlock All Abyss Gates")
+        unlock_abyss_btn = QPushButton("Unlock Abyss Gates")
         unlock_abyss_btn.setObjectName("accentBtn")
         unlock_abyss_btn.setToolTip(
-            "Inject 398 abyss gate knowledge entries to unlock all gates.\n"
+            "Choose the areas (e.g. only the Abyss in the sky) - 398 gates, +37 with the DLC.\n"
             "Uses fast inject — no map reveal needed.")
         unlock_abyss_btn.clicked.connect(self._unlock_all_abyss_gates)
         abyss_btn_row.addWidget(unlock_abyss_btn)
 
         lock_abyss_btn = QPushButton("Lock Abyss Gates Again")
         lock_abyss_btn.setToolTip(
-            "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\n"
-            "are set back to not learned. Gates you found yourself are locked too -\n"
+            "Choose the areas whose gates are set back to not learned.\n"
+            "Gates you found yourself there are locked too -\n"
             "visit them again in the game.")
         lock_abyss_btn.clicked.connect(self._lock_all_abyss_gates)
         abyss_btn_row.addWidget(lock_abyss_btn)
@@ -15337,76 +15337,152 @@ QCheckBox::indicator {{
             import traceback; traceback.print_exc()
             self._waypoint_count.setText(f"Error: {e}")
 
+    # Abyss gates by area (2.5): the two packs (398 + 37 DLC knowledge
+    # entries) sorted by their internal names - AbyssGate_xxxx(_AbyssIsland)
+    # and Knowledge_AbyssRuins_<area>_xxxx. "Kwe" is Pailune (its forts are
+    # Vatnholl, Steinnfell, Askelund); AbyssIsland(Core) is the Abyss in the sky.
+    _ABYSS_GROUPS = [
+        ("sky_gates", "The Abyss (sky) – abyss gates", False),
+        ("sky_nexus", "The Abyss (sky) – Abyss Nexus", False),
+        ("ground_gates", "Pywel – abyss gates on the ground", False),
+        ("her", "Hernand – Abyss Nexus", False),
+        ("dem", "Demeniss – Abyss Nexus", False),
+        ("del", "Delesyia – Abyss Nexus", False),
+        ("pai", "Pailune – Abyss Nexus", False),
+        ("cd", "Crimson Desert – Abyss Nexus", False),
+        ("cd_dlc", "Crimson Desert – Abyss Nexus (DLC)", True),
+        ("sea", "Sea – Abyss Nexus (DLC)", True),
+        ("other", "Other (hyperspace, housing, map icons)", False),
+    ]
+    _ABYSS_NEXUS_AREA = {"AbyssIsland": "sky_nexus", "AbyssIslandCore": "sky_nexus",
+                         "Her": "her", "Dem": "dem", "Del": "del", "Kwe": "pai",
+                         "CD": "cd", "Ocean": "sea"}
+
+    @classmethod
+    def _abyss_group_of(cls, name: str, dlc: bool) -> str:
+        if name.startswith("AbyssGate_"):
+            return "sky_gates" if name.endswith("_AbyssIsland") else "ground_gates"
+        if name.startswith("Knowledge_AbyssRuins_"):
+            area = cls._ABYSS_NEXUS_AREA.get(name[len("Knowledge_AbyssRuins_"):].split("_")[0], "other")
+            if area == "cd" and dlc:
+                return "cd_dlc"
+            return area
+        return "other"
+
+    def _abyss_gate_groups(self) -> dict:
+        """group id -> keys, from the two abyss gate packs (base + DLC)."""
+        import json as _json
+        groups = {g: [] for g, _l, _d in self._ABYSS_GROUPS}
+        searched = []
+        for base in (self._app_dir(), self._bundle_dir()):
+            for sub in ('knowledge_packs', 'dist/knowledge_packs'):
+                found = False
+                for name, dlc in (('No Map Reveal Abyss Gate Unlock Only.json', False),
+                                  ('DLC Abyss Gate Unlock.json', True)):
+                    p = os.path.join(base, sub, name)
+                    searched.append(p)
+                    if not os.path.isfile(p):
+                        continue
+                    found = True
+                    try:
+                        with open(p, 'r', encoding='utf-8') as f:
+                            for e in _json.load(f).get('entries', []):
+                                g = self._abyss_group_of(str(e.get('name', '')), dlc)
+                                if int(e['key']) not in groups[g]:
+                                    groups[g].append(int(e['key']))
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("Abyss pack not readable: %s (%s)", p, e)
+                if found:
+                    log.info("Abyss packs: %s", os.path.join(base, sub))
+                    return groups
+        log.info("Abyss packs searched in: %s -> not found", searched)
+        return {}
+
+    def _abyss_gate_keys(self) -> list:
+        """Every key of the two abyss gate packs (base + DLC)."""
+        return sorted({k for keys in self._abyss_gate_groups().values() for k in keys})
+
+    def _abyss_pick_groups(self, lock: bool, preset=None):
+        """Ask which areas to unlock / lock. Returns the chosen keys, or None.
+        `preset` (list of group ids) skips the window (used by the tests)."""
+        groups = self._abyss_gate_groups()
+        if not groups:
+            QMessageBox.warning(self, "Abyss Gates", "Abyss gate pack not found.")
+            return None
+        try:
+            levels = self._knowledge_levels()
+        except Exception as e:  # noqa: BLE001
+            log.exception("Abyss gates: reading the knowledge failed")
+            QMessageBox.critical(self, "Abyss Gates", f"Could not read the knowledge in this save: {e}")
+            return None
+
+        def learned(k):
+            return k in levels and (levels[k][0] or 0) > 0
+
+        todo = {g: [k for k in keys if learned(k) == lock] for g, keys in groups.items()}
+        if not any(todo.values()):
+            QMessageBox.information(
+                self, "Abyss Gates",
+                "No unlocked abyss gates in this save." if lock
+                else "All abyss gates are already unlocked in this save.")
+            return None
+        if preset is not None:
+            return [k for g in preset for k in todo.get(g, [])]
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Lock Abyss Gates Again" if lock else "Unlock Abyss Gates")
+        v = QVBoxLayout(dlg)
+        v.addWidget(QLabel("Which areas should be locked again?" if lock
+                           else "Which areas should be unlocked?"))
+        boxes = {}
+        for g, label, dlc in self._ABYSS_GROUPS:
+            n = len(todo.get(g, []))
+            cb = QCheckBox(f"{label} ({n})")
+            cb.setEnabled(n > 0)
+            # unlock: every base area ticked; lock: nothing ticked - you pick the areas
+            cb.setChecked(n > 0 and not lock and not dlc)
+            if dlc:
+                cb.setToolTip("Only with the DLC Charting the Unknown.")
+            boxes[g] = cb
+            v.addWidget(cb)
+        row = QHBoxLayout()
+        all_btn = QPushButton("Select all")
+        none_btn = QPushButton("None")
+        all_btn.clicked.connect(lambda: [b.setChecked(True) for b in boxes.values() if b.isEnabled()])
+        none_btn.clicked.connect(lambda: [b.setChecked(False) for b in boxes.values()])
+        row.addWidget(all_btn)
+        row.addWidget(none_btn)
+        row.addStretch(1)
+        v.addLayout(row)
+        note = QLabel(
+            "Gates you found yourself are locked too - visit them again in the game."
+            if lock else "The DLC areas only with the DLC Charting the Unknown.")
+        note.setWordWrap(True)
+        note.setStyleSheet(f"color: {COLORS['text_dim']};")
+        v.addWidget(note)
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        bb.button(QDialogButtonBox.Ok).setText("Lock" if lock else "Unlock")
+        bb.button(QDialogButtonBox.Cancel).setText("Cancel")     # translated like the rest
+        bb.accepted.connect(dlg.accept)
+        bb.rejected.connect(dlg.reject)
+        v.addWidget(bb)
+        if dlg.exec() != QDialog.Accepted:
+            return None
+        keys = [k for g, cb in boxes.items() if cb.isChecked() for k in todo.get(g, [])]
+        return keys or None
+
     def _unlock_all_abyss_gates(self) -> None:
         if not self._save_data:
             QMessageBox.warning(self, "Abyss Gates", "Load a save file first.")
             return
-
-        pack_path = None
-        gesucht = []
-        for base in (self._app_dir(), self._bundle_dir()):
-            for sub in ('knowledge_packs', 'dist/knowledge_packs'):
-                p = os.path.join(base, sub, 'No Map Reveal Abyss Gate Unlock Only.json')
-                gesucht.append(p)
-                if os.path.isfile(p):
-                    pack_path = p
-                    break
-            if pack_path:
-                break
-        log.info("Abyss pack searched in: %s -> %s", gesucht, pack_path or "not found")
-
-        if not pack_path:
-            QMessageBox.warning(
-                self, "Abyss Gates",
-                "Abyss gate pack not found. Looked in:\n\n" +
-                "\n".join(gesucht))
+        keys = self._abyss_pick_groups(lock=False)
+        if not keys:
             return
+        self._abyss_unlock_keys(keys)
 
-        try:
-            import json as _json
-            with open(pack_path, 'r') as f:
-                pack = _json.load(f)
-            keys = [e['key'] for e in pack.get('entries', [])]
-        except Exception as e:
-            QMessageBox.critical(self, "Abyss Gates", f"Failed to load pack: {e}")
-            return
-
-        # The Abyss Nexus points of the DLC "Charting the Unknown" (37, from
-        # knowledgeinfo.dlc_01) are a separate pack: only for saves with the DLC.
-        dlc_keys = []
-        dlc_path = os.path.join(os.path.dirname(pack_path), 'DLC Abyss Gate Unlock.json')
-        if os.path.isfile(dlc_path):
-            try:
-                with open(dlc_path, 'r', encoding='utf-8') as f:
-                    dlc_keys = [e['key'] for e in _json.load(f).get('entries', [])]
-            except Exception as e:  # noqa: BLE001
-                log.warning("DLC abyss pack not readable: %s", e)
-
-        box = QMessageBox(self)
-        box.setWindowTitle("Unlock All Abyss Gates")
-        box.setIcon(QMessageBox.Question)
-        box.setText(
-            f"Inject {len(keys)} abyss gate knowledge entries?\n\n"
-            f"This unlocks all abyss/nexus gates without revealing the map.\n"
-            f"Save (Ctrl+S) afterward.")
-        btn_base = box.addButton(f"Unlock ({len(keys)})", QMessageBox.AcceptRole)
-        btn_dlc = None
-        if dlc_keys:
-            box.setInformativeText(
-                f"The DLC 'Charting the Unknown' adds {len(dlc_keys)} more Abyss Nexus points "
-                f"(sea and Crimson Desert). Only include them if you own the DLC.")
-            btn_dlc = box.addButton(f"Unlock + DLC ({len(keys) + len(dlc_keys)})", QMessageBox.AcceptRole)
-        box.addButton(QMessageBox.Cancel)
-        box.exec()
-        clicked = box.clickedButton()
-        if clicked is btn_dlc and btn_dlc is not None:
-            keys = keys + [k for k in dlc_keys if k not in keys]
-        elif clicked is not btn_base:
-            return
-
+    def _abyss_unlock_keys(self, keys: list) -> None:
         self._update_status("Unlocking abyss gates...")
         QApplication.processEvents()
-
         try:
             from parc_inserter3 import inject_knowledge_fast
             blob = bytearray(self._save_data.decompressed_blob)
@@ -15414,6 +15490,7 @@ QCheckBox::indicator {{
             if ok:
                 self._save_data.decompressed_blob = bytearray(new_blob)
                 self._dirty = True
+                self._know_learned_keys = set()        # Knowledge page reads again
                 self._update_status(msg)
                 QMessageBox.information(self, "Abyss Gates Unlocked",
                     f"{msg}\n\nSave (Ctrl+S) for changes to take effect.")
@@ -15423,25 +15500,6 @@ QCheckBox::indicator {{
         except Exception as e:
             import traceback; traceback.print_exc()
             QMessageBox.critical(self, "Error", str(e))
-
-    def _abyss_gate_keys(self) -> list:
-        """Every key of the two abyss gate packs (base + DLC)."""
-        import json as _json
-        keys = []
-        for base in (self._app_dir(), self._bundle_dir()):
-            for sub in ('knowledge_packs', 'dist/knowledge_packs'):
-                for name in ('No Map Reveal Abyss Gate Unlock Only.json', 'DLC Abyss Gate Unlock.json'):
-                    p = os.path.join(base, sub, name)
-                    if not os.path.isfile(p):
-                        continue
-                    try:
-                        with open(p, 'r', encoding='utf-8') as f:
-                            keys += [int(e['key']) for e in _json.load(f).get('entries', [])]
-                    except Exception as e:  # noqa: BLE001
-                        log.warning("Abyss pack not readable: %s (%s)", p, e)
-                if keys:
-                    return sorted(set(keys))
-        return []
 
     def _knowledge_levels(self) -> dict:
         """key -> (level, offset of _level in the save) from the save schema."""
@@ -15471,42 +15529,30 @@ QCheckBox::indicator {{
         return out
 
     def _lock_all_abyss_gates(self) -> None:
-        """Abyss gate knowledge back to level 0 (not learned) - see Unlock."""
+        """Abyss gate knowledge back to level 0 (not learned) - by area."""
         if not self._save_data:
             QMessageBox.warning(self, "Abyss Gates", "Load a save file first.")
             return
-        keys = self._abyss_gate_keys()
+        keys = self._abyss_pick_groups(lock=True)
         if not keys:
-            QMessageBox.warning(self, "Abyss Gates", "Abyss gate pack not found.")
             return
-        try:
-            levels = self._knowledge_levels()
-        except Exception as e:  # noqa: BLE001
-            log.exception("Lock abyss gates: reading the knowledge failed")
-            QMessageBox.critical(self, "Abyss Gates", f"Could not read the knowledge in this save: {e}")
-            return
-        targets = [(k, levels[k][1]) for k in keys
-                   if k in levels and levels[k][1] is not None and (levels[k][0] or 0) > 0]
-        if not targets:
-            QMessageBox.information(self, "Abyss Gates", "No unlocked abyss gates in this save.")
-            return
-        reply = QMessageBox.question(
-            self, "Lock Abyss Gates Again",
-            f"Lock {len(targets)} abyss gates again?\n\n"
-            f"They are set back to not learned, as before 'Unlock All Abyss Gates'. "
-            f"Gates you found yourself in this save are locked too - visit them again in the game.\n\n"
-            f"Save (Ctrl+S) afterward. New: please check it in the game once.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply != QMessageBox.Yes:
-            return
+        self._abyss_lock_keys(keys)
+
+    def _abyss_lock_keys(self, keys: list) -> None:
         import struct as _st
+        levels = self._knowledge_levels()
         blob = self._save_data.decompressed_blob
         patches = []
-        for _key, off in targets:
+        for k in keys:
+            lvl, off = levels.get(k, (None, None))
+            if off is None or not (lvl or 0) > 0:
+                continue
             old = bytes(blob[off:off + 4])
             new = _st.pack('<I', 0)
             blob[off:off + 4] = new
             patches.append((off, old, new))
+        if not patches:
+            return
         self._undo_stack.append(UndoEntry(
             description=f"Lock {len(patches)} abyss gates", patches=patches))
         self._dirty = True
