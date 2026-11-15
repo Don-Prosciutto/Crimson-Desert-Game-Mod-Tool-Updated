@@ -38,6 +38,29 @@ GITHUB_DARK_COLORS = {
     "selected": "#1f3a5f", "border": "#30363d", "input_bg": "#0a0d12",
     "panel_text": "#e6edf3", "primary_text": "#e6edf3", "accent_text": "#FFFFFF", "selection_text": "#FFFFFF", "success": "#3fb950", "warning": "#d29922", "error": "#f85149",
 }
+
+# The design board's other directions, same palettes as the Game Mod Tool.
+DESERT_BRONZE_COLORS = {
+    "bg": "#15120e", "panel": "#221d17", "header": "#2a231b",
+    "accent": "#d9a441", "text": "#f3ede4", "text_dim": "#b5a994",
+    "selected": "#3a2d17", "border": "#3f3528", "input_bg": "#1b1712",
+    "panel_text": "#f3ede4", "primary_text": "#f3ede4", "accent_text": "#1a1408", "selection_text": "#FFFFFF", "success": "#8bc48a", "warning": "#f0a04b", "error": "#e5735f",
+    "side": "#1b1712", "border_soft": "#332b21", "alt_row": "#1f1a14", "text_strong": "#ffffff",
+}
+PARCHMENT_COLORS = {
+    "bg": "#f3eee4", "panel": "#fffdf8", "header": "#efe8da",
+    "accent": "#1f5f7a", "text": "#2a241c", "text_dim": "#6b604f",
+    "selected": "#dce9ee", "border": "#c9bca5", "input_bg": "#ffffff",
+    "panel_text": "#2a241c", "primary_text": "#2a241c", "accent_text": "#FFFFFF", "selection_text": "#123848", "success": "#2e7d4f", "warning": "#9a6200", "error": "#b3261e",
+    "side": "#eae3d5", "border_soft": "#ddd3c1", "alt_row": "#f8f4ec", "text_strong": "#17130e",
+}
+SLATE_INDIGO_COLORS = {
+    "bg": "#0f1115", "panel": "#1a1e25", "header": "#20252e",
+    "accent": "#7c83ff", "text": "#e8eaf0", "text_dim": "#9aa3b2",
+    "selected": "#23264a", "border": "#323844", "input_bg": "#14171c",
+    "panel_text": "#e8eaf0", "primary_text": "#e8eaf0", "accent_text": "#0f1115", "selection_text": "#FFFFFF", "success": "#5bd6a2", "warning": "#f2b94b", "error": "#f87171",
+    "side": "#14171c", "border_soft": "#272c35", "alt_row": "#171a20", "text_strong": "#ffffff",
+}
 DARK_COLORS = ABYSS_COLORS
 LIGHT_COLORS = {
     "bg": "#f5f5f5", "panel": "#ffffff", "header": "#d8d8d8",
@@ -67,6 +90,12 @@ def _palette(bg, panel, header, accent, text, dim, selected, border, input_bg,
 THEME_PRESETS = {
     "dark": {"name": "Abyss Teal", "description": "Deep navy with a teal accent. The default.",
              "colors": ABYSS_COLORS, "tab": ("#0f3434", "#ffffff", "#2dd4bf")},
+    "desert_bronze": {"name": "Desert Bronze", "description": "Warm bronze and gold on dark brown.",
+             "colors": DESERT_BRONZE_COLORS, "tab": ("#3a2d17", "#fff6e6", "#d9a441")},
+    "slate_indigo": {"name": "Slate Indigo", "description": "Neutral slate with an indigo accent.",
+             "colors": SLATE_INDIGO_COLORS, "tab": ("#23264a", "#ffffff", "#7c83ff")},
+    "parchment": {"name": "Parchment Light", "description": "Light, like an old map: parchment and sea blue.",
+             "colors": PARCHMENT_COLORS, "tab": ("#dce9ee", "#123848", "#1f5f7a")},
     "graphite": {"name": "Graphite", "description": "Neutral mid grey with a calm blue accent.",
              "colors": GRAPHITE_COLORS, "tab": ("#3a4a66", "#ffffff", "#548af7")},
     "github_dark": {"name": "GitHub Dark", "description": "Very dark grey with a clear blue accent.",

@@ -1318,24 +1318,36 @@ class MainWindow(SelfTestMixin, QMainWindow):
         except Exception as e:  # noqa: BLE001
             log.warning("Could not pass the game path to the Save Editor: %s", e)
 
+    # This tool's theme keys -> the Save Editor's preset keys.
+    _SE_THEME_KEYS = {"dark": "dark", "graphite": "graphite", "github_dark": "github_dark",
+                      "classic": "classic_gold", "light": "light",
+                      "desert_bronze": "desert_bronze", "slate_indigo": "slate_indigo",
+                      "parchment": "parchment"}
+
     def _se_seed_config(self, se_gui) -> None:
-        """Hand the Save Editor this tool's game path on its first start."""
+        """Hand the Save Editor this tool's game path on its first start, and
+        this tool's theme (its pages are part of this window)."""
         game_path = self._config.get("game_install_path", "")
-        if not game_path:
-            return
+        se_theme = self._SE_THEME_KEYS.get(self._config.get("theme", "dark"), "dark")
         try:
             path = se_gui.MainWindow._get_config_path(se_gui.MainWindow)
             cfg = {}
             if os.path.isfile(path):
                 with open(path, "r", encoding="utf-8") as f:
                     cfg = json.load(f) or {}
-            if not cfg.get("game_install_path"):
+            changed = False
+            if game_path and not cfg.get("game_install_path"):
                 cfg["game_install_path"] = game_path
+                changed = True
+            if cfg.get("theme") != se_theme:
+                cfg["theme"] = se_theme
+                changed = True
+            if changed:
                 os.makedirs(os.path.dirname(path), exist_ok=True)
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(cfg, f, indent=2)
         except Exception as e:  # noqa: BLE001
-            log.warning("Could not pass the game path to the Save Editor: %s", e)
+            log.warning("Could not pass the game path / theme to the Save Editor: %s", e)
 
     # ── Navigation: one list on the left instead of tabs top and bottom ──
     # The areas (Game Mods, Save Editor, World, Items, Backup) and their
@@ -2523,41 +2535,20 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._apply_ui_settings()
 
     def _set_theme(self, mode: str) -> None:
-        changed = self._config.get("theme", "dark") != mode
+        """Save the chosen theme; it is used from the next start.
+
+        Most of the window (cards, navigation, the Save Editor pages) takes
+        its colours when it is built, so switching live left a mix of old
+        and new colours. The theme is saved and the tool says to restart."""
+        if self._config.get("theme", "dark") == mode:
+            return
         self._config["theme"] = mode
         self._save_config()
-        app = QApplication.instance()
-        if app is None:
-            return
-        # Mutate the COLORS dict to the new palette.
-        apply_theme(app, mode)
-        # _apply_ui_settings rebuilds the ENTIRE stylesheet from COLORS
-        # values live — this is what makes the UI-scale menu also change
-        # colors (we piggyback on that path for theme changes too).
-        try:
-            self._apply_ui_settings()
-        except Exception as e:
-            log.warning("theme _apply_ui_settings failed: %s", e)
-        # Force all widgets to re-query style, in case any sub-panel holds
-        # its own inline stylesheet that needs repolish.
-        try:
-            style = app.style()
-            for w in app.allWidgets():
-                try:
-                    style.unpolish(w)
-                    style.polish(w)
-                    w.update()
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        if changed:
-            # Coloured action buttons take their colour when they are
-            # created, so they only follow the new theme after a restart.
-            QMessageBox.information(
-                self, "Theme changed",
-                "The new theme is active. The coloured action buttons "
-                "switch to it the next time you start the tool.")
+        name = THEMES.get(mode, THEMES["dark"])[0]
+        QMessageBox.information(
+            self, "Theme changed",
+            f"'{name}' is saved.\n\nClose the tool and open it again - "
+            f"the whole window then uses the new colours.")
 
     def _toggle_compact_mode(self, checked: bool) -> None:
         self._config["compact_mode"] = checked
