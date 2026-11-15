@@ -4277,5 +4277,11 @@
  "Customers (%)": "客数 (%)",
  "Satisfaction rate (%)": "満足度 (%)",
  "Customer patience (%)": "客の忍耐 (%)",
- "Special guest chance (%)": "特別な客の確率 (%)"
+ "Special guest chance (%)": "特別な客の確率 (%)",
+ "Each level shows: goods with this tag → bonus. Click a level to change it below. Changed levels are highlighted.": "各レベルの表示：このタグの商品数 → ボーナス。レベルをクリックすると下で変更できます。変更したレベルは強調表示されます。",
+ "Level {#}": "レベル {#}",
+ "Click a level in the table.": "表のレベルをクリックしてください。",
+ "Game: {#}": "ゲーム：{#}",
+ "Game value": "ゲームの値",
+ "Put this level back to the game's value": "このレベルをゲームの値に戻す"
 }

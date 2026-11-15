@@ -4338,5 +4338,11 @@
  "Customers (%)": "Клиенты (%)",
  "Satisfaction rate (%)": "Удовлетворённость (%)",
  "Customer patience (%)": "Терпение клиентов (%)",
- "Special guest chance (%)": "Шанс особых гостей (%)"
+ "Special guest chance (%)": "Шанс особых гостей (%)",
+ "Each level shows: goods with this tag → bonus. Click a level to change it below. Changed levels are highlighted.": "Каждый уровень: товары с этим тегом → бонус. Щёлкни уровень, чтобы изменить его ниже. Изменённые уровни выделены.",
+ "Level {#}": "Уровень {#}",
+ "Click a level in the table.": "Щёлкни уровень в таблице.",
+ "Game: {#}": "Игра: {#}",
+ "Game value": "Значение игры",
+ "Put this level back to the game's value": "Вернуть этому уровню значение игры"
 }

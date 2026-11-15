@@ -4338,5 +4338,11 @@
  "Customers (%)": "顾客 (%)",
  "Satisfaction rate (%)": "满意度 (%)",
  "Customer patience (%)": "顾客耐心 (%)",
- "Special guest chance (%)": "特殊客人几率 (%)"
+ "Special guest chance (%)": "特殊客人几率 (%)",
+ "Each level shows: goods with this tag → bonus. Click a level to change it below. Changed levels are highlighted.": "每级显示：该标签的商品数 → 加成。点击某一级即可在下方修改。修改过的等级会高亮显示。",
+ "Level {#}": "{#} 级",
+ "Click a level in the table.": "请点击表格中的某一级。",
+ "Game: {#}": "游戏：{#}",
+ "Game value": "游戏数值",
+ "Put this level back to the game's value": "将此等级恢复为游戏数值"
 }

@@ -4339,5 +4339,11 @@
  "Customers (%)": "Clienti (%)",
  "Satisfaction rate (%)": "Soddisfazione (%)",
  "Customer patience (%)": "Pazienza dei clienti (%)",
- "Special guest chance (%)": "Probabilità di ospiti speciali (%)"
+ "Special guest chance (%)": "Probabilità di ospiti speciali (%)",
+ "Each level shows: goods with this tag → bonus. Click a level to change it below. Changed levels are highlighted.": "Ogni livello mostra: merci con questo tag → bonus. Clicca un livello per cambiarlo qui sotto. I livelli cambiati sono evidenziati.",
+ "Level {#}": "Livello {#}",
+ "Click a level in the table.": "Clicca un livello nella tabella.",
+ "Game: {#}": "Gioco: {#}",
+ "Game value": "Valore del gioco",
+ "Put this level back to the game's value": "Riporta questo livello al valore del gioco"
 }

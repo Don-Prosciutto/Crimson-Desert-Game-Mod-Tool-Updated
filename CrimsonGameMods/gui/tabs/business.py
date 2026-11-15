@@ -34,8 +34,8 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QComboBox, QFileDialog, QHBoxLayout, QHeaderView,
-    QLabel, QLineEdit, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem,
+    QAbstractItemView, QApplication, QComboBox, QDoubleSpinBox, QFileDialog, QHBoxLayout, QHeaderView,
+    QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem,
     QVBoxLayout, QWidget,
 )
 
@@ -70,6 +70,7 @@ EFFECTS = {
     8: ("Special guest chance", "value", lambda v: v / 10000.0, lambda p: int(round(p * 10000))),
 }
 WORKER_SPEED = 3          # buff_list with buff levels - shown, not changed
+MAX_LEVELS = 4            # the game: 3 or 4 levels per tag
 
 INFO = ("Your businesses in the DLC Charting the Unknown (facility management).\n\n"
         "Selling several goods with the same tag gives the business a bonus, e.g.\n"
@@ -98,7 +99,7 @@ class BusinessTab(QWidget):
         self._syn_van: dict = {}        # key -> vanilla record
         self._buff: dict = {}           # key -> buff record (edited copy)
         self._buff_van: dict = {}
-        self._rows: list = []           # (syn_key, level index) per table row
+        self._rows: list = []           # syn_key per table row (one row per tag)
         self._loaded = False
         self._filling = False
         self._build_ui()
@@ -174,25 +175,55 @@ class BusinessTab(QWidget):
         self._kind.currentIndexChanged.connect(self._apply_filter)
         frow.addWidget(self._kind)
         tv.addLayout(frow)
+        tv.addWidget(ui_dim("Each level shows: goods with this tag → bonus. "
+                            "Click a level to change it below. Changed levels are highlighted."))
 
-        self._table = QTableWidget(0, 6)
+        # One row per tag, its levels side by side.
+        self._table = QTableWidget(0, 2 + MAX_LEVELS)
         self._table.setHorizontalHeaderLabels(
-            ["Tag", "Bonus", "Level", "Goods needed", "Bonus value", "Game (goods → bonus)"])
+            ["Tag", "Bonus"] + [f"Level {n}" for n in range(1, MAX_LEVELS + 1)])
         hh = self._table.horizontalHeader()
-        hh.setSectionResizeMode(0, QHeaderView.Stretch)
-        hh.setSectionResizeMode(1, QHeaderView.Stretch)
-        for c, w in ((2, 70), (3, 120), (4, 120), (5, 190)):
-            self._table.setColumnWidth(c, w)
+        self._table.setColumnWidth(0, 170)
+        self._table.setColumnWidth(1, 190)
+        for c in range(2, 2 + MAX_LEVELS):
+            hh.setSectionResizeMode(c, QHeaderView.Stretch)
         self._table.verticalHeader().setVisible(False)
         self._table.setShowGrid(False)
-        self._table.verticalHeader().setDefaultSectionSize(28)
-        self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._table.setEditTriggers(QAbstractItemView.DoubleClicked
-                                    | QAbstractItemView.EditKeyPressed)
-        self._table.itemChanged.connect(self._cell_changed)
+        self._table.verticalHeader().setDefaultSectionSize(30)
+        self._table.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self._table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._table.currentCellChanged.connect(lambda r, c, *_: self._select_cell(r, c))
         tv.addWidget(self._table, 1)
-        tv.addWidget(ui_dim("Double-click 'Goods needed' or 'Bonus value' to change it. "
-                            "Changed values are highlighted."))
+
+        # Editor for the clicked level
+        ed = QHBoxLayout()
+        ed.setSpacing(8)
+        self._ed_title = QLabel("Click a level in the table.")
+        self._ed_title.setStyleSheet("font-weight: 700;")
+        self._ed_title.setMinimumWidth(240)
+        ed.addWidget(self._ed_title)
+        ed.addWidget(ui_dim("Goods needed", True))
+        self._ed_need = QSpinBox()
+        self._ed_need.setRange(1, 99)
+        self._ed_need.setMinimumWidth(80)
+        self._ed_need.valueChanged.connect(self._edit_changed)
+        ed.addWidget(self._ed_need)
+        ed.addWidget(ui_dim("Bonus", True))
+        self._ed_bonus = QDoubleSpinBox()
+        self._ed_bonus.setRange(0, 100000)
+        self._ed_bonus.setMinimumWidth(110)
+        self._ed_bonus.valueChanged.connect(self._edit_changed)
+        ed.addWidget(self._ed_bonus)
+        self._ed_game = ui_dim("")
+        ed.addWidget(self._ed_game, 1)
+        self._ed_reset = QPushButton("Game value")
+        self._ed_reset.setToolTip("Put this level back to the game's value")
+        self._ed_reset.clicked.connect(self._edit_reset)
+        ed.addWidget(self._ed_reset)
+        tv.addLayout(ed)
+        self._sel = None                # (syn_key, level index) being edited
+        self._set_editor_enabled(False)
         layout.addWidget(table_card, 1)
 
         foot = QHBoxLayout()
@@ -274,113 +305,159 @@ class BusinessTab(QWidget):
             return et, (float(lvl) if isinstance(lvl, int) else None)
         return et, None
 
+    def _rec(self, syn_key):
+        return next(x for x in self._syn if x["key"] == syn_key)
+
+    def _level_text(self, lvl: dict, buff: dict) -> str:
+        et, pct = self._bonus_of(buff)
+        return f"{lvl.get('required_count', 0)} → " + (_effect_text(et, pct) if pct is not None else "-")
+
     def _fill(self) -> None:
+        keep = self._sel
         self._filling = True
         t = self._table
         t.setRowCount(0)
         self._rows = []
-        dim = QBrush(QColor(COLORS["text_dim"]))
         for rec in sorted(self._syn, key=lambda r: TAG_NAMES.get(r.get("string_key", ""), r.get("string_key", ""))):
+            levels = rec.get("level_list") or []
+            if not levels or self._buff.get(levels[0].get("management_buff_info")) is None:
+                continue
             name = TAG_NAMES.get(rec.get("string_key", ""), rec.get("string_key", ""))
-            for i, lvl in enumerate(rec.get("level_list") or []):
-                buff = self._buff.get(lvl.get("management_buff_info"))
-                if buff is None:
-                    continue
-                et, pct = self._bonus_of(buff)
-                label = EFFECTS[et][0] if et in EFFECTS else ("Worker speed" if et == WORKER_SPEED else f"Effect {et}")
-                if et in EFFECTS and et != 6:
-                    label += " (%)"
-                r = t.rowCount()
-                t.insertRow(r)
-                self._rows.append((rec["key"], i))
-                for c, txt in enumerate((name if i == 0 else "", label, str(i + 1))):
-                    # tag names stay as the game shows them (English), "\u200b" = not translated
-                    it = QTableWidgetItem("\u200b" + txt if c == 0 and txt else txt)
-                    it.setFlags(it.flags() & ~Qt.ItemIsEditable)
-                    if c == 0 and not txt:
-                        it.setToolTip("\u200b" + name)
-                    t.setItem(r, c, it)
-                need = QTableWidgetItem(str(lvl.get("required_count", 0)))
-                t.setItem(r, 3, need)
-                val = QTableWidgetItem("" if pct is None else f"{pct:g}")
-                if et == WORKER_SPEED or pct is None:
-                    val.setFlags(val.flags() & ~Qt.ItemIsEditable)
-                    val.setText(_effect_text(et, pct) if pct is not None else "-")
-                    val.setToolTip("Worker speed comes from a buff level - not changed here.")
-                    val.setForeground(dim)
-                t.setItem(r, 4, val)
-                van_buff = self._buff_van.get(buff["key"]) or buff
-                van_lvl = (self._syn_van.get(rec["key"]) or rec)["level_list"][i]
-                _e, van_pct = self._bonus_of(van_buff)
-                game = QTableWidgetItem(f"{van_lvl.get('required_count', 0)} → "
-                                        + (_effect_text(et, van_pct) if van_pct is not None else "-"))
-                game.setFlags(game.flags() & ~Qt.ItemIsEditable)
-                game.setForeground(dim)
-                t.setItem(r, 5, game)
-                self._mark_row(r)
+            et, _p = self._bonus_of(self._buff[levels[0]["management_buff_info"]])
+            label = EFFECTS[et][0] if et in EFFECTS else ("Worker speed" if et == WORKER_SPEED else f"Effect {et}")
+            r = t.rowCount()
+            t.insertRow(r)
+            self._rows.append(rec["key"])
+            # tag names stay as the game shows them (English), "\u200b" = not translated
+            t.setItem(r, 0, QTableWidgetItem("\u200b" + name))
+            t.setItem(r, 1, QTableWidgetItem(label))
+            for c in range(2, 2 + MAX_LEVELS):
+                t.setItem(r, c, QTableWidgetItem(""))
+            self._show_row(r)
         self._filling = False
         self._apply_filter()
         self._update_summary()
+        if keep and keep[0] in self._rows:
+            self._table.setCurrentCell(self._rows.index(keep[0]), 2 + keep[1])
+            self._select_cell(self._rows.index(keep[0]), 2 + keep[1])
 
-    def _mark_row(self, r: int) -> None:
-        syn_key, i = self._rows[r]
-        rec = next(x for x in self._syn if x["key"] == syn_key)
-        van = self._syn_van[syn_key]
-        lvl, vlvl = rec["level_list"][i], van["level_list"][i]
-        buff = self._buff[lvl["management_buff_info"]]
-        vbuff = self._buff_van[lvl["management_buff_info"]]
+    def _show_row(self, r: int) -> None:
+        """Texts and highlight of one tag's level cells."""
+        rec = self._rec(self._rows[r])
+        van = self._syn_van[rec["key"]]
         hi = QBrush(QColor(COLORS["accent"]))
         normal = QBrush(QColor(COLORS["text"]))
-        self._table.item(r, 3).setForeground(hi if lvl["required_count"] != vlvl["required_count"] else normal)
-        if self._table.item(r, 4).flags() & Qt.ItemIsEditable:
-            self._table.item(r, 4).setForeground(hi if buff["effect"] != vbuff["effect"] else normal)
+        levels = rec.get("level_list") or []
+        for i in range(MAX_LEVELS):
+            it = self._table.item(r, 2 + i)
+            if i >= len(levels):
+                it.setText("")
+                it.setFlags(Qt.NoItemFlags)
+                continue
+            lvl, vlvl = levels[i], van["level_list"][i]
+            bkey = lvl["management_buff_info"]
+            buff, vbuff = self._buff[bkey], self._buff_van[bkey]
+            it.setText(self._level_text(lvl, buff))
+            changed = (lvl["required_count"] != vlvl["required_count"]
+                       or buff["effect"] != vbuff["effect"])
+            it.setForeground(hi if changed else normal)
+            f = it.font()
+            f.setBold(changed)
+            it.setFont(f)
+            it.setToolTip("Game: " + self._level_text(vlvl, vbuff))
 
     def _apply_filter(self, *_a) -> None:
         q = self._search.text().strip().lower()
         kind = self._kind.currentData()
-        for r, (syn_key, i) in enumerate(self._rows):
-            rec = next(x for x in self._syn if x["key"] == syn_key)
+        for r, syn_key in enumerate(self._rows):
+            rec = self._rec(syn_key)
             name = TAG_NAMES.get(rec.get("string_key", ""), rec.get("string_key", ""))
-            buff = self._buff[rec["level_list"][i]["management_buff_info"]]
+            buff = self._buff[rec["level_list"][0]["management_buff_info"]]
             et = int((buff.get("effect") or {}).get("effect_type") or 0)
             hide = (bool(q) and q not in name.lower() and q not in rec.get("string_key", "").lower()) \
                 or (kind and et != kind)
             self._table.setRowHidden(r, hide)
 
-    def _cell_changed(self, item: QTableWidgetItem) -> None:
+    # ── editor below the table ────────────────────────────────────────
+    def _set_editor_enabled(self, on: bool) -> None:
+        for w in (self._ed_need, self._ed_bonus, self._ed_reset):
+            w.setEnabled(on)
+        if not on:
+            self._ed_title.setText("Click a level in the table.")
+            self._ed_game.setText("")
+
+    def _select_cell(self, r: int, c: int) -> None:
         if self._filling:
             return
-        r, c = item.row(), item.column()
-        if r >= len(self._rows) or c not in (3, 4):
+        if r < 0 or r >= len(self._rows) or c < 2:
+            self._sel = None
+            self._set_editor_enabled(False)
             return
-        syn_key, i = self._rows[r]
-        rec = next(x for x in self._syn if x["key"] == syn_key)
+        rec = self._rec(self._rows[r])
+        i = c - 2
+        if i >= len(rec.get("level_list") or []):
+            self._sel = None
+            self._set_editor_enabled(False)
+            return
+        self._sel = (rec["key"], i)
         lvl = rec["level_list"][i]
-        try:
-            num = float(item.text().replace("%", "").replace("+", "").replace(",", ".").strip())
-        except ValueError:
-            num = None
+        buff = self._buff[lvl["management_buff_info"]]
+        et, pct = self._bonus_of(buff)
+        name = TAG_NAMES.get(rec.get("string_key", ""), rec.get("string_key", ""))
         self._filling = True
         try:
-            if c == 3:
-                if num is None or num < 1:
-                    item.setText(str(lvl["required_count"]))
-                else:
-                    lvl["required_count"] = int(round(num))
-                    item.setText(str(lvl["required_count"]))
-            else:
-                buff = self._buff[lvl["management_buff_info"]]
-                et = int(buff["effect"]["effect_type"])
-                if et in EFFECTS and num is not None and num >= 0:
-                    _l, field, to_pct, from_pct = EFFECTS[et]
-                    buff["effect"]["data"][field] = from_pct(num)
-                    item.setText(f"{to_pct(buff['effect']['data'][field]):g}")
-                else:
-                    _e, pct = self._bonus_of(buff)
-                    item.setText("" if pct is None else f"{pct:g}")
+            self._set_editor_enabled(True)
+            try:
+                from gui_i18n import tr as _t
+            except Exception:  # noqa: BLE001
+                def _t(x):
+                    return x
+            # the tag name stays English (as in the game), "Level n" is translated
+            self._ed_title.setText("\u200b" + f"{name} · " + _t(f"Level {i + 1}"))
+            self._ed_need.setValue(int(lvl["required_count"]))
+            editable = et in EFFECTS
+            self._ed_bonus.setEnabled(editable)
+            self._ed_bonus.setDecimals(0)       # the game's bonuses are whole numbers
+            self._ed_bonus.setSuffix("" if et == 6 else " %")
+            self._ed_bonus.setPrefix("+")
+            self._ed_bonus.setValue(pct if (editable and pct is not None) else 0)
+            self._ed_bonus.setToolTip("" if editable else
+                                      "Worker speed comes from a buff level - not changed here.")
+            vrec = self._syn_van[rec["key"]]
+            self._ed_game.setText("Game: " + self._level_text(vrec["level_list"][i],
+                                                              self._buff_van[lvl["management_buff_info"]]))
         finally:
             self._filling = False
-        self._mark_row(r)
+
+    def _edit_changed(self, *_a) -> None:
+        if self._filling or not self._sel:
+            return
+        rec = self._rec(self._sel[0])
+        lvl = rec["level_list"][self._sel[1]]
+        lvl["required_count"] = int(self._ed_need.value())
+        buff = self._buff[lvl["management_buff_info"]]
+        et = int(buff["effect"]["effect_type"])
+        if et in EFFECTS and self._ed_bonus.isEnabled():
+            _l, field, to_pct, from_pct = EFFECTS[et]
+            new = from_pct(self._ed_bonus.value())
+            if abs(to_pct(buff["effect"]["data"][field]) - self._ed_bonus.value()) > 1e-6:
+                buff["effect"]["data"][field] = new
+        self._show_row(self._rows.index(rec["key"]))
+        self._update_summary()
+
+    def _edit_reset(self) -> None:
+        if not self._sel:
+            return
+        from perf_util import vanilla_copy
+        rec = self._rec(self._sel[0])
+        i = self._sel[1]
+        lvl = rec["level_list"][i]
+        lvl["required_count"] = self._syn_van[rec["key"]]["level_list"][i]["required_count"]
+        bkey = lvl["management_buff_info"]
+        self._buff[bkey]["effect"] = vanilla_copy(self._buff_van[bkey]["effect"])
+        r = self._rows.index(rec["key"])
+        self._show_row(r)
+        self._select_cell(r, 2 + i)
         self._update_summary()
 
     # ── quick changes ─────────────────────────────────────────────────

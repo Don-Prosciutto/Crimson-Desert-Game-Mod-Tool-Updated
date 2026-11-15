@@ -4338,5 +4338,11 @@
  "Customers (%)": "Müşteriler (%)",
  "Satisfaction rate (%)": "Memnuniyet (%)",
  "Customer patience (%)": "Müşteri sabrı (%)",
- "Special guest chance (%)": "Özel misafir şansı (%)"
+ "Special guest chance (%)": "Özel misafir şansı (%)",
+ "Each level shows: goods with this tag → bonus. Click a level to change it below. Changed levels are highlighted.": "Her seviye gösterir: bu etiketli mal → bonus. Aşağıda değiştirmek için bir seviyeye tıkla. Değişen seviyeler vurgulanır.",
+ "Level {#}": "Seviye {#}",
+ "Click a level in the table.": "Tablodan bir seviyeye tıkla.",
+ "Game: {#}": "Oyun: {#}",
+ "Game value": "Oyun değeri",
+ "Put this level back to the game's value": "Bu seviyeyi oyun değerine döndür"
 }

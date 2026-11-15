@@ -4339,5 +4339,11 @@
  "Customers (%)": "손님 (%)",
  "Satisfaction rate (%)": "만족도 (%)",
  "Customer patience (%)": "손님 인내심 (%)",
- "Special guest chance (%)": "특별 손님 확률 (%)"
+ "Special guest chance (%)": "특별 손님 확률 (%)",
+ "Each level shows: goods with this tag → bonus. Click a level to change it below. Changed levels are highlighted.": "각 레벨 표시: 이 태그의 상품 수 → 보너스. 레벨을 클릭하면 아래에서 바꿀 수 있습니다. 바뀐 레벨은 강조 표시됩니다.",
+ "Level {#}": "레벨 {#}",
+ "Click a level in the table.": "표에서 레벨을 클릭하세요.",
+ "Game: {#}": "게임: {#}",
+ "Game value": "게임 값",
+ "Put this level back to the game's value": "이 레벨을 게임 값으로 되돌리기"
 }
