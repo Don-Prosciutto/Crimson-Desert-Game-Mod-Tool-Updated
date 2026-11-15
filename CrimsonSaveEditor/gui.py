@@ -100,6 +100,15 @@ def _ship_pixmap(size: int):
     return pm
 
 
+# Save classes the quest pages read (QuestEditorWindow._parse_quests and
+# quest_deep_parser.parse_quest_deep) - parsed alone, much faster.
+QUEST_PARSE_CLASSES = frozenset({
+    'QuestSaveData', 'MissionSaveData', 'FieldSaveData', 'FieldNPCSaveData',
+    'FactionSpawnStageManagerSaveData', 'NPCScheduleStageManagerSaveData',
+    'FriendlySaveData',
+})
+
+
 _QUEST_CHIP_LABELS = {
     "done": "Completed", "progress": "In progress", "available": "Available",
     "locked": "Locked", "missing": "Not in save",
@@ -1585,7 +1594,11 @@ class QuestEditorWindow(QDialog):
             import save_parser as sp
 
             raw = self._save_data.decompressed_blob
-            result = sp.build_result_from_raw(bytes(raw), {'input_kind': 'raw_blob'})
+            # Only the classes the quest list and the deep parser
+            # (quest_deep_parser.parse_quest_deep) read.
+            result = sp.build_result_from_raw(
+                bytes(raw), {'input_kind': 'raw_blob'},
+                only_classes=QUEST_PARSE_CLASSES)
             # kept for the Quest Editor page, which needs the same parse (it takes ~half the load time)
             self._parse_result = (bytes(raw), result)
 
@@ -7802,10 +7815,12 @@ QCheckBox::indicator {{
 
         try:
             import struct
-            from parc_inserter2 import parse_and_collect
+            import save_parser as _sp_dye
 
             raw = self._save_data.decompressed_blob
-            result, _, _ = parse_and_collect(raw)
+            # only the class this page reads (was a full parse of the save)
+            result = _sp_dye.build_result_from_raw(
+                bytes(raw), {'input_kind': 'raw_blob'}, only_classes={'EquipmentSaveData'})
 
             self._dye_items = []
 

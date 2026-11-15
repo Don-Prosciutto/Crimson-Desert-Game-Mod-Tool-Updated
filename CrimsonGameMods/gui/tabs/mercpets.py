@@ -190,7 +190,8 @@ class MercPetsTab(QWidget):
                     "dmm_parser roundtrip mismatch — file format may have changed.")
                 return
             self._mercpets_dmm_items = dmm_items
-            self._mercpets_dmm_vanilla = _copy.deepcopy(dmm_items)
+            from perf_util import vanilla_copy as _vanilla_copy
+            self._mercpets_dmm_vanilla = _vanilla_copy(dmm_items)
         except Exception as e:
             log.exception("MercPets dmm_parser load failed")
             QMessageBox.critical(self, "Load", f"dmm_parser failed: {e}")

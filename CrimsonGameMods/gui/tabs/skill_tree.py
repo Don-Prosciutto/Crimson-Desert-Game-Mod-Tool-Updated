@@ -978,7 +978,8 @@ class SkillTreeTab(QWidget):
                 except Exception as _dlc_err:  # noqa: BLE001
                     log.warning("DLC skills not loaded: %s", _dlc_err)
                 self._skill_entries = dmm_entries
-                self._skill_vanilla_entries = _copy_sk.deepcopy(dmm_entries)
+                from perf_util import vanilla_copy as _vanilla_copy
+                self._skill_vanilla_entries = _vanilla_copy(dmm_entries)
                 self._skill_dmm_loaded = True
                 dmm_loaded = True
                 self._skill_loaded = True

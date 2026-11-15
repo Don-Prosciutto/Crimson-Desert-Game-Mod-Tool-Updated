@@ -1708,7 +1708,8 @@ class FieldEditTab(QWidget):
                 import copy as _copy
                 self._vehicleinfo_dmm_items = _dmp.parse_table(
                     'vehicle_info', bytes(vbody), bytes(vschema))
-                self._vehicleinfo_dmm_vanilla = _copy.deepcopy(self._vehicleinfo_dmm_items)
+                from perf_util import vanilla_copy as _vanilla_copy
+                self._vehicleinfo_dmm_vanilla = _vanilla_copy(self._vehicleinfo_dmm_items)
                 self._vehicleinfo_dmm_dirty = False
                 log.info("dmm_parser: loaded %d vehicleinfo entries (field-level)",
                          len(self._vehicleinfo_dmm_items))
@@ -1843,9 +1844,11 @@ class FieldEditTab(QWidget):
                 # Field-level parse via dmm_parser (primary for Enable Mounts + new features)
                 import dmm_parser as _dmp
                 import copy as _copy
-                self._charinfo_dmm_items = _dmp.parse_table(
-                    'character_info', bytes(ci_body), bytes(ci_gh))
-                self._charinfo_dmm_vanilla = _copy.deepcopy(self._charinfo_dmm_items)
+                from perf_util import paused_gc as _paused_gc, vanilla_copy as _vanilla_copy
+                with _paused_gc():
+                    self._charinfo_dmm_items = _dmp.parse_table(
+                        'character_info', bytes(ci_body), bytes(ci_gh))
+                    self._charinfo_dmm_vanilla = _vanilla_copy(self._charinfo_dmm_items)
                 self._charinfo_dmm_dirty = False
                 log.info("dmm_parser: loaded %d characterinfo entries (field-level)",
                          len(self._charinfo_dmm_items))
@@ -2248,7 +2251,8 @@ class FieldEditTab(QWidget):
                     continue
                 seen.add(k)
                 self._charinfo_dlc_items.append(cd)
-        self._charinfo_dlc_vanilla = _copy.deepcopy(self._charinfo_dlc_items)
+        from perf_util import vanilla_copy as _vanilla_copy
+        self._charinfo_dlc_vanilla = _vanilla_copy(self._charinfo_dlc_items)
         # Names: character.dlc_01.paloc, entry (character_key << 32) | 0x30
         try:
             for root, d, fname in _dlc_tables(_dmp, game_path, "0020", "character.", ".paloc"):
@@ -2327,6 +2331,9 @@ class FieldEditTab(QWidget):
         entries = self._charinfo_mount_entries
         self._mount_table.setRowCount(len(entries))
         dlc_van = {v['key']: v for v in getattr(self, '_charinfo_dlc_vanilla', None) or []}
+        base_van = {}                    # first record per key, like the old scan
+        for _v in getattr(self, '_charinfo_dmm_vanilla', None) or []:
+            base_van.setdefault(_v['key'], _v)
         # Several mounts share one in-game name (e.g. 5x "Wyvern": wild ones,
         # a vision, and Riding_Wyvern_1000 - the one you ride). Those get
         # the internal name behind the in-game name.
@@ -2356,7 +2363,7 @@ class FieldEditTab(QWidget):
             if is_dlc:
                 van_m = dlc_van.get(e.get('_key'))
             else:
-                van_m = next((v for v in self._charinfo_dmm_vanilla if v['key'] == e.get('_key')), None)
+                van_m = base_van.get(e.get('_key'))
             orig_dur = (van_m or {}).get('call_mercenary_spawn_duration', dur)
             if dur != orig_dur:
                 item.setBackground(QColor(60, 40, 20))

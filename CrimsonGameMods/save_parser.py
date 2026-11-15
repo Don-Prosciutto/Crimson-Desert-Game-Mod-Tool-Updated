@@ -1397,6 +1397,7 @@ def build_result_from_raw(
     raw: bytes | bytearray,
     load_meta: dict[str, Any],
     include_legacy: bool = False,
+    only_classes=None,
 ) -> dict[str, Any]:
     # The parse builds about a million small objects; the cyclic garbage
     # collector would walk the growing tree again and again (more than half
@@ -1405,7 +1406,7 @@ def build_result_from_raw(
     was_on = _gc.isenabled()
     _gc.disable()
     try:
-        return _build_result_from_raw(raw, load_meta, include_legacy)
+        return _build_result_from_raw(raw, load_meta, include_legacy, only_classes)
     finally:
         if was_on:
             # Hand the new objects straight to the oldest generation, so the
@@ -1419,13 +1420,21 @@ def _build_result_from_raw(
     raw: bytes | bytearray,
     load_meta: dict[str, Any],
     include_legacy: bool = False,
+    only_classes=None,
 ) -> dict[str, Any]:
     raw = bytes(raw)
     schema = parse_schema(raw)
     type_names = [t.name for t in schema["types"]]
     type_map = classify_type_indices(schema["types"])
     toc = parse_toc(raw, schema["schema_end"], type_names)
-    objects = decode_object_blocks(raw, toc["entries"], schema["types"])
+    entries = toc["entries"]
+    if only_classes:
+        # Only these classes: each block is decoded on its own, so the
+        # blocks come out exactly as in a full parse (just fewer of them).
+        name_of = {t.index: t.name for t in schema["types"]}
+        wanted = set(only_classes)
+        entries = [e for e in entries if name_of.get(e.class_index) in wanted]
+    objects = decode_object_blocks(raw, entries, schema["types"])
 
     result = {
         "input": load_meta,
