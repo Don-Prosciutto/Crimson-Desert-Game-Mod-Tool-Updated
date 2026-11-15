@@ -291,6 +291,18 @@ def download_pack(
     return ui_ok
 
 
+def download_names(lang: str) -> bool:
+    """Only the item / quest name pack (the UI pack is inside the tool)."""
+    if not lang or lang == "en":
+        return True
+    USER_LOCALE_DIR.mkdir(parents=True, exist_ok=True)
+    return _download_one(
+        f"{GITHUB_BASE}/names_{lang}.json",
+        local_names_path(lang),
+        label=f"names_{lang}.json",
+    )
+
+
 def list_remote_packs() -> List[str]:
     try:
         data = _http_get(MANIFEST_URL, timeout=10.0)

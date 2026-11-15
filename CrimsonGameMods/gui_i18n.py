@@ -67,18 +67,36 @@ def _load_json(lang: str) -> Dict[str, Any]:
     short = lang.split("_")[0].split("-")[0]
     if short != lang:
         variants.append(f"{short}.json")
-    for d in _locale_dirs():
-        for v in variants:
+    # Packs from every place are merged. Lowest: a pack downloaded earlier
+    # (it can be older than the tool); then the packs inside the tool; then
+    # files placed next to the .exe (own fixes). Later ones win.
+    dirs = _locale_dirs()
+
+    def _k(d):
+        return os.path.normcase(os.path.abspath(d))
+    try:
+        from lang_pack_downloader import USER_LOCALE_DIR as _udir
+        user_key = _k(str(_udir))
+    except Exception:
+        user_key = None
+    exe_key = (_k(os.path.join(os.path.dirname(sys.executable), "locale"))
+               if getattr(sys, "frozen", False) else None)
+    low = [d for d in dirs if _k(d) == user_key]
+    high = [d for d in dirs if exe_key and _k(d) == exe_key]
+    mid = [d for d in dirs if d not in low and d not in high]
+    merged: Dict[str, Any] = {}
+    for d in low + list(reversed(mid)) + high:
+        for v in reversed(variants):            # the exact code wins over an alias
             p = os.path.join(d, v)
             if os.path.isfile(p):
                 try:
                     with open(p, "r", encoding="utf-8") as f:
                         data = json.load(f)
                     if isinstance(data, dict):
-                        return data
+                        merged.update(data)
                 except Exception as e:
                     log.warning("Failed to load %s: %s", p, e)
-    return {}
+    return merged
 
 
 def _load_names(lang: str) -> Dict[str, Any]:

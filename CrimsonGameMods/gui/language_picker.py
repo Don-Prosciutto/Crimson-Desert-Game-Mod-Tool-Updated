@@ -206,6 +206,13 @@ class LanguagePickerDialog(QDialog):
             return
 
         if row.installed or lpd.is_pack_local(row.code):
+            if not lpd.has_names_pack(row.code):
+                # The UI pack is inside the tool; the item / quest name pack
+                # (~1 MB) comes from GitHub in the background, used from the
+                # next start. No internet: names simply stay English.
+                import threading
+                threading.Thread(target=lambda c=row.code: lpd.download_names(c),
+                                 daemon=True).start()
             self._persist_language(row.code)
             self._apply_runtime(row.code)
             self._maybe_show_restart_toast(row)
