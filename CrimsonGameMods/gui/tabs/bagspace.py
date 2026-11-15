@@ -1,4 +1,5 @@
 from __future__ import annotations
+from perf_util import vanilla_copy as _vcopy  # fast copy of parsed tables (2.5)
 import perf_log
 
 import importlib.util
@@ -369,7 +370,7 @@ class BagSpaceTab(QWidget):
             except Exception as _dlc_err:  # noqa: BLE001
                 log.warning("DLC inventories not loaded: %s", _dlc_err)
                 import copy as _copy_inv
-            self._dlc_vanilla = _copy_inv.deepcopy(self._dlc_items)
+            self._dlc_vanilla = _vcopy(self._dlc_items)
             for it in self._dlc_items:
                 ds = it.get('default_slot_count')
                 ms = it.get('max_slot_count')

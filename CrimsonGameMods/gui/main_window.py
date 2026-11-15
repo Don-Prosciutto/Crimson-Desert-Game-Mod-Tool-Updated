@@ -206,7 +206,8 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._icon_preview = IconPreview(self)
         _qapp = QApplication.instance()
         if _qapp is not None:
-            _qapp.installEventFilter(self._icon_preview)
+            # Faster start (2.5): not during the build (~200 000 events).
+            QTimer.singleShot(1500, lambda: _qapp.installEventFilter(self._icon_preview))
 
         self._max_enchant_map: dict = {}
         try:
@@ -1265,13 +1266,14 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
         def _se_loaded(path, save_data, items, enriched, parc_status, timings):
             se_finished(path, save_data, items, enriched, parc_status, timings)
-            self._se_follow_save(path)
+            self._se_follow_save(path, getattr(win, "_items", None) or items, parc_status)
         win._on_save_load_finished = _se_loaded
         se_do_save = win._do_save
 
         def _se_saved(path):
             result = se_do_save(path)
-            self._se_follow_save(path)
+            self._se_follow_save(path, getattr(win, "_items", None),
+                                 getattr(win, "_parc_status", ""))
             return result
         win._do_save = _se_saved
 
@@ -1290,7 +1292,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         if gp:
             self._se_sync_game_path(gp)
 
-    def _se_follow_save(self, path: str) -> None:
+    def _se_follow_save(self, path: str, se_items=None, parc_status: str = "") -> None:
         """Read the save the Save Editor has open, for the Game Mods side."""
         if not path or not os.path.isfile(path):
             return
@@ -1299,7 +1301,11 @@ class MainWindow(SelfTestMixin, QMainWindow):
             self._loaded_path = path
             self._dirty = False
             self._undo_stack.clear()
-            self._scan_and_populate()
+            if se_items:
+                # Faster load (2.5): the Save Editor has just scanned this file.
+                self._adopt_se_items(se_items, parc_status)
+            else:
+                self._scan_and_populate()
             # This copy is only read here (saving runs through the Save
             # Editor); don't let the scan's housekeeping mark it as edited.
             self._dirty = False
@@ -1307,6 +1313,31 @@ class MainWindow(SelfTestMixin, QMainWindow):
             log.info("Game Mods follows the Save Editor's save: %s", path)
         except Exception as e:  # noqa: BLE001
             log.warning("Game Mods could not read the Save Editor's save %s: %s", path, e)
+
+    def _adopt_se_items(self, se_items, parc_status: str = "") -> None:
+        """Take the Save Editor's item list for the Game Mods side (own copies)."""
+        import copy as _copy
+        import dataclasses as _dc
+        names = [f.name for f in _dc.fields(SaveItem)]
+        items = []
+        for it in se_items:
+            try:
+                items.append(SaveItem(**{n: _copy.copy(getattr(it, n)) for n in names
+                                         if hasattr(it, n)}))
+            except TypeError:
+                self._scan_and_populate()        # unexpected item type: old way
+                return
+        for item in items:
+            item.name = self._name_db.get_name(item.item_key)
+            item.category = self._name_db.get_category(item.item_key)
+        self._items = items
+        self._quest_entries = []
+        self._mission_entries = []
+        self._loaded_tabs.clear()
+        self._parc_status = parc_status or getattr(self, "_parc_status", "")
+        if hasattr(self, '_buffs_tab'):
+            self._buffs_tab.load(self._save_data, self._items)
+            self._loaded_tabs.add(self._buffs_tab)
 
     def _se_sync_game_path(self, path: str) -> None:
         win = getattr(self, "_se_window", None)

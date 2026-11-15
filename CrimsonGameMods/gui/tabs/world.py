@@ -1,4 +1,5 @@
 from __future__ import annotations
+from perf_util import vanilla_copy as _vcopy  # fast copy of parsed tables (2.5)
 import perf_log
 
 import datetime
@@ -381,7 +382,7 @@ class StoreEditorTab(QWidget):
             gb = bytes(crimson_rs.extract_file(game_path, "0008", dp, "storeinfo.pabgb"))
             gh = bytes(crimson_rs.extract_file(game_path, "0008", dp, "storeinfo.pabgh"))
             self._store_dmm = dmm_parser.parse_table('store_info', gb, gh)
-            self._store_dmm_vanilla = copy.deepcopy(self._store_dmm)
+            self._store_dmm_vanilla = _vcopy(self._store_dmm)
             self._store_gh = gh
             self._store_game_path = game_path
             self._store_load_dlc(game_path)
@@ -445,7 +446,7 @@ class StoreEditorTab(QWidget):
                     continue
                 self._store_dlc.append(r)
                 self._store_origin[k] = "dlc_plus" if k in base_keys else "dlc_only"
-        self._store_dlc_vanilla = copy.deepcopy(self._store_dlc)
+        self._store_dlc_vanilla = _vcopy(self._store_dlc)
         # Items only a DLC has (category "DLC" in the item list).
         try:
             db = get_connection()
@@ -2095,7 +2096,7 @@ class SpawnTab(QWidget):
                                               "terrainregionautospawninfo.pabgh"))
 
             self._spawn_dmm = _dmp_spawn.parse_table('terrain_region_auto_spawn_info', body, schema)
-            self._spawn_dmm_vanilla = _copy_spawn.deepcopy(self._spawn_dmm)
+            self._spawn_dmm_vanilla = _vcopy(self._spawn_dmm)
             # Spawn regions only the DLC has (ocean, islands). Listed as
             # "[DLC] ...", exported as Field JSON only - Apply and Export as
             # Mod write the main tables.
@@ -2108,7 +2109,7 @@ class SpawnTab(QWidget):
                     {int(r.get('key', 0)) for r in self._spawn_dmm})
             except Exception as _dlc_err:  # noqa: BLE001
                 log.warning("DLC spawn regions not loaded: %s", _dlc_err)
-            self._spawn_dlc_dmm_vanilla = _copy_spawn.deepcopy(self._spawn_dlc_dmm)
+            self._spawn_dlc_dmm_vanilla = _vcopy(self._spawn_dlc_dmm)
             _dlc_region_keys = {int(r.get('key', 0)) for r in self._spawn_dlc_dmm}
 
             def _rname(rec, name=None):
@@ -2206,7 +2207,7 @@ class SpawnTab(QWidget):
                     game_path, "0008", dir_path, "factionnode.pabgh"))
 
                 self._spawn_fnode_dmm = _dmp_spawn.parse_table('faction_node_info', fnode_body, fnode_gh)
-                self._spawn_fnode_dmm_vanilla = _copy_spawn.deepcopy(self._spawn_fnode_dmm)
+                self._spawn_fnode_dmm_vanilla = _vcopy(self._spawn_fnode_dmm)
                 self._spawn_fnode_ops_data = bytearray(fnode_body)
                 self._spawn_fnode_ops_original = fnode_body
                 self._spawn_fnode_ops_schema = fnode_gh
@@ -2217,7 +2218,7 @@ class SpawnTab(QWidget):
                         {int(r.get('key', 0)) for r in self._spawn_fnode_dmm})
                 except Exception as _dlc_err:  # noqa: BLE001
                     log.warning("DLC faction nodes not loaded: %s", _dlc_err)
-                self._spawn_fnode_dlc_dmm_vanilla = _copy_spawn.deepcopy(self._spawn_fnode_dlc_dmm)
+                self._spawn_fnode_dlc_dmm_vanilla = _vcopy(self._spawn_fnode_dlc_dmm)
                 _dlc_node_keys = {int(r.get('key', 0)) for r in self._spawn_fnode_dlc_dmm}
 
                 fnode_ops_count = 0
@@ -2835,7 +2836,7 @@ class SpawnTab(QWidget):
 
             self._spawn_life_dmm = _dmp_life.parse_table(
                 'spawning_pool_auto_spawn_info', life_body, life_gh)
-            self._spawn_life_dmm_vanilla = _copy_life.deepcopy(self._spawn_life_dmm)
+            self._spawn_life_dmm_vanilla = _vcopy(self._spawn_life_dmm)
             self._spawn_life_data = bytearray(life_body)
             self._spawn_life_original = life_body
             self._spawn_life_schema = life_gh
@@ -2944,10 +2945,10 @@ class SpawnTab(QWidget):
     def _spawn_reset(self):
         import copy as _copy_reset
         if hasattr(self, '_spawn_dmm_vanilla') and self._spawn_dmm_vanilla:
-            self._spawn_dmm = _copy_reset.deepcopy(self._spawn_dmm_vanilla)
+            self._spawn_dmm = _vcopy(self._spawn_dmm_vanilla)
         for _attr in ('_spawn_dlc_dmm', '_spawn_fnode_dlc_dmm'):
             if getattr(self, _attr + '_vanilla', None) is not None:
-                setattr(self, _attr, _copy_reset.deepcopy(getattr(self, _attr + '_vanilla')))
+                setattr(self, _attr, _vcopy(getattr(self, _attr + '_vanilla')))
         if self._spawn_original:
             self._spawn_data = bytearray(self._spawn_original)
         if hasattr(self, '_spawn_node_original') and self._spawn_node_original:
@@ -3867,7 +3868,7 @@ class DropsetTab(QWidget):
             hdr = bytes(header_data)
             bod = bytes(body_data)
             self._dropset_dmm = _dmp_ds.parse_table('drop_set_info', bod, hdr)
-            self._dropset_dmm_vanilla = _copy_ds.deepcopy(self._dropset_dmm)
+            self._dropset_dmm_vanilla = _vcopy(self._dropset_dmm)
             self._dropset_gh = hdr
 
             # dmm_parser-backed editor (dropset_dmm). The old byte reader

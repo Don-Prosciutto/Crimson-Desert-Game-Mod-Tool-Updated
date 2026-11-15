@@ -450,17 +450,28 @@ class SaveLoadWorker(QObject):
             save_data = load_save_file(self.path)
             timings["decrypt"] = perf_counter() - stage
 
-            self.progress.emit("Indexing items...", 3)
-            stage = perf_counter()
-            items = scan_items(save_data.decompressed_blob)
-            timings["index"] = perf_counter() - stage
+            # Faster load (2.5): the scans build ~100 000 small objects; the
+            # garbage collector pauses meanwhile (as in save_parser).
+            import gc as _gc
+            _gc_was_on = _gc.isenabled()
+            _gc.disable()
+            try:
+                self.progress.emit("Indexing items...", 3)
+                stage = perf_counter()
+                items = scan_items(save_data.decompressed_blob)
+                timings["index"] = perf_counter() - stage
 
-            self.progress.emit("Reading exact item and socket fields...", 4)
-            stage = perf_counter()
-            enriched, parc_status = enrich_items_with_parc(
-                save_data.decompressed_blob, items
-            )
-            timings["details"] = perf_counter() - stage
+                self.progress.emit("Reading exact item and socket fields...", 4)
+                stage = perf_counter()
+                enriched, parc_status = enrich_items_with_parc(
+                    save_data.decompressed_blob, items
+                )
+                timings["details"] = perf_counter() - stage
+            finally:
+                if _gc_was_on:
+                    _gc.freeze()
+                    _gc.unfreeze()
+                    _gc.enable()
             timings["worker_total"] = perf_counter() - started
             self.finished.emit(
                 self.path, save_data, items, enriched, parc_status, timings
@@ -2160,10 +2171,13 @@ class QuestEditorWindow(QDialog):
                 self, "_save_load_started", perf_counter()
             )
             log.info(
-                "Save loaded in %.3fs (decrypt %.3fs, index %.3fs, details %.3fs)",
-                elapsed, float(timings.get("decrypt", 0.0)),
+                "Save loaded in %.3fs (check %.3fs, decrypt %.3fs, index %.3fs, details %.3fs, "
+                "worker %.3fs)",
+                elapsed, float(timings.get("native_validation", 0.0)),
+                float(timings.get("decrypt", 0.0)),
                 float(timings.get("index", 0.0)),
                 float(timings.get("details", 0.0)),
+                float(timings.get("worker_total", 0.0)),
             )
             self._update_status(
                 f"Loaded: {friendly} ({slot_dir}) in {elapsed:.1f}s | "
@@ -35573,6 +35587,24 @@ QCheckBox::indicator {{
 
     @perf_log.timed
     def _filter_database(self) -> None:
+        # Faster start (2.5): fill the list only when it is on screen (in the
+        # Game Mod Tool it never is - that tool has its own item list).
+        _tab = getattr(self, "_db_tab_widget", None)
+        if _tab is not None and not _tab.isVisible():
+            self._db_filter_pending = True
+            if not getattr(self, "_db_show_filter", None):
+                _owner = self
+
+                class _DbShow(QObject):
+                    def eventFilter(self, obj, ev):  # noqa: N802
+                        if ev.type() == QEvent.Show and getattr(_owner, "_db_filter_pending", False):
+                            QTimer.singleShot(0, _owner._filter_database)
+                        return False
+
+                self._db_show_filter = _DbShow(_tab)
+                _tab.installEventFilter(self._db_show_filter)
+            return
+        self._db_filter_pending = False
         table = self._db_table
         table.setSortingEnabled(False)
         table.setRowCount(0)

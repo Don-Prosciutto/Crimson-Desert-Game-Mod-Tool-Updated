@@ -267,8 +267,18 @@ class DatabaseBrowserTab(QWidget):
                     pass
             self._icon_cache.request_icon(int(key), _arrived)
 
+    def showEvent(self, event):  # noqa: N802
+        super().showEvent(event)
+        if getattr(self, "_db_filter_pending", False):
+            QTimer.singleShot(0, self._filter_database)
+
     @perf_log.timed
     def _filter_database(self) -> None:
+        # Faster start (2.5): 8463 rows only when the list is on screen.
+        if not self.isVisible():
+            self._db_filter_pending = True
+            return
+        self._db_filter_pending = False
         table = self._db_table
         table.setSortingEnabled(False)
         table.setRowCount(0)

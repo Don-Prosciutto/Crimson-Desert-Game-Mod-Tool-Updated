@@ -21,6 +21,7 @@ through crimson_rs.serialize_iteminfo which rebuilds sizes from the
 dicts, so Super MOD's entries keep their full shape.
 """
 from __future__ import annotations
+from perf_util import vanilla_copy as _vcopy  # fast copy of parsed tables (2.5)
 import os, sys, json, struct, copy, zipfile, tempfile, shutil, logging, time
 from dataclasses import dataclass, field  # field: default_factory for mutable defaults
 from pathlib import Path
@@ -1854,7 +1855,7 @@ class StackerTab(QWidget):
             items = _base_only
         except Exception as _e:  # noqa: BLE001
             log.warning("DLC item filter not available: %s", _e)
-        snap_items = copy.deepcopy(items)
+        snap_items = _vcopy(items)
 
         # Bucket B — checkbox toggles. These are only applied to
         # _buff_rust_items at the moment ItemBuffs's Apply runs. We
@@ -2645,7 +2646,7 @@ class StackerTab(QWidget):
                         # intent out of stale + insert + absolute-offset
                         # patches uniformly, producing a FieldEdit list
                         # that apply_field_edits writes to the dict tree.
-                        items = copy.deepcopy(vanilla_items)
+                        items = _vcopy(vanilla_items)
                         report = iteminfo_inspector.reparse_diff_patches(
                             vanilla_bytes, doc, entry_blob_start)
                         m.reparse_report = report
@@ -2674,7 +2675,7 @@ class StackerTab(QWidget):
                         # dropped. Survives offset drift for the applied
                         # patches but misses stale ones (unlike
                         # reparse_diff).
-                        items = copy.deepcopy(vanilla_items)
+                        items = _vcopy(vanilla_items)
                         s_applied, s_skipped, s_reasons = (
                             iteminfo_inspector.apply_semantic(items, insps))
                         m.parsed_items = items
@@ -2723,7 +2724,7 @@ class StackerTab(QWidget):
                                 intents = target['intents']
                                 break
 
-                    items = copy.deepcopy(vanilla_items)
+                    items = _vcopy(vanilla_items)
                     items_by_key = {it['string_key']: it for it in items}
                     applied_count = 0
                     skipped_count = 0
@@ -3812,7 +3813,7 @@ class StackerTab(QWidget):
                 _van_items = crimson_rs.parse_iteminfo_from_bytes(vanilla)
             except Exception:
                 _van_items, _ = _parse_with_fallback(crimson_rs, game, vanilla)
-            self._buffs_tab._buff_rust_items_original = copy.deepcopy(_van_items)
+            self._buffs_tab._buff_rust_items_original = _vcopy(_van_items)
             self._buffs_tab._buff_rust_lookup = {
                 it["key"]: it for it in self._merged_items if "key" in it}
             self._buffs_tab._buff_use_rust = True

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from perf_util import vanilla_copy as _vcopy  # fast copy of parsed tables (2.5)
 import perf_log
 
 import datetime
@@ -357,7 +358,78 @@ class ItemBuffsTab(QWidget):
         self._experimental_mode: bool = bool(self._config.get("experimental_mode", False))
         self._favorite_items: List[dict] = self._config.setdefault("favorite_items", [])
         self._copy_buffer: dict = {}
-        self._build_ui()
+        # Faster start (2.5): the page is built when first shown, or as soon
+        # as any code asks for one of its widgets (see __getattr__).
+        self._lazy_state = 0            # 0 = not built, 1 = building, 2 = built
+        self._lazy_pending: dict = {}
+
+    # ── build on demand ────────────────────────────────────────────────
+    def __getattr__(self, name):
+        # Only called for attributes that do not exist yet. Before the page
+        # is built that is every widget made in _build_ui: build it now.
+        # Markers other modules probe on any widget do not need the page.
+        if (name.startswith("_") and not name.startswith("__")
+                and not name.startswith(("_selftest", "_page_polish", "_game_write",
+                                         "_lazy", "_i18n", "_tab_en"))
+                and self.__dict__.get("_lazy_state", 2) == 0):
+            self._ensure_built()
+            if name in self.__dict__:
+                return self.__dict__[name]
+            return object.__getattribute__(self, name)
+        raise AttributeError(name)
+
+    def _ensure_built(self) -> None:
+        if self.__dict__.get("_lazy_state", 2) != 0:
+            return
+        self._lazy_state = 1
+        try:
+            from PySide6.QtWidgets import QApplication as _QA
+            _QA.setOverrideCursor(Qt.WaitCursor)
+        except Exception:  # noqa: BLE001
+            _QA = None
+        try:
+            self._build_ui()
+        finally:
+            self._lazy_state = 2
+            if _QA is not None:
+                _QA.restoreOverrideCursor()
+        pend = self._lazy_pending
+        self._lazy_pending = {}
+        if "game_path" in pend:
+            try:
+                self.set_game_path(pend["game_path"])
+            except Exception:  # noqa: BLE001
+                pass
+        if "experimental" in pend:
+            self.set_experimental_mode(pend["experimental"])
+        if "icons" in pend:
+            try:
+                self.set_icons_enabled(pend["icons"])
+            except Exception:  # noqa: BLE001
+                pass
+        if self._save_data is not None:
+            try:
+                self.load(self._save_data, self._items)
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            win = self.window()
+            if getattr(win, "_game_write_guard_timer", None) is not None:
+                import game_write_guard
+                game_write_guard.disable_buttons(self)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from gui.page_polish import polish_safe
+            self._page_polished = False
+            polish_safe(self)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def showEvent(self, event):  # noqa: N802
+        if self.__dict__.get("_lazy_state", 2) == 0:
+            self._ensure_built()
+        super().showEvent(event)
 
     def _safely_replace_buff_item(self, target_key: int, new_dict: dict) -> None:
         new_dict['key'] = target_key
@@ -472,6 +544,9 @@ class ItemBuffsTab(QWidget):
 
     def set_experimental_mode(self, enabled: bool) -> None:
         self._experimental_mode = bool(enabled)
+        if self.__dict__.get("_lazy_state", 2) == 0:
+            self._lazy_pending["experimental"] = self._experimental_mode
+            return
         # UP v1 is dev-only (kept for research)
         for w in getattr(self, '_dev_buff_widgets', []):
             w.setVisible(self._experimental_mode)
@@ -516,6 +591,8 @@ class ItemBuffsTab(QWidget):
     def load(self, save_data: SaveData, items: List[SaveItem]) -> None:
         self._save_data = save_data
         self._items = items if items is not None else []
+        if self.__dict__.get("_lazy_state", 2) == 0:
+            return                      # applied when the page is built
         try:
             self._eb_update_socket_match_count()
         except Exception:  # noqa: BLE001 - UI may not be built yet
@@ -536,6 +613,9 @@ class ItemBuffsTab(QWidget):
 
     def set_game_path(self, path: str) -> None:
         self._game_path = path or ""
+        if self.__dict__.get("_lazy_state", 2) == 0:
+            self._lazy_pending["game_path"] = self._game_path
+            return
         if hasattr(self, "_buff_game_path") and self._buff_game_path is not None:
             self._buff_game_path.setText(self._game_path)
             self._buff_game_path.setToolTip(self._game_path)
@@ -545,6 +625,9 @@ class ItemBuffsTab(QWidget):
             self._buff_rebuild_name_combos()
 
     def set_icons_enabled(self, enabled: bool) -> None:
+        if self.__dict__.get("_lazy_state", 2) == 0:
+            self._lazy_pending["icons"] = bool(enabled)
+            return
         if hasattr(self, "_buff_icons_enabled") and self._buff_icons_enabled != enabled:
             self._buff_toggle_icons()
 
@@ -10507,7 +10590,7 @@ class ItemBuffsTab(QWidget):
             return
 
         import copy
-        _prev_rust_items = copy.deepcopy(getattr(self, '_buff_rust_items', None))
+        _prev_rust_items = _vcopy(getattr(self, '_buff_rust_items', None))
         _prev_buff_data = bytes(getattr(self, '_buff_data', b'') or b'')
 
         try:
@@ -12720,7 +12803,7 @@ class ItemBuffsTab(QWidget):
                 game_dir, '0008', dir_path, f"{filename}.pabgb"
             ))
             items: list = _dmm.parse_table(filename, pabgb, pabgh)
-            vanilla = _copy.deepcopy(items)
+            vanilla = _vcopy(items)
             self._buffinfo_dmm_items = items
             self._buffinfo_dmm_vanilla = vanilla
             log.info("Loaded %d buffinfo entries", len(items))
