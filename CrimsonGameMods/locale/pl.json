@@ -4285,5 +4285,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "Rozdziały, nazwy i kolejność z gry. Kliknij grupę, aby ją otworzyć.",
  "Groups, names and order from the game. Click a group to open it.": "Grupy, nazwy i kolejność z gry. Kliknij grupę, aby ją otworzyć.",
  "Add Selected Mounts": "Dodaj wybrane wierzchowce",
- "Add Selected Pets": "Dodaj wybrane zwierzaki"
+ "Add Selected Pets": "Dodaj wybrane zwierzaki",
+ "Restart needed": "Wymagane ponowne uruchomienie",
+ "Restart now": "Uruchom ponownie teraz",
+ "Later": "Później",
+ "It applies after the tool is started again.": "Zmiana zadziała po ponownym uruchomieniu narzędzia.",
+ "UI scale {#}% is saved.": "Skala interfejsu {#}% zapisana.",
+ "Theme '{#}' is saved.": "Motyw „{#}” zapisany.",
+ "Add Ships (DLC)": "Dodaj statki (DLC)",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "Wymaga DLC „Charting the Unknown”. Przetestowane w grze: statki pojawiają się na liście statków (poziom 1) i można nimi pływać. Statki są dodawane jak wierzchowce: nowy wpis na liście, bez części statku i stanowisk załogi. Wyszarzone = ten zapis już to ma."
 }

@@ -4285,5 +4285,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "챕터, 이름, 순서는 게임 데이터입니다. 그룹을 클릭하면 열립니다.",
  "Groups, names and order from the game. Click a group to open it.": "그룹, 이름, 순서는 게임 데이터입니다. 그룹을 클릭하면 열립니다.",
  "Add Selected Mounts": "선택한 탈것 추가",
- "Add Selected Pets": "선택한 펫 추가"
+ "Add Selected Pets": "선택한 펫 추가",
+ "Restart needed": "다시 시작해야 합니다",
+ "Restart now": "지금 다시 시작",
+ "Later": "나중에",
+ "It applies after the tool is started again.": "도구를 다시 시작하면 적용됩니다.",
+ "UI scale {#}% is saved.": "UI 배율 {#}%가 저장되었습니다.",
+ "Theme '{#}' is saved.": "테마 '{#}'이(가) 저장되었습니다.",
+ "Add Ships (DLC)": "선박 추가 (DLC)",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "DLC 'Charting the Unknown'이 필요합니다. 게임에서 테스트 완료: 선박이 선박 목록에 나타나며(레벨 1) 운항할 수 있습니다. 선박은 탈것처럼 추가됩니다: 목록에 새 항목이 생기며, 선박 부품이나 선원 배치는 없습니다. 회색 = 이 세이브에 이미 있습니다."
 }

@@ -180,11 +180,41 @@ def _autodetect_locale_if_unset() -> None:
         pass
 
 
+def _apply_saved_ui_scale() -> None:
+    """View › UI Scale: Qt scales the whole window evenly (read at start)."""
+    if os.environ.get("QT_SCALE_FACTOR"):
+        return                                   # set by the user: keep it
+    import json
+    # The main window keeps its settings next to the EXE (frozen) or next to
+    # gui/main_window.py (from source) - look there first.
+    paths = [_editor_config_path()]
+    if not getattr(sys, "frozen", False):
+        paths.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     "gui", "editor_config.json"))
+    pct = 100
+    for path in paths:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                cfg = json.load(f) or {}
+        except Exception:  # noqa: BLE001
+            continue
+        if "ui_scale_pct" in cfg:
+            try:
+                pct = int(cfg["ui_scale_pct"])
+            except (TypeError, ValueError):
+                pct = 100
+            break
+    pct = max(50, min(200, pct))
+    if pct != 100:
+        os.environ["QT_SCALE_FACTOR"] = f"{pct / 100:.2f}"
+
+
 def main() -> None:
     harvest_i18n = "--harvest-i18n" in sys.argv
     if harvest_i18n:
         sys.argv = [a for a in sys.argv if a != "--harvest-i18n"]
 
+    _apply_saved_ui_scale()
     app = QApplication(sys.argv)
     from updater import APP_VERSION
     try:

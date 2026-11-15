@@ -4284,5 +4284,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "Главы, названия и порядок из игры. Нажмите на группу, чтобы открыть её.",
  "Groups, names and order from the game. Click a group to open it.": "Группы, названия и порядок из игры. Нажмите на группу, чтобы открыть её.",
  "Add Selected Mounts": "Добавить выбранных маунтов",
- "Add Selected Pets": "Добавить выбранных питомцев"
+ "Add Selected Pets": "Добавить выбранных питомцев",
+ "Restart needed": "Нужен перезапуск",
+ "Restart now": "Перезапустить сейчас",
+ "Later": "Позже",
+ "It applies after the tool is started again.": "Изменение вступит в силу после перезапуска программы.",
+ "UI scale {#}% is saved.": "Масштаб интерфейса {#}% сохранён.",
+ "Theme '{#}' is saved.": "Тема «{#}» сохранена.",
+ "Add Ships (DLC)": "Добавить корабли (DLC)",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "Нужно DLC «Charting the Unknown». Проверено в игре: корабли появляются в списке кораблей (уровень 1), на них можно плавать. Корабли добавляются как маунты: новая запись в списке, без деталей корабля и постов экипажа. Серым = в этом сохранении уже есть."
 }

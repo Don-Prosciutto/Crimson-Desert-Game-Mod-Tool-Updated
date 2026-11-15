@@ -4223,5 +4223,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "章・名前・順番はゲームのデータです。グループをクリックすると開きます。",
  "Groups, names and order from the game. Click a group to open it.": "グループ・名前・順番はゲームのデータです。グループをクリックすると開きます。",
  "Add Selected Mounts": "選択したマウントを追加",
- "Add Selected Pets": "選択したペットを追加"
+ "Add Selected Pets": "選択したペットを追加",
+ "Restart needed": "再起動が必要です",
+ "Restart now": "今すぐ再起動",
+ "Later": "後で",
+ "It applies after the tool is started again.": "ツールを再起動すると反映されます。",
+ "UI scale {#}% is saved.": "UIの拡大率 {#}% を保存しました。",
+ "Theme '{#}' is saved.": "テーマ「{#}」を保存しました。",
+ "Add Ships (DLC)": "船を追加（DLC）",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "DLC「Charting the Unknown」が必要です。ゲーム内でテスト済み：船は船リストに表示され（レベル1）、航行できます。船はマウントと同じように追加されます：リストに新しい項目が加わり、船のパーツや乗組員の配置はありません。グレー表示 = このセーブデータには既にあります。"
 }

@@ -4285,5 +4285,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "Kapitel, Namen und Reihenfolge aus dem Spiel. Klicke eine Gruppe an, um sie zu öffnen.",
  "Groups, names and order from the game. Click a group to open it.": "Gruppen, Namen und Reihenfolge aus dem Spiel. Klicke eine Gruppe an, um sie zu öffnen.",
  "Add Selected Mounts": "Gewählte Reittiere hinzufügen",
- "Add Selected Pets": "Gewählte Haustiere hinzufügen"
+ "Add Selected Pets": "Gewählte Haustiere hinzufügen",
+ "Restart needed": "Neustart nötig",
+ "Restart now": "Jetzt neu starten",
+ "Later": "Später",
+ "It applies after the tool is started again.": "Die Änderung gilt, sobald das Tool neu gestartet ist.",
+ "UI scale {#}% is saved.": "UI-Skalierung {#} % ist gespeichert.",
+ "Theme '{#}' is saved.": "Farbschema „{#}“ ist gespeichert.",
+ "Add Ships (DLC)": "Schiffe hinzufügen (DLC)",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "Braucht das DLC „Charting the Unknown“. Im Spiel getestet: Die Schiffe erscheinen in deiner Schiffsliste (Stufe 1) und lassen sich fahren. Schiffe werden wie Reittiere hinzugefügt: ein neuer Eintrag in deiner Liste, ohne Schiffsteile oder Mannschaftsposten. Ausgegraut = dieser Spielstand hat es schon."
 }

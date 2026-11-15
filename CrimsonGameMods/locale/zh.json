@@ -4284,5 +4284,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "章节、名称和顺序来自游戏。点击分组即可展开。",
  "Groups, names and order from the game. Click a group to open it.": "分组、名称和顺序来自游戏。点击分组即可展开。",
  "Add Selected Mounts": "添加所选坐骑",
- "Add Selected Pets": "添加所选宠物"
+ "Add Selected Pets": "添加所选宠物",
+ "Restart needed": "需要重新启动",
+ "Restart now": "立即重新启动",
+ "Later": "稍后",
+ "It applies after the tool is started again.": "重新启动工具后生效。",
+ "UI scale {#}% is saved.": "界面缩放 {#}% 已保存。",
+ "Theme '{#}' is saved.": "主题“{#}”已保存。",
+ "Add Ships (DLC)": "添加船只（DLC）",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "需要 DLC“Charting the Unknown”。已在游戏中测试：船只会出现在你的船只列表中（1 级）并可驾驶。船只的添加方式与坐骑相同：列表中新增一条，不含船只部件和船员岗位。灰色 = 此存档已拥有。"
 }

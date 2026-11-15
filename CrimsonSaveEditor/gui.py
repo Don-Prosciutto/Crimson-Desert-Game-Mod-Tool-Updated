@@ -8833,7 +8833,7 @@ QCheckBox::indicator {{
         _pick_tabs = _QTabWidget()
         _pick_tabs.addTab(self._build_picker("mount"), "Add Mounts")
         _pick_tabs.addTab(self._build_picker("pet"), "Add Pets")
-        _pick_tabs.addTab(self._build_picker("ship"), "Add Ships (DLC, test)")
+        _pick_tabs.addTab(self._build_picker("ship"), "Add Ships (DLC)")
         _pick_tabs.addTab(rename_page, "Rename companions")
         layout.addWidget(_pick_tabs, 1)
 
@@ -8859,10 +8859,10 @@ QCheckBox::indicator {{
                 "title": "Add Ships", "noun": "ships", "one": "ship",
                 "entries": mu.SHIPS, "filters": ("All",) + tuple(mu.SHIP_GROUPS),
                 "area": lambda g: g, "dlc": set(),
-                "note": ("TEST - not tried in game yet. Needs the DLC Charting the Unknown. Ships are "
-                         "added like mounts: a new entry in your list, without ship parts or crew "
-                         "stations. Try one ship on a copy of your save first. Greyed out = this save "
-                         "has it already."),
+                "note": ("Needs the DLC Charting the Unknown. Tested in game: the ships appear in "
+                         "your ship list (level 1) and can be sailed. Ships are added like mounts: a "
+                         "new entry in your list, without ship parts or crew stations. Greyed out = "
+                         "this save has it already."),
                 "where": "with your ships",
             }
         if kind == "pet":

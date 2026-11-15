@@ -4233,5 +4233,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "章節、名稱與順序來自遊戲。點擊群組即可展開。",
  "Groups, names and order from the game. Click a group to open it.": "群組、名稱與順序來自遊戲。點擊群組即可展開。",
  "Add Selected Mounts": "新增所選坐騎",
- "Add Selected Pets": "新增所選寵物"
+ "Add Selected Pets": "新增所選寵物",
+ "Restart needed": "需要重新啟動",
+ "Restart now": "立即重新啟動",
+ "Later": "稍後",
+ "It applies after the tool is started again.": "重新啟動工具後生效。",
+ "UI scale {#}% is saved.": "介面縮放 {#}% 已儲存。",
+ "Theme '{#}' is saved.": "主題「{#}」已儲存。",
+ "Add Ships (DLC)": "新增船隻（DLC）",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "需要 DLC「Charting the Unknown」。已在遊戲中測試：船隻會出現在你的船隻清單中（1 級）並可駕駛。船隻的新增方式與坐騎相同：清單中新增一筆，不含船隻零件與船員崗位。灰色 = 此存檔已擁有。"
 }

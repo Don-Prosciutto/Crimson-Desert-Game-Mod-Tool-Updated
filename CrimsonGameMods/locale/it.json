@@ -4285,5 +4285,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "Capitoli, nomi e ordine dal gioco. Clicca un gruppo per aprirlo.",
  "Groups, names and order from the game. Click a group to open it.": "Gruppi, nomi e ordine dal gioco. Clicca un gruppo per aprirlo.",
  "Add Selected Mounts": "Aggiungi cavalcature selezionate",
- "Add Selected Pets": "Aggiungi animali selezionati"
+ "Add Selected Pets": "Aggiungi animali selezionati",
+ "Restart needed": "Riavvio necessario",
+ "Restart now": "Riavvia ora",
+ "Later": "Più tardi",
+ "It applies after the tool is started again.": "Si applica al prossimo avvio dello strumento.",
+ "UI scale {#}% is saved.": "Scala dell'interfaccia {#}% salvata.",
+ "Theme '{#}' is saved.": "Tema «{#}» salvato.",
+ "Add Ships (DLC)": "Aggiungi navi (DLC)",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "Richiede il DLC «Charting the Unknown». Testato in gioco: le navi compaiono nella tua lista navi (livello 1) e si possono guidare. Le navi si aggiungono come le cavalcature: una nuova voce nella tua lista, senza parti della nave né postazioni dell'equipaggio. In grigio = questo salvataggio ce l'ha già."
 }

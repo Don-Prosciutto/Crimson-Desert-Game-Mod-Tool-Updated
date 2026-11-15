@@ -270,22 +270,14 @@ class MainWindow(SelfTestMixin, QMainWindow):
         else:
             self.setStyleSheet(stylesheet_for(saved_theme))
 
-        saved_scale = self._config.get("font_scale")
-        if saved_scale and saved_scale != 1.0:
-            self._set_font_scale(saved_scale)
-
-        saved_widget_scale = self._config.get("widget_scale")
-        if saved_widget_scale and saved_widget_scale != 1.0:
-            self._set_widget_scale(saved_widget_scale)
+        # font_scale / widget_scale (old look) are no longer applied: View › UI Scale.
 
         self._base_point_size = float(QApplication.instance().font().pointSizeF())
         if self._base_point_size <= 0:
             self._base_point_size = 10.0
-        self._zoom_factor = float(self._config.get("ui_zoom", 1.0))
-        self._zoom_factor = max(0.5, min(2.0, self._zoom_factor))
+        self._zoom_factor = 1.0                  # old zoom (fonts only) replaced by UI Scale
         # Ctrl+= / Ctrl+- / Ctrl+0 are the View menu's shortcuts. Registering
         # them here a second time made Qt treat them as ambiguous: neither fired.
-        QShortcut(QKeySequence("Ctrl++"), self).activated.connect(self._zoom_in)
         if abs(self._zoom_factor - 1.0) > 0.001:
             QTimer.singleShot(0, self._apply_zoom)
 
@@ -1003,8 +995,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
                 (lambda idx: lambda: self._tabs.setCurrentIndex(idx))(i)
             )
 
-        if self._config.get("ui_scale", 100) != 100 or self._config.get("compact_mode", False):
-            self._apply_ui_settings()
+        # ui_scale / compact_mode put the old stylesheet over the new look - not applied any more.
 
     # ── Save Editor, merged (all-in-one test) ───────────────────────────
     # The Save Editor (generated package save_editor/, see
@@ -2352,19 +2343,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         undo_act.triggered.connect(self._undo)
         edit_menu.addAction(undo_act)
 
-        edit_menu.addSeparator()
-        font_menu = edit_menu.addMenu("Font Size")
-        for label, scale in [("100% (Default)", 1.0), ("125%", 1.25), ("150%", 1.5), ("200%", 2.0)]:
-            act = QAction(label, self)
-            act.setData(scale)
-            act.triggered.connect(lambda checked, s=scale: self._set_font_scale(s))
-            font_menu.addAction(act)
-
-        widget_menu = edit_menu.addMenu("UI Scale")
-        for label, scale in [("75% (Compact)", 0.75), ("100% (Default)", 1.0), ("125%", 1.25), ("150%", 1.5), ("200%", 2.0)]:
-            act = QAction(label, self)
-            act.triggered.connect(lambda checked, s=scale: self._set_widget_scale(s))
-            widget_menu.addAction(act)
+        # Font Size / UI Scale moved to View › UI Scale (2.5: one scale for the new look).
 
         help_menu = menu_bar.addMenu("Help")
         about_act = QAction("About", self)
@@ -2415,39 +2394,17 @@ class MainWindow(SelfTestMixin, QMainWindow):
         view_menu.addAction(self._global_icons_action)
         view_menu.addSeparator()
 
-        self._compact_action = QAction("Compact Mode", self)
-        self._compact_action.setCheckable(True)
-        self._compact_action.setChecked(self._config.get("compact_mode", False))
-        self._compact_action.triggered.connect(self._toggle_compact_mode)
-        view_menu.addAction(self._compact_action)
-
+        # One UI scale for the new look (2.5): Qt's scale factor, from the next start.
         scale_menu = view_menu.addMenu("UI Scale")
         self._scale_group = QActionGroup(self)
-        saved_scale = self._config.get("ui_scale", 100)
-        for pct in [50, 60, 70, 80, 90, 100, 110, 120]:
-            act = QAction(f"{pct}%", self)
+        saved_scale = int(self._config.get("ui_scale_pct", 100))
+        for pct in [50, 60, 70, 75, 80, 90, 100, 110, 125, 150, 175, 200]:
+            act = QAction("100% (Default)" if pct == 100 else f"{pct}%", self)
             act.setCheckable(True)
             act.setChecked(pct == saved_scale)
             act.triggered.connect(lambda checked, p=pct: self._set_ui_scale(p))
             self._scale_group.addAction(act)
             scale_menu.addAction(act)
-
-        view_menu.addSeparator()
-
-        zoom_in_act = QAction("Zoom In", self)
-        zoom_in_act.setShortcut(QKeySequence("Ctrl+="))
-        zoom_in_act.triggered.connect(self._zoom_in)
-        view_menu.addAction(zoom_in_act)
-
-        zoom_out_act = QAction("Zoom Out", self)
-        zoom_out_act.setShortcut(QKeySequence("Ctrl+-"))
-        zoom_out_act.triggered.connect(self._zoom_out)
-        view_menu.addAction(zoom_out_act)
-
-        zoom_reset_act = QAction("Reset Zoom", self)
-        zoom_reset_act.setShortcut(QKeySequence("Ctrl+0"))
-        zoom_reset_act.triggered.connect(self._zoom_reset)
-        view_menu.addAction(zoom_reset_act)
 
         view_menu.addSeparator()
 
@@ -2564,9 +2521,36 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
 
     def _set_ui_scale(self, pct: int) -> None:
-        self._config["ui_scale"] = pct
+        """Save the UI scale; Qt applies it from the next start (see main.py)."""
+        pct = max(50, min(200, int(pct)))
+        if int(self._config.get("ui_scale_pct", 100)) == pct:
+            return
+        self._config["ui_scale_pct"] = pct
         self._save_config()
-        self._apply_ui_settings()
+        self._offer_restart(f"UI scale {pct}% is saved.")
+
+    def _offer_restart(self, what: str) -> None:
+        """Tell that a setting applies after a restart; restart on request."""
+        try:
+            from gui_i18n import tr as _t
+        except Exception:  # noqa: BLE001
+            def _t(x):
+                return x
+        box = QMessageBox(self)
+        box.setWindowTitle(_t("Restart needed"))
+        box.setIcon(QMessageBox.Information)
+        box.setText(_t(what) + "\n\n" + _t("It applies after the tool is started again."))
+        now = box.addButton(_t("Restart now"), QMessageBox.AcceptRole)
+        box.addButton(_t("Later"), QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is not now:
+            return
+        if not self.close():                     # unsaved changes: the user said Cancel
+            return
+        from PySide6.QtCore import QProcess
+        args = sys.argv[1:] if getattr(sys, "frozen", False) else sys.argv
+        QProcess.startDetached(sys.executable, args)
+        QApplication.instance().quit()
 
     def _set_theme(self, mode: str) -> None:
         """Save the chosen theme; it is used from the next start.
@@ -2579,10 +2563,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._config["theme"] = mode
         self._save_config()
         name = THEMES.get(mode, THEMES["dark"])[0]
-        QMessageBox.information(
-            self, "Theme changed",
-            f"'{name}' is saved.\n\nClose the tool and open it again - "
-            f"the whole window then uses the new colours.")
+        self._offer_restart(f"Theme '{name}' is saved.")
 
     def _toggle_compact_mode(self, checked: bool) -> None:
         self._config["compact_mode"] = checked

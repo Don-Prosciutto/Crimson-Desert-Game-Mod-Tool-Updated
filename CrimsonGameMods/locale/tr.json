@@ -4284,5 +4284,13 @@
  "Chapters, names and order from the game. Click a group to open it.": "Bölümler, adlar ve sıra oyundan alınır. Açmak için bir gruba tıkla.",
  "Groups, names and order from the game. Click a group to open it.": "Gruplar, adlar ve sıra oyundan alınır. Açmak için bir gruba tıkla.",
  "Add Selected Mounts": "Seçili binekleri ekle",
- "Add Selected Pets": "Seçili evcil hayvanları ekle"
+ "Add Selected Pets": "Seçili evcil hayvanları ekle",
+ "Restart needed": "Yeniden başlatma gerekli",
+ "Restart now": "Şimdi yeniden başlat",
+ "Later": "Sonra",
+ "It applies after the tool is started again.": "Araç yeniden başlatıldığında geçerli olur.",
+ "UI scale {#}% is saved.": "Arayüz ölçeği %{#} kaydedildi.",
+ "Theme '{#}' is saved.": "«{#}» teması kaydedildi.",
+ "Add Ships (DLC)": "Gemi Ekle (DLC)",
+ "Needs the DLC Charting the Unknown. Tested in game: the ships appear in your ship list (level 1) and can be sailed. Ships are added like mounts: a new entry in your list, without ship parts or crew stations. Greyed out = this save has it already.": "«Charting the Unknown» DLC'si gerekir. Oyunda test edildi: gemiler gemi listende görünür (seviye 1) ve kullanılabilir. Gemiler binekler gibi eklenir: listende yeni bir kayıt, gemi parçaları veya mürettebat yerleri olmadan. Gri = bu kayıtta zaten var."
 }
