@@ -4283,5 +4283,17 @@
  "Click a level in the table.": "表のレベルをクリックしてください。",
  "Game: {#}": "ゲーム：{#}",
  "Game value": "ゲームの値",
- "Put this level back to the game's value": "このレベルをゲームの値に戻す"
+ "Put this level back to the game's value": "このレベルをゲームの値に戻す",
+ "Lock Abyss Gates Again": "アビスゲートを再び封鎖",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "アビスゲートを再び封鎖 — それらの項目を未習得に戻します。",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "「すべてのアビスゲートを解放」を元に戻します：ゲートの項目（398、DLC +37）を\n未習得に戻します。自分で見つけたゲートも封鎖されます。\nゲーム内で再び訪れてください。",
+ "Abyss gate pack not found.": "アビスゲートのパックが見つかりません。",
+ "Could not read the knowledge in this save: {#}": "このセーブデータの知識を読み込めませんでした：{#}",
+ "No unlocked abyss gates in this save.": "このセーブデータには解放済みのアビスゲートがありません。",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "アビスゲート {#} 個を再び封鎖しますか？\n\n「すべてのアビスゲートを解放」の前と同じく未習得に戻します。このセーブデータで自分で見つけたゲートも封鎖されます。ゲーム内で再び訪れてください。\n\nその後保存してください（Ctrl+S）。新機能：ゲーム内で一度確認してください。",
+ "Locked {#} abyss gates (knowledge level 0).": "アビスゲート {#} 個を再び封鎖しました（知識レベル 0）。",
+ "Abyss Gates Locked": "アビスゲートを封鎖しました",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "アビスゲート {#} 個を再び封鎖しました（知識レベル 0）。\n\n変更を反映するには保存してください（Ctrl+S）。",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "マップ & アビスゲート\n\nマップを公開 — 戦場の霧を取り除きます。\nすべてのアビスゲートを解放 — 398件のアビスゲートの知識エントリーを注入します（DLCありで+37）。\nアビスゲートを再び封鎖 — それらの項目を未習得に戻します。\nマップを再び霧で覆う — マップを再び霧で覆います。",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "マップ && アビスゲート\n\nマップを公開 — 戦場の霧を取り除きます。\nすべてのアビスゲートを解放 — 398件のアビスゲートの知識エントリーを注入します（DLCありで+37）。\nアビスゲートを再び封鎖 — それらの項目を未習得に戻します。\nマップを再び霧で覆う — マップを再び霧で覆います。"
 }

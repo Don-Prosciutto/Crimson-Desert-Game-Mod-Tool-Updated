@@ -15132,6 +15132,7 @@ QCheckBox::indicator {{
             "MAP & ABYSS GATES\n\n"
             "Reveal Map — removes fog of war.\n"
             "Unlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\n"
+            "Lock Abyss Gates Again — sets those entries back to not learned.\n"
             "Re-Fog Map — covers the map in fog again."
         )
         info.setWordWrap(True)
@@ -15173,6 +15174,14 @@ QCheckBox::indicator {{
             "Uses fast inject — no map reveal needed.")
         unlock_abyss_btn.clicked.connect(self._unlock_all_abyss_gates)
         abyss_btn_row.addWidget(unlock_abyss_btn)
+
+        lock_abyss_btn = QPushButton("Lock Abyss Gates Again")
+        lock_abyss_btn.setToolTip(
+            "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\n"
+            "are set back to not learned. Gates you found yourself are locked too -\n"
+            "visit them again in the game.")
+        lock_abyss_btn.clicked.connect(self._lock_all_abyss_gates)
+        abyss_btn_row.addWidget(lock_abyss_btn)
 
         refog_btn = QPushButton("Re-Fog Map")
         refog_btn.setToolTip("Cover the entire map in fog again.")
@@ -15414,6 +15423,99 @@ QCheckBox::indicator {{
         except Exception as e:
             import traceback; traceback.print_exc()
             QMessageBox.critical(self, "Error", str(e))
+
+    def _abyss_gate_keys(self) -> list:
+        """Every key of the two abyss gate packs (base + DLC)."""
+        import json as _json
+        keys = []
+        for base in (self._app_dir(), self._bundle_dir()):
+            for sub in ('knowledge_packs', 'dist/knowledge_packs'):
+                for name in ('No Map Reveal Abyss Gate Unlock Only.json', 'DLC Abyss Gate Unlock.json'):
+                    p = os.path.join(base, sub, name)
+                    if not os.path.isfile(p):
+                        continue
+                    try:
+                        with open(p, 'r', encoding='utf-8') as f:
+                            keys += [int(e['key']) for e in _json.load(f).get('entries', [])]
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("Abyss pack not readable: %s (%s)", p, e)
+                if keys:
+                    return sorted(set(keys))
+        return []
+
+    def _knowledge_levels(self) -> dict:
+        """key -> (level, offset of _level in the save) from the save schema."""
+        import struct as _st
+        from save_parser import build_result_from_raw
+        raw = bytes(self._save_data.decompressed_blob)
+        result = build_result_from_raw(raw, {'input_kind': 'raw_blob'},
+                                       only_classes=['KnowledgeSaveData'])
+        out = {}
+        for obj in result['objects']:
+            if obj.class_name != 'KnowledgeSaveData':
+                continue
+            for f in obj.fields:
+                if f.name != '_list' or not f.list_elements:
+                    continue
+                for el in f.list_elements:
+                    key = lvl = off = None
+                    for cf in (el.child_fields or []):
+                        if cf.name == '_key' and cf.present:
+                            key = _st.unpack_from('<I', raw, cf.start_offset)[0]
+                        elif cf.name == '_level' and cf.present:
+                            off = cf.start_offset
+                            lvl = _st.unpack_from('<I', raw, off)[0]
+                    if key is not None:
+                        out[key] = (lvl, off)
+            break
+        return out
+
+    def _lock_all_abyss_gates(self) -> None:
+        """Abyss gate knowledge back to level 0 (not learned) - see Unlock."""
+        if not self._save_data:
+            QMessageBox.warning(self, "Abyss Gates", "Load a save file first.")
+            return
+        keys = self._abyss_gate_keys()
+        if not keys:
+            QMessageBox.warning(self, "Abyss Gates", "Abyss gate pack not found.")
+            return
+        try:
+            levels = self._knowledge_levels()
+        except Exception as e:  # noqa: BLE001
+            log.exception("Lock abyss gates: reading the knowledge failed")
+            QMessageBox.critical(self, "Abyss Gates", f"Could not read the knowledge in this save: {e}")
+            return
+        targets = [(k, levels[k][1]) for k in keys
+                   if k in levels and levels[k][1] is not None and (levels[k][0] or 0) > 0]
+        if not targets:
+            QMessageBox.information(self, "Abyss Gates", "No unlocked abyss gates in this save.")
+            return
+        reply = QMessageBox.question(
+            self, "Lock Abyss Gates Again",
+            f"Lock {len(targets)} abyss gates again?\n\n"
+            f"They are set back to not learned, as before 'Unlock All Abyss Gates'. "
+            f"Gates you found yourself in this save are locked too - visit them again in the game.\n\n"
+            f"Save (Ctrl+S) afterward. New: please check it in the game once.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply != QMessageBox.Yes:
+            return
+        import struct as _st
+        blob = self._save_data.decompressed_blob
+        patches = []
+        for _key, off in targets:
+            old = bytes(blob[off:off + 4])
+            new = _st.pack('<I', 0)
+            blob[off:off + 4] = new
+            patches.append((off, old, new))
+        self._undo_stack.append(UndoEntry(
+            description=f"Lock {len(patches)} abyss gates", patches=patches))
+        self._dirty = True
+        self._know_learned_keys = set()        # Knowledge page reads again
+        msg = f"Locked {len(patches)} abyss gates (knowledge level 0)."
+        log.info("Abyss Gates: %s", msg)
+        self._update_status(msg)
+        QMessageBox.information(self, "Abyss Gates Locked",
+                                f"{msg}\n\nSave (Ctrl+S) for changes to take effect.")
 
     def _reveal_map_and_nexus(self) -> None:
         if not self._save_data:
@@ -15847,14 +15949,21 @@ QCheckBox::indicator {{
             toc = parse_toc(blob, schema['schema_end'], [t.name for t in schema['types']])
 
             self._know_learned_keys = set()
-            for e in toc['entries']:
-                if e.class_name == 'KnowledgeSaveData':
-                    block = blob[e.data_offset:e.data_offset + e.data_size]
-                    for off in range(0, len(block) - 3, 4):
-                        v = _st.unpack_from('<I', block, off)[0]
-                        if 1000000 <= v <= 1999999:
-                            self._know_learned_keys.add(v)
-                    break
+            try:
+                # From the save's schema: learned = level 1 or more (level 0 =
+                # not learned, e.g. after "Lock Abyss Gates Again").
+                self._know_learned_keys = {k for k, (lvl, _o) in self._knowledge_levels().items()
+                                           if (lvl or 0) > 0}
+            except Exception as _e:  # noqa: BLE001 - old byte scan as fallback
+                log.warning("Knowledge: schema read failed (%s), byte scan", _e)
+                for e in toc['entries']:
+                    if e.class_name == 'KnowledgeSaveData':
+                        block = blob[e.data_offset:e.data_offset + e.data_size]
+                        for off in range(0, len(block) - 3, 4):
+                            v = _st.unpack_from('<I', block, off)[0]
+                            if 1000000 <= v <= 1999999:
+                                self._know_learned_keys.add(v)
+                        break
 
             know_path = os.path.join(
                 getattr(sys, '_MEIPASS', os.path.dirname(__file__)),
@@ -33868,7 +33977,6 @@ QCheckBox::indicator {{
         self._populate_equipment()
         self._populate_socket_items()
 
-        from PySide6.QtCore import QTimer
         QTimer.singleShot(100, self._deferred_parc_enrich)
 
     def _deferred_parc_enrich(self) -> None:

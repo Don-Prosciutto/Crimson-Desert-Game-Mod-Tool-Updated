@@ -4345,5 +4345,17 @@
  "Click a level in the table.": "Klick auf eine Stufe in der Tabelle.",
  "Game: {#}": "Spiel: {#}",
  "Game value": "Spielwert",
- "Put this level back to the game's value": "Diese Stufe auf den Spielwert zurücksetzen"
+ "Put this level back to the game's value": "Diese Stufe auf den Spielwert zurücksetzen",
+ "Lock Abyss Gates Again": "Abyss-Tore wieder sperren",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "Abyss-Tore wieder sperren — setzt diese Einträge zurück auf nicht gelernt.",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "Macht „Alle Abyss-Tore freischalten“ rückgängig: Die Tor-Einträge (398, +37 DLC)\nwerden wieder auf nicht gelernt gesetzt. Auch selbst gefundene Tore werden gesperrt –\nbesuche sie im Spiel einfach erneut.",
+ "Abyss gate pack not found.": "Abyss-Tor-Paket nicht gefunden.",
+ "Could not read the knowledge in this save: {#}": "Das Wissen in diesem Spielstand konnte nicht gelesen werden: {#}",
+ "No unlocked abyss gates in this save.": "Keine freigeschalteten Abyss-Tore in diesem Spielstand.",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "{#} Abyss-Tore wieder sperren?\n\nSie werden wieder auf nicht gelernt gesetzt, wie vor „Alle Abyss-Tore freischalten“. Auch Tore, die du in diesem Spielstand selbst gefunden hast, werden gesperrt – besuche sie im Spiel einfach erneut.\n\nDanach speichern (Strg+S). Neu: bitte einmal im Spiel prüfen.",
+ "Locked {#} abyss gates (knowledge level 0).": "{#} Abyss-Tore wieder gesperrt (Wissensstufe 0).",
+ "Abyss Gates Locked": "Abyss-Tore gesperrt",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "{#} Abyss-Tore wieder gesperrt (Wissensstufe 0).\n\nZum Übernehmen speichern (Strg+S).",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "KARTE & ABYSS-TORE\n\nKarte aufdecken — entfernt den Nebel des Krieges.\nAlle Abyss-Tore freischalten — fügt 398 Wissenseinträge der Abyss-Tore ein (+37 mit dem DLC).\nAbyss-Tore wieder sperren — setzt diese Einträge zurück auf nicht gelernt.\nKarte wieder vernebeln — bedeckt die Karte wieder mit Nebel.",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "KARTE && ABYSS-TORE\n\nKarte aufdecken — entfernt den Nebel des Krieges.\nAlle Abyss-Tore freischalten — fügt 398 Wissenseinträge der Abyss-Tore ein (+37 mit dem DLC).\nAbyss-Tore wieder sperren — setzt diese Einträge zurück auf nicht gelernt.\nKarte wieder vernebeln — bedeckt die Karte wieder mit Nebel."
 }

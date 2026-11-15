@@ -4345,5 +4345,17 @@
  "Click a level in the table.": "Kliknij poziom w tabeli.",
  "Game: {#}": "Gra: {#}",
  "Game value": "Wartość z gry",
- "Put this level back to the game's value": "Przywróć ten poziom do wartości z gry"
+ "Put this level back to the game's value": "Przywróć ten poziom do wartości z gry",
+ "Lock Abyss Gates Again": "Zablokuj ponownie Bramy Otchłani",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "Zablokuj ponownie Bramy Otchłani — ustawia te wpisy z powrotem na nieznane.",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "Cofa „Odblokuj wszystkie Bramy Otchłani”: wpisy bram (398, +37 DLC)\nwracają do stanu nieznanego. Bramy znalezione samodzielnie też zostaną zablokowane –\nodwiedź je ponownie w grze.",
+ "Abyss gate pack not found.": "Nie znaleziono paczki Bram Otchłani.",
+ "Could not read the knowledge in this save: {#}": "Nie udało się odczytać wiedzy z tego zapisu: {#}",
+ "No unlocked abyss gates in this save.": "Brak odblokowanych Bram Otchłani w tym zapisie.",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "Zablokować ponownie {#} Bram Otchłani?\n\nWracają do stanu nieznanego, jak przed „Odblokuj wszystkie Bramy Otchłani”. Bramy znalezione samodzielnie w tym zapisie też zostaną zablokowane – odwiedź je ponownie w grze.\n\nPotem zapisz (Ctrl+S). Nowość: sprawdź to raz w grze.",
+ "Locked {#} abyss gates (knowledge level 0).": "Ponownie zablokowano Bramy Otchłani: {#} (poziom wiedzy 0).",
+ "Abyss Gates Locked": "Bramy Otchłani zablokowane",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "Ponownie zablokowano Bramy Otchłani: {#} (poziom wiedzy 0).\n\nZapisz (Ctrl+S), aby zastosować zmiany.",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "MAPA & BRAMY OTCHŁANI\n\nOdsłoń mapę — usuwa mgłę wojny.\nOdblokuj wszystkie Bramy Otchłani — wstrzykuje 398 wpisów wiedzy o Bramach Otchłani (+37 z DLC).\nZablokuj ponownie Bramy Otchłani — ustawia te wpisy z powrotem na nieznane.\nPonownie zamgl mapę — ponownie pokrywa mapę mgłą.",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "MAPA && BRAMY OTCHŁANI\n\nOdsłoń mapę — usuwa mgłę wojny.\nOdblokuj wszystkie Bramy Otchłani — wstrzykuje 398 wpisów wiedzy o Bramach Otchłani (+37 z DLC).\nZablokuj ponownie Bramy Otchłani — ustawia te wpisy z powrotem na nieznane.\nPonownie zamgl mapę — ponownie pokrywa mapę mgłą."
 }

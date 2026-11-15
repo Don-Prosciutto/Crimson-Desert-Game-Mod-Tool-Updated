@@ -4345,5 +4345,17 @@
  "Click a level in the table.": "Cliquez sur un niveau dans le tableau.",
  "Game: {#}": "Jeu : {#}",
  "Game value": "Valeur du jeu",
- "Put this level back to the game's value": "Remettre ce niveau à la valeur du jeu"
+ "Put this level back to the game's value": "Remettre ce niveau à la valeur du jeu",
+ "Lock Abyss Gates Again": "Reverrouiller les Portes de l'Abysse",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "Reverrouiller les Portes de l'Abysse — remet ces entrées sur non apprises.",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "Annule « Débloquer toutes les Portes de l'Abysse » : les entrées des portes (398, +37 DLC)\nredeviennent non apprises. Les portes trouvées vous-même sont aussi verrouillées –\nrevisitez-les en jeu.",
+ "Abyss gate pack not found.": "Pack des Portes de l'Abysse introuvable.",
+ "Could not read the knowledge in this save: {#}": "Impossible de lire les connaissances de cette sauvegarde : {#}",
+ "No unlocked abyss gates in this save.": "Aucune Porte de l'Abysse débloquée dans cette sauvegarde.",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "Reverrouiller {#} Portes de l'Abysse ?\n\nElles redeviennent non apprises, comme avant « Débloquer toutes les Portes de l'Abysse ». Les portes trouvées vous-même dans cette sauvegarde sont aussi verrouillées – revisitez-les en jeu.\n\nEnregistrez ensuite (Ctrl+S). Nouveau : vérifiez-le une fois en jeu.",
+ "Locked {#} abyss gates (knowledge level 0).": "{#} Portes de l'Abysse reverrouillées (niveau de connaissance 0).",
+ "Abyss Gates Locked": "Portes de l'Abysse verrouillées",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "{#} Portes de l'Abysse reverrouillées (niveau de connaissance 0).\n\nEnregistrez (Ctrl+S) pour appliquer les changements.",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "CARTE & PORTES DE L'ABYSSE\n\nRévéler la carte — supprime le brouillard de guerre.\nDébloquer toutes les Portes de l'Abysse — injecte 398 entrées de connaissance des Portes de l'Abysse (+37 avec le DLC).\nReverrouiller les Portes de l'Abysse — remet ces entrées sur non apprises.\nRemettre le brouillard — recouvre à nouveau la carte de brouillard.",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "CARTE && PORTES DE L'ABYSSE\n\nRévéler la carte — supprime le brouillard de guerre.\nDébloquer toutes les Portes de l'Abysse — injecte 398 entrées de connaissance des Portes de l'Abysse (+37 avec le DLC).\nReverrouiller les Portes de l'Abysse — remet ces entrées sur non apprises.\nRemettre le brouillard — recouvre à nouveau la carte de brouillard."
 }

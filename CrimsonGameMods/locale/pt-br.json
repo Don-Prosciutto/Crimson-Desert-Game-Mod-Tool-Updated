@@ -4345,5 +4345,17 @@
  "Click a level in the table.": "Clique em um nível na tabela.",
  "Game: {#}": "Jogo: {#}",
  "Game value": "Valor do jogo",
- "Put this level back to the game's value": "Voltar este nível ao valor do jogo"
+ "Put this level back to the game's value": "Voltar este nível ao valor do jogo",
+ "Lock Abyss Gates Again": "Bloquear de novo os Portais do Abismo",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "Bloquear de novo os Portais do Abismo — volta essas entradas para não aprendidas.",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "Desfaz «Desbloquear todos os Portais do Abismo»: as entradas dos portais (398, +37 DLC)\nvoltam a não aprendidas. Portais que você mesmo encontrou também são bloqueados –\nvisite-os de novo no jogo.",
+ "Abyss gate pack not found.": "Pacote dos Portais do Abismo não encontrado.",
+ "Could not read the knowledge in this save: {#}": "Não foi possível ler o conhecimento deste save: {#}",
+ "No unlocked abyss gates in this save.": "Nenhum Portal do Abismo desbloqueado neste save.",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "Bloquear de novo {#} Portais do Abismo?\n\nEles voltam a não aprendidos, como antes de «Desbloquear todos os Portais do Abismo». Portais que você mesmo encontrou neste save também são bloqueados – visite-os de novo no jogo.\n\nSalve depois (Ctrl+S). Novo: confira uma vez no jogo.",
+ "Locked {#} abyss gates (knowledge level 0).": "{#} Portais do Abismo bloqueados de novo (nível de conhecimento 0).",
+ "Abyss Gates Locked": "Portais do Abismo bloqueados",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "{#} Portais do Abismo bloqueados de novo (nível de conhecimento 0).\n\nSalve (Ctrl+S) para aplicar as alterações.",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "MAPA & PORTAIS DO ABISMO\n\nRevelar mapa — remove a névoa de guerra.\nDesbloquear todos os Portais do Abismo — injeta 398 entradas de conhecimento de Portais do Abismo (+37 com a DLC).\nBloquear de novo os Portais do Abismo — volta essas entradas para não aprendidas.\nCobrir mapa de névoa — cobre o mapa de névoa novamente.",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "MAPA && PORTAIS DO ABISMO\n\nRevelar mapa — remove a névoa de guerra.\nDesbloquear todos os Portais do Abismo — injeta 398 entradas de conhecimento de Portais do Abismo (+37 com a DLC).\nBloquear de novo os Portais do Abismo — volta essas entradas para não aprendidas.\nCobrir mapa de névoa — cobre o mapa de névoa novamente."
 }

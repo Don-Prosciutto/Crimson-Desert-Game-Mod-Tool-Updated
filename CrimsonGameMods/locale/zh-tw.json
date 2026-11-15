@@ -4293,5 +4293,17 @@
  "Click a level in the table.": "請點擊表格中的某一級。",
  "Game: {#}": "遊戲：{#}",
  "Game value": "遊戲數值",
- "Put this level back to the game's value": "將此等級恢復為遊戲數值"
+ "Put this level back to the game's value": "將此等級恢復為遊戲數值",
+ "Lock Abyss Gates Again": "重新鎖定深淵之門",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "重新鎖定深淵之門 — 將這些條目恢復為未學會。",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "撤銷「解鎖所有深淵之門」：門的條目（398，DLC +37）\n恢復為未學會。你自己找到的門也會被鎖定，\n請在遊戲中再次前往。",
+ "Abyss gate pack not found.": "未找到深淵之門資料包。",
+ "Could not read the knowledge in this save: {#}": "無法讀取此存檔中的知識：{#}",
+ "No unlocked abyss gates in this save.": "此存檔中沒有已解鎖的深淵之門。",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "重新鎖定 {#} 個深淵之門？\n\n它們會恢復為未學會，就像「解鎖所有深淵之門」之前一樣。你在此存檔中自己找到的門也會被鎖定，請在遊戲中再次前往。\n\n之後請儲存（Ctrl+S）。新功能：請在遊戲中檢查一次。",
+ "Locked {#} abyss gates (knowledge level 0).": "已重新鎖定 {#} 個深淵之門（知識等級 0）。",
+ "Abyss Gates Locked": "深淵之門已鎖定",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "已重新鎖定 {#} 個深淵之門（知識等級 0）。\n\n請儲存（Ctrl+S）以使更改生效。",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "地圖 & 深淵之門\n\n揭露地圖 — 移除戰爭迷霧。\n解鎖所有深淵之門 — 注入 398 個深淵之門知識項目（有 DLC 時 +37）。\n重新鎖定深淵之門 — 將這些條目恢復為未學會。\n重新覆蓋迷霧 — 讓地圖重新被迷霧覆蓋。",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "地圖 && 深淵之門\n\n揭露地圖 — 移除戰爭迷霧。\n解鎖所有深淵之門 — 注入 398 個深淵之門知識項目（有 DLC 時 +37）。\n重新鎖定深淵之門 — 將這些條目恢復為未學會。\n重新覆蓋迷霧 — 讓地圖重新被迷霧覆蓋。"
 }

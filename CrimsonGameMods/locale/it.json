@@ -4345,5 +4345,17 @@
  "Click a level in the table.": "Clicca un livello nella tabella.",
  "Game: {#}": "Gioco: {#}",
  "Game value": "Valore del gioco",
- "Put this level back to the game's value": "Riporta questo livello al valore del gioco"
+ "Put this level back to the game's value": "Riporta questo livello al valore del gioco",
+ "Lock Abyss Gates Again": "Blocca di nuovo i portali Abyss",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "Blocca di nuovo i portali Abyss — riporta quelle voci a non apprese.",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "Annulla «Sblocca tutti i portali Abyss»: le voci dei portali (398, +37 DLC)\ntornano non apprese. Anche i portali trovati da te vengono bloccati:\nvisitali di nuovo nel gioco.",
+ "Abyss gate pack not found.": "Pacchetto dei portali Abyss non trovato.",
+ "Could not read the knowledge in this save: {#}": "Impossibile leggere le conoscenze di questo salvataggio: {#}",
+ "No unlocked abyss gates in this save.": "Nessun portale Abyss sbloccato in questo salvataggio.",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "Bloccare di nuovo {#} portali Abyss?\n\nTornano non appresi, come prima di «Sblocca tutti i portali Abyss». Anche i portali trovati da te in questo salvataggio vengono bloccati: visitali di nuovo nel gioco.\n\nSalva poi (Ctrl+S). Novità: controllalo una volta nel gioco.",
+ "Locked {#} abyss gates (knowledge level 0).": "{#} portali Abyss bloccati di nuovo (livello di conoscenza 0).",
+ "Abyss Gates Locked": "Portali Abyss bloccati",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "{#} portali Abyss bloccati di nuovo (livello di conoscenza 0).\n\nSalva (Ctrl+S) per applicare le modifiche.",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "MAPPA & PORTALI ABYSS\n\nRivela mappa — rimuove la nebbia di guerra.\nSblocca tutti i portali Abyss — inietta 398 voci di conoscenza dei portali abyss (+37 con il DLC).\nBlocca di nuovo i portali Abyss — riporta quelle voci a non apprese.\nRicopri mappa — copre di nuovo la mappa con la nebbia.",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "MAPPA && PORTALI ABYSS\n\nRivela mappa — rimuove la nebbia di guerra.\nSblocca tutti i portali Abyss — inietta 398 voci di conoscenza dei portali abyss (+37 con il DLC).\nBlocca di nuovo i portali Abyss — riporta quelle voci a non apprese.\nRicopri mappa — copre di nuovo la mappa con la nebbia."
 }

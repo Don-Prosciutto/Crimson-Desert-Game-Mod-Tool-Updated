@@ -4344,5 +4344,17 @@
  "Click a level in the table.": "Tablodan bir seviyeye tıkla.",
  "Game: {#}": "Oyun: {#}",
  "Game value": "Oyun değeri",
- "Put this level back to the game's value": "Bu seviyeyi oyun değerine döndür"
+ "Put this level back to the game's value": "Bu seviyeyi oyun değerine döndür",
+ "Lock Abyss Gates Again": "Abyss Kapılarını yeniden kilitle",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "Abyss Kapılarını yeniden kilitle — bu kayıtları yeniden öğrenilmemiş yapar.",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "«Tüm Abyss Kapılarının Kilidini Aç»ı geri alır: kapı kayıtları (398, +37 DLC)\nyeniden öğrenilmemiş olur. Kendi bulduğun kapılar da kilitlenir –\noyunda onları tekrar ziyaret et.",
+ "Abyss gate pack not found.": "Abyss Kapısı paketi bulunamadı.",
+ "Could not read the knowledge in this save: {#}": "Bu kayıttaki bilgiler okunamadı: {#}",
+ "No unlocked abyss gates in this save.": "Bu kayıtta kilidi açık Abyss Kapısı yok.",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "{#} Abyss Kapısı yeniden kilitlensin mi?\n\n«Tüm Abyss Kapılarının Kilidini Aç» öncesindeki gibi yeniden öğrenilmemiş olurlar. Bu kayıtta kendi bulduğun kapılar da kilitlenir – oyunda onları tekrar ziyaret et.\n\nSonra kaydet (Ctrl+S). Yeni: lütfen oyunda bir kez kontrol et.",
+ "Locked {#} abyss gates (knowledge level 0).": "{#} Abyss Kapısı yeniden kilitlendi (bilgi seviyesi 0).",
+ "Abyss Gates Locked": "Abyss Kapıları kilitlendi",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "{#} Abyss Kapısı yeniden kilitlendi (bilgi seviyesi 0).\n\nDeğişikliklerin geçerli olması için kaydet (Ctrl+S).",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "HARİTA & ABYSS KAPILARI\n\nHaritayı Aç — savaş sisini kaldırır.\nTüm Abyss Kapılarının Kilidini Aç — 398 abyss kapısı bilgi kaydı ekler (DLC ile +37).\nAbyss Kapılarını yeniden kilitle — bu kayıtları yeniden öğrenilmemiş yapar.\nHaritayı Yeniden Sisle — haritayı yeniden sisle kaplar.",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "HARİTA && ABYSS KAPILARI\n\nHaritayı Aç — savaş sisini kaldırır.\nTüm Abyss Kapılarının Kilidini Aç — 398 abyss kapısı bilgi kaydı ekler (DLC ile +37).\nAbyss Kapılarını yeniden kilitle — bu kayıtları yeniden öğrenilmemiş yapar.\nHaritayı Yeniden Sisle — haritayı yeniden sisle kaplar."
 }

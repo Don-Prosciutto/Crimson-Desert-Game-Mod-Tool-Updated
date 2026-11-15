@@ -4345,5 +4345,17 @@
  "Click a level in the table.": "표에서 레벨을 클릭하세요.",
  "Game: {#}": "게임: {#}",
  "Game value": "게임 값",
- "Put this level back to the game's value": "이 레벨을 게임 값으로 되돌리기"
+ "Put this level back to the game's value": "이 레벨을 게임 값으로 되돌리기",
+ "Lock Abyss Gates Again": "어비스 게이트 다시 잠그기",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "어비스 게이트 다시 잠그기 — 해당 항목을 다시 미습득으로 되돌립니다.",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "'모든 어비스 게이트 해금'을 되돌립니다: 게이트 항목(398, DLC +37)을\n다시 미습득으로 설정합니다. 직접 찾은 게이트도 잠깁니다.\n게임에서 다시 방문하세요.",
+ "Abyss gate pack not found.": "어비스 게이트 팩을 찾을 수 없습니다.",
+ "Could not read the knowledge in this save: {#}": "이 세이브의 지식을 읽지 못했습니다: {#}",
+ "No unlocked abyss gates in this save.": "이 세이브에는 해금된 어비스 게이트가 없습니다.",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "어비스 게이트 {#}개를 다시 잠글까요?\n\n'모든 어비스 게이트 해금' 전처럼 다시 미습득이 됩니다. 이 세이브에서 직접 찾은 게이트도 잠깁니다. 게임에서 다시 방문하세요.\n\n그 후 저장하세요(Ctrl+S). 새 기능: 게임에서 한 번 확인해 주세요.",
+ "Locked {#} abyss gates (knowledge level 0).": "어비스 게이트 {#}개를 다시 잠갔습니다(지식 레벨 0).",
+ "Abyss Gates Locked": "어비스 게이트 잠김",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "어비스 게이트 {#}개를 다시 잠갔습니다(지식 레벨 0).\n\n변경 사항을 적용하려면 저장하세요(Ctrl+S).",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "지도 & 어비스 게이트\n\n지도 공개 — 전장의 안개를 제거합니다.\n모든 어비스 게이트 해금 — 어비스 게이트 지식 항목 398개를 주입합니다 (DLC 포함 시 +37).\n어비스 게이트 다시 잠그기 — 해당 항목을 다시 미습득으로 되돌립니다.\n지도 다시 안개로 덮기 — 지도를 다시 안개로 덮습니다.",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "지도 && 어비스 게이트\n\n지도 공개 — 전장의 안개를 제거합니다.\n모든 어비스 게이트 해금 — 어비스 게이트 지식 항목 398개를 주입합니다 (DLC 포함 시 +37).\n어비스 게이트 다시 잠그기 — 해당 항목을 다시 미습득으로 되돌립니다.\n지도 다시 안개로 덮기 — 지도를 다시 안개로 덮습니다."
 }

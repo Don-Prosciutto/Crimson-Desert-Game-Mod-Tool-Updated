@@ -4344,5 +4344,17 @@
  "Click a level in the table.": "Щёлкни уровень в таблице.",
  "Game: {#}": "Игра: {#}",
  "Game value": "Значение игры",
- "Put this level back to the game's value": "Вернуть этому уровню значение игры"
+ "Put this level back to the game's value": "Вернуть этому уровню значение игры",
+ "Lock Abyss Gates Again": "Снова закрыть Врата Бездны",
+ "Lock Abyss Gates Again — sets those entries back to not learned.": "Снова закрыть Врата Бездны — возвращает эти записи в состояние «не изучено».",
+ "Undo 'Unlock All Abyss Gates': the gate entries (398, +37 DLC)\nare set back to not learned. Gates you found yourself are locked too -\nvisit them again in the game.": "Отменяет «Открыть все Врата Бездны»: записи врат (398, +37 DLC)\nснова становятся неизученными. Врата, найденные самостоятельно, тоже закрываются –\nпосети их в игре снова.",
+ "Abyss gate pack not found.": "Пакет Врат Бездны не найден.",
+ "Could not read the knowledge in this save: {#}": "Не удалось прочитать знания в этом сохранении: {#}",
+ "No unlocked abyss gates in this save.": "В этом сохранении нет открытых Врат Бездны.",
+ "Lock {#} abyss gates again?\n\nThey are set back to not learned, as before 'Unlock All Abyss Gates'. Gates you found yourself in this save are locked too - visit them again in the game.\n\nSave (Ctrl+S) afterward. New: please check it in the game once.": "Снова закрыть Врата Бездны ({#})?\n\nОни снова станут неизученными, как до «Открыть все Врата Бездны». Врата, найденные самостоятельно в этом сохранении, тоже закроются – посети их в игре снова.\n\nЗатем сохрани (Ctrl+S). Новое: проверь это один раз в игре.",
+ "Locked {#} abyss gates (knowledge level 0).": "Снова закрыто Врат Бездны: {#} (уровень знания 0).",
+ "Abyss Gates Locked": "Врата Бездны закрыты",
+ "Locked {#} abyss gates (knowledge level 0).\n\nSave (Ctrl+S) for changes to take effect.": "Снова закрыто Врат Бездны: {#} (уровень знания 0).\n\nСохрани (Ctrl+S), чтобы изменения вступили в силу.",
+ "MAP & ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "КАРТА & ВРАТА БЕЗДНЫ\n\nРаскрыть карту — убирает туман войны.\nОткрыть все Врата Бездны — внедряет 398 записей знаний о Вратах Бездны (+37 с DLC).\nСнова закрыть Врата Бездны — возвращает эти записи в состояние «не изучено».\nВернуть туман — снова покрывает карту туманом.",
+ "MAP && ABYSS GATES\n\nReveal Map — removes fog of war.\nUnlock All Abyss Gates — injects 398 abyss gate knowledge entries (+37 with the DLC).\nLock Abyss Gates Again — sets those entries back to not learned.\nRe-Fog Map — covers the map in fog again.": "КАРТА && ВРАТА БЕЗДНЫ\n\nРаскрыть карту — убирает туман войны.\nОткрыть все Врата Бездны — внедряет 398 записей знаний о Вратах Бездны (+37 с DLC).\nСнова закрыть Врата Бездны — возвращает эти записи в состояние «не изучено».\nВернуть туман — снова покрывает карту туманом."
 }
