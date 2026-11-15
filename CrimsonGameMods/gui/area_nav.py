@@ -49,13 +49,12 @@ SECTIONS = [
             ("Storage space", "BagSpace", "Formerly “BagSpace”")]),
     ]),
     ("MY SAVE", "scope_save", [
-        ("Inventory & Gear", "equip", "save", "The items in your save – stacks, refining, sockets, dyes, swaps and buy-backs", [
+        ("Inventory & Gear", "equip", "save", "The items in your save – stacks, refining, sockets, dyes and swaps", [
             ("Items", "Inventory", "Formerly “Inventory”"),
             ("Equipped", "Equipment", "Formerly “Equipment”"),
             ("Sockets", "Sockets", ""),
             ("Dye", "Dye", ""),
-            ("Item swap", "Item Swap", ""),
-            ("Buy back", "Repurchase", "Formerly “Repurchase”")]),
+            ("Item swap", "Item Swap", "")]),
         ("Companions", "pets", "save", "Your mounts, pets and mercenaries – add new ones, rename them", [
             ("Companions", "Mercenary/Pets", "Formerly “Mercenary/Pets”")]),
         ("Progress", "quest", "save", "Quests and story chapters, knowledge, abyss gates and factions", [
@@ -77,6 +76,9 @@ SECTIONS = [
     ]),
 ]
 FALLBACK_AREA = "Advanced"   # pages no area names (new ones, hidden extras) land here
+# Pages that are not shown anywhere. "Repurchase" (buy back) lost all its
+# buttons in 2.03.02 (raw byte edits, unsafe) - it only listed sold items.
+HIDDEN_PAGES = ("repurchase",)
 
 SCOPE_BADGE = {
     "game": ("Makes a mod · load it in DMM", "scope_game"),
@@ -175,6 +177,9 @@ def rebuild(win) -> None:
     nav = win._nav
     pages = _pages(win)
     used: set = set()
+    for _h, _w, _n in pages:
+        if _n.lower().startswith(HIDDEN_PAGES):
+            used.add(id(_w))
     areas: dict = {}
     nav.blockSignals(True)
     nav.clear()
