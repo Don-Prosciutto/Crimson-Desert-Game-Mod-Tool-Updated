@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 from gui.theme import COLORS, CATEGORY_COLORS, button_css
 from gui.dialogs import ItemSearchDialog
 from icon_cache import ICON_SIZE
-from gui.utils import make_scope_label, make_help_btn
+from gui.utils import make_scope_label, make_help_btn, ui_card, ui_title, ui_dim
 from i18n import tr
 from overlay_coordinator import safe_rmtree, _safe_overlay_default  # guard game data folders
 
@@ -1855,19 +1855,27 @@ class SpawnTab(QWidget):
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 6, 6, 6)
-        layout.setSpacing(4)
         layout.addWidget(make_scope_label("game"))
+        # New look 2.5: bar, quick changes card, table card, footer with Save as mod.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
 
         header = QHBoxLayout()
-        header.setSpacing(4)
-
+        header.setSpacing(8)
         load_btn = QPushButton(tr("Load Spawn Data"))
         load_btn.setObjectName("accentBtn")
         load_btn.setToolTip(tr("Extract spawn tables from game PAZ files"))
         load_btn.clicked.connect(self._spawn_extract)
         header.addWidget(load_btn)
+        self._spawn_status = QLabel("")
+        self._spawn_status.setWordWrap(True)
+        self._spawn_status.setStyleSheet(f"color: {COLORS['text_dim']};")
+        header.addWidget(self._spawn_status, 1)
 
+        restore_btn = QPushButton(tr("Restore Vanilla"))
+        restore_btn.setToolTip(tr("Remove the spawn overlay from the game folder (back to the game's own spawns)"))
+        restore_btn.clicked.connect(self._spawn_restore)
+        header.addWidget(restore_btn)
         header.addWidget(QLabel("Mod#:"))
         self._spawn_overlay_spin = QSpinBox()
         self._spawn_overlay_spin.setRange(1, 9999)
@@ -1880,36 +1888,6 @@ class SpawnTab(QWidget):
         self._spawn_overlay_spin.valueChanged.connect(
             lambda v: self._config.update({"spawn_overlay_dir": int(v)}))
         header.addWidget(self._spawn_overlay_spin)
-
-        apply_btn = QPushButton(tr("Apply to Game"))
-        apply_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
-        apply_btn.setToolTip(tr("Deploy modified spawn data directly to the game (requires restart)"))
-        apply_btn.clicked.connect(self._spawn_apply)
-        header.addWidget(apply_btn)
-
-        spawn_field_json_btn = QPushButton(tr("Export Field JSON v3"))
-        spawn_field_json_btn.setStyleSheet(button_css("primary") + " font-weight: bold;")
-        spawn_field_json_btn.setStyleSheet(
-            button_css("primary") + " font-weight: bold;")
-        spawn_field_json_btn.setToolTip(
-            "Export all SpawnEdit changes as Format 3.1 field JSON.\n"
-            "Compatible with DMM 1.3.3+ multi-target format.")
-        spawn_field_json_btn.clicked.connect(self._spawn_export_field_json_v3)
-        header.addWidget(spawn_field_json_btn)
-
-        spawn_export_btn = QPushButton(tr("Export Mod"))
-        spawn_export_btn.setToolTip(tr("ADVANCED — UNSUPPORTED. Export as CDUMM-compatible mod."))
-        spawn_export_btn.clicked.connect(self._spawn_export_cdumm)
-        spawn_export_btn.setVisible(False)
-        header.addWidget(spawn_export_btn)
-        self._dev_export_btn_spawn = spawn_export_btn
-
-        restore_btn = QPushButton(tr("Restore Vanilla"))
-        restore_btn.setToolTip(tr(""))
-        restore_btn.clicked.connect(self._spawn_restore)
-        header.addWidget(restore_btn)
-
-
         help_btn = QPushButton("?")
         help_btn.setFixedSize(24, 24)
         help_btn.setStyleSheet(
@@ -1917,29 +1895,22 @@ class SpawnTab(QWidget):
             f"background-color: {COLORS['accent']}; color: white;")
         help_btn.clicked.connect(self._spawn_show_help)
         header.addWidget(help_btn)
-
-        self._spawn_status = QLabel("")
-        self._spawn_status.setStyleSheet(f"color: {COLORS['accent']};")
-        header.addWidget(self._spawn_status, 1)
         layout.addLayout(header)
 
-        simple_group = QGroupBox(tr("Spawn Density"))
-        simple_layout = QVBoxLayout(simple_group)
-        simple_layout.setContentsMargins(6, 8, 6, 6)
-        simple_layout.setSpacing(4)
-
+        quick, qv = ui_card()
+        qv.addWidget(ui_title(tr("Quick changes")))
         row1 = QHBoxLayout()
-        row1.setSpacing(6)
-        row1.addWidget(QLabel(tr("Multiplier:")))
+        row1.setSpacing(8)
+        row1.addWidget(ui_dim(tr("Multiplier"), True))
         self._spawn_multiplier = QSpinBox()
         self._spawn_multiplier.setRange(1, 99999)
         self._spawn_multiplier.setValue(2)
-        self._spawn_multiplier.setFixedWidth(60)
+        self._spawn_multiplier.setFixedWidth(70)
         self._spawn_multiplier.setToolTip(tr("Multiply spawn density by this value (2 = double, 3 = triple)"))
         row1.addWidget(self._spawn_multiplier)
 
         increase_all_btn = QPushButton(tr("Increase ALL Spawns"))
-        increase_all_btn.setStyleSheet(button_css("success") + " font-weight: bold; padding: 6px 12px;")
+        increase_all_btn.setObjectName("accentBtn")
         increase_all_btn.setToolTip(
             "Increase enemy/animal spawn density.\n"
             "Camp enemies: MaxOp/MinOp/Sub-slots x multiplier\n"
@@ -1948,29 +1919,29 @@ class SpawnTab(QWidget):
         row1.addWidget(increase_all_btn)
 
         increase_life_btn = QPushButton(tr("Increase ALL Life"))
-        increase_life_btn.setStyleSheet(button_css("primary") + " font-weight: bold; padding: 6px 12px;")
         increase_life_btn.setToolTip(
             "Increase ambient wildlife: fireflies, birds, bats, insects,\n"
             "animals near crops, butterflies, crows, swamp creatures.\n"
             "Makes the world feel more alive between enemy camps.\n"
             "Modifies spawningpoolautospawninfo.pabgb (140 entries).")
         increase_life_btn.clicked.connect(self._spawn_increase_life)
+        # Hidden in 2.5: its search values hit only 3 of the 148 entries.
+        increase_life_btn.setVisible(False)
         row1.addWidget(increase_life_btn)
 
         halve_btn = QPushButton(tr("Halve Respawn Timers"))
         halve_btn.setToolTip(tr("Make enemies and animals respawn twice as fast"))
         halve_btn.clicked.connect(self._spawn_halve_timers)
         row1.addWidget(halve_btn)
-
         row1.addStretch()
         self._spawn_changes_label = QLabel("")
         self._spawn_changes_label.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
         row1.addWidget(self._spawn_changes_label)
-        simple_layout.addLayout(row1)
+        qv.addLayout(row1)
 
         row2 = QHBoxLayout()
-        row2.setSpacing(4)
-        row2.addWidget(QLabel(tr("Individual:")))
+        row2.setSpacing(6)
+        row2.addWidget(ui_dim(tr("Only one part:"), True))
 
         mult_camp_btn = QPushButton(tr("x Camp Max"))
         mult_camp_btn.setToolTip(tr("Multiply only camp MaxOp (max enemies per camp, cap 255)"))
@@ -1994,37 +1965,33 @@ class SpawnTab(QWidget):
         halve_sub_btn.setToolTip(tr("Halve sub-schedule time values"))
         halve_sub_btn.clicked.connect(self._spawn_halve_sub_times)
         row2.addWidget(halve_sub_btn)
-
         row2.addStretch()
-        simple_layout.addLayout(row2)
+        qv.addLayout(row2)
+        layout.addWidget(quick)
 
-        layout.addWidget(simple_group)
-
+        table_card, tv = ui_card()
         filter_row = QHBoxLayout()
-        filter_row.setSpacing(4)
-
-        filter_row.addWidget(QLabel(tr("View:")))
+        filter_row.setSpacing(8)
+        self._spawn_search = QLineEdit()
+        self._spawn_search.setPlaceholderText(tr("Filter by name..."))
+        self._spawn_search.setMinimumHeight(32)
+        self._spawn_search.textChanged.connect(self._spawn_filter)
+        filter_row.addWidget(self._spawn_search, 1)
         self._spawn_source_combo = QComboBox()
         self._spawn_source_combo.addItem("All Sources", None)
         self._spawn_source_combo.addItem("Terrain (Animals/Enemies)", "terrain")
         self._spawn_source_combo.addItem("Camp Enemies (MaxOp/MinOp)", "fnode_ops")
         self._spawn_source_combo.addItem("Open-World Rates", "rate")
-        self._spawn_source_combo.setFixedWidth(200)
+        self._spawn_source_combo.setMinimumWidth(200)
+        self._spawn_source_combo.setToolTip(tr("Which spawns to list"))
         self._spawn_source_combo.currentIndexChanged.connect(self._spawn_filter)
         filter_row.addWidget(self._spawn_source_combo)
-
-        filter_row.addWidget(QLabel(tr("Region:")))
         self._spawn_region_combo = QComboBox()
-        self._spawn_region_combo.setFixedWidth(220)
+        self._spawn_region_combo.setMinimumWidth(220)
+        self._spawn_region_combo.setToolTip(tr("Region"))
         self._spawn_region_combo.currentIndexChanged.connect(self._spawn_filter)
         filter_row.addWidget(self._spawn_region_combo)
-
-        filter_row.addWidget(QLabel(tr("Search:")))
-        self._spawn_search = QLineEdit()
-        self._spawn_search.setPlaceholderText(tr("Filter by name..."))
-        self._spawn_search.textChanged.connect(self._spawn_filter)
-        filter_row.addWidget(self._spawn_search, 1)
-        layout.addLayout(filter_row)
+        tv.addLayout(filter_row)
 
         self._spawn_table = QTableWidget()
         self._spawn_table.setColumnCount(10)
@@ -2035,13 +2002,38 @@ class SpawnTab(QWidget):
         self._spawn_table.horizontalHeader().setStretchLastSection(True)
         self._spawn_table.setSelectionBehavior(QTableWidget.SelectRows)
         self._spawn_table.setSelectionMode(QTableWidget.ExtendedSelection)
-        self._spawn_table.setAlternatingRowColors(True)
+        self._spawn_table.setShowGrid(False)
         self._spawn_table.verticalHeader().setVisible(False)
-        self._spawn_table.verticalHeader().setDefaultSectionSize(20)
+        self._spawn_table.verticalHeader().setDefaultSectionSize(26)
         self._spawn_table.cellChanged.connect(self._spawn_cell_changed)
         self._spawn_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._spawn_table.customContextMenuRequested.connect(self._spawn_context_menu)
-        layout.addWidget(self._spawn_table, 1)
+        tv.addWidget(self._spawn_table, 1)
+        tv.addWidget(ui_dim(tr("Double-click a value to change it. Right-click for more.")))
+        layout.addWidget(table_card, 1)
+
+        foot = QHBoxLayout()
+        foot.setSpacing(8)
+        apply_btn = QPushButton(tr("Apply to Game"))
+        apply_btn.setToolTip(tr("Deploy modified spawn data directly to the game (requires restart)"))
+        apply_btn.clicked.connect(self._spawn_apply)
+        foot.addWidget(apply_btn)
+        spawn_export_btn = QPushButton(tr("Export Mod"))
+        spawn_export_btn.setToolTip(tr("ADVANCED — UNSUPPORTED. Export as CDUMM-compatible mod."))
+        spawn_export_btn.clicked.connect(self._spawn_export_cdumm)
+        spawn_export_btn.setVisible(False)
+        foot.addWidget(spawn_export_btn)
+        self._dev_export_btn_spawn = spawn_export_btn
+        foot.addStretch(1)
+        spawn_field_json_btn = QPushButton(tr("Save as mod (Field JSON for DMM)"))
+        spawn_field_json_btn.setStyleSheet(button_css("primary") + " font-weight: bold; padding: 8px 16px;")
+        spawn_field_json_btn.setMinimumHeight(40)
+        spawn_field_json_btn.setToolTip(
+            "Export all SpawnEdit changes as Format 3.1 field JSON.\n"
+            "Compatible with DMM 1.3.3+ multi-target format.")
+        spawn_field_json_btn.clicked.connect(self._spawn_export_field_json_v3)
+        foot.addWidget(spawn_field_json_btn)
+        layout.addLayout(foot)
 
         self._spawn_data = None
         self._spawn_original = None

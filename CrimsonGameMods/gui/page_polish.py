@@ -106,6 +106,8 @@ def polish(page) -> int:
             continue
         if btn.text().strip() in ("?",):
             continue
+        if btn.property("swatch"):             # colour buttons (Dye): their colour is the point
+            continue
         import re as _re
         _m = _re.search(r"background-color:\s*([^;}]+)", low)
         bg = _m.group(1).strip() if _m else ""

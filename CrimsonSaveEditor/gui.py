@@ -5770,24 +5770,75 @@ QCheckBox::indicator {{
 
         self._on_socket_item_changed(self._sock_item_combo.currentIndex())
 
+    # ── shared pieces of the new look (cards, titles, dim text) ──────────
+    def _ui_card(self, width: int = 0):
+        """A rounded panel card -> (frame, its QVBoxLayout)."""
+        _soft = COLORS.get("border_soft", COLORS["border"])
+        card = QFrame()
+        card.setObjectName("uiCard")
+        card.setStyleSheet(
+            f"QFrame#uiCard {{ background: {COLORS['panel']}; border: 1px solid {_soft}; "
+            f"border-radius: 12px; }}"
+            f"QFrame#uiCard QLabel, QFrame#uiCard QCheckBox {{ background: transparent; }}")
+        v = QVBoxLayout(card)
+        v.setContentsMargins(12, 10, 12, 12)
+        v.setSpacing(8)
+        if width:
+            card.setFixedWidth(width)
+        return card, v
+
+    def _ui_title(self, text: str, size: int = 14) -> QLabel:
+        lab = QLabel(text)
+        lab.setWordWrap(True)
+        lab.setStyleSheet(f"font-size: {size}px; font-weight: 700; "
+                          f"color: {COLORS.get('text_strong', COLORS['text'])};")
+        return lab
+
+    def _ui_dim(self, text: str, bold: bool = False) -> QLabel:
+        lab = QLabel(text)
+        lab.setWordWrap(True)
+        lab.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px;"
+                          + (" font-weight: 600;" if bold else ""))
+        return lab
+
+    def _ui_sep(self) -> QFrame:
+        f = QFrame()
+        f.setFrameShape(QFrame.HLine)
+        f.setStyleSheet(f"color: {COLORS.get('border_soft', COLORS['border'])};")
+        return f
+
+    @staticmethod
+    def _ui_tr(text: str) -> str:
+        """Translate a text built in code (Game Mod Tool: gui_i18n; alone: as is)."""
+        try:
+            import gui_i18n
+            return gui_i18n.tr(text)
+        except Exception:  # noqa: BLE001
+            return text
+
+    def _ui_info(self, tip: str) -> QLabel:
+        """The small (i) with a longer explanation as tooltip."""
+        lab = QLabel("ⓘ")
+        lab.setCursor(Qt.WhatsThisCursor)
+        lab.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 16px; padding: 0 4px;")
+        lab.setToolTip(tip)
+        return lab
+
     def _build_sockets_tab(self) -> None:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
         layout.addWidget(self._make_scope_label("save"))
+        # New look 2.5: bar, gear list card, sockets card.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
 
         top = QHBoxLayout()
-        top.addWidget(QLabel("Equipment:"))
-        self._sock_item_combo = QComboBox()
-        self._sock_item_combo.setMinimumWidth(200)
-        self._sock_item_combo.currentIndexChanged.connect(self._on_socket_item_changed)
-        top.addWidget(self._sock_item_combo, 1)
-
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.clicked.connect(self._populate_socket_items)
-        top.addWidget(refresh_btn)
-
+        top.setSpacing(8)
+        self._sock_search = QLineEdit()
+        self._sock_search.setPlaceholderText("Search your gear…")
+        self._sock_search.setMinimumHeight(34)
+        self._sock_search.textChanged.connect(self._sock_filter_list)
+        top.addWidget(self._sock_search, 1)
         self._sock_show_merc = QCheckBox("Show Companion/NPC")
         self._sock_show_merc.setToolTip("Include Mercenary/companion equipment in the list")
         self._sock_show_merc.setChecked(False)
@@ -5801,31 +5852,64 @@ QCheckBox::indicator {{
         self._sock_fit_only.setChecked(True)
         self._sock_fit_only.toggled.connect(lambda _c: self._refilter_all_gem_combos())
         top.addWidget(self._sock_fit_only)
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.clicked.connect(self._populate_socket_items)
+        top.addWidget(refresh_btn)
         top.addWidget(self._make_help_btn("sockets"))
-
         layout.addLayout(top)
+
+        # the old drop-down stays the model of the selection (other code uses it)
+        self._sock_item_combo = QComboBox()
+        self._sock_item_combo.setVisible(False)
+        self._sock_item_combo.currentIndexChanged.connect(self._on_socket_item_changed)
+        self._sock_item_combo.currentIndexChanged.connect(self._sock_sync_list)
 
         self._sock_fit_note = QLabel("")
         self._sock_fit_note.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 0 4px;")
         self._sock_fit_note.setVisible(False)
         layout.addWidget(self._sock_fit_note)
 
-        self._sock_group = QGroupBox("Socket Slots")
-        self._sock_layout = QVBoxLayout(self._sock_group)
-        self._sock_layout.setSpacing(4)
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        list_card, lv = self._ui_card()
+        hrow = QHBoxLayout()
+        hrow.addWidget(self._ui_title("Gear with sockets"))
+        hrow.addStretch(1)
+        self._sock_count_label = QLabel("")
+        self._sock_count_label.setStyleSheet(f"color: {COLORS['text_dim']}; font-weight: 600;")
+        hrow.addWidget(self._sock_count_label)
+        lv.addLayout(hrow)
+        self._sock_list = QListWidget()
+        self._sock_list.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
+        self._sock_list.setSpacing(2)
+        self._sock_list.currentRowChanged.connect(self._sock_list_row_changed)
+        lv.addWidget(self._sock_list, 1)
+        list_card.setMinimumWidth(280)
+        list_card.setMaximumWidth(420)
+        body.addWidget(list_card, 2)
 
-        self._sock_info = QLabel("Select an equipment item above to view and edit its sockets.")
-        self._sock_info.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
+        sock_card, sv = self._ui_card()
+        self._sock_title = self._ui_title("No item selected", 17)
+        sv.addWidget(self._sock_title)
+        self._sock_group = QWidget()
+        self._sock_layout = QVBoxLayout(self._sock_group)
+        self._sock_layout.setContentsMargins(0, 0, 0, 0)
+        self._sock_layout.setSpacing(6)
+
+        self._sock_info = QLabel("Pick a piece of gear on the left to see and change its gems.")
+        self._sock_info.setWordWrap(True)
+        self._sock_info.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px;")
         self._sock_layout.addWidget(self._sock_info)
 
         self._sock_locked_hint = QLabel("")
         self._sock_locked_hint.setWordWrap(True)
         self._sock_locked_hint.setStyleSheet(
-            f"color: {COLORS['accent']}; padding: 4px 8px; "
-            f"border: 1px solid {COLORS['accent']}; border-radius: 4px;"
+            f"color: {COLORS['accent']}; padding: 6px 8px; "
+            f"border: 1px solid {COLORS['accent']}; border-radius: 6px;"
         )
         self._sock_locked_hint.setVisible(False)
         self._sock_layout.addWidget(self._sock_locked_hint)
+        self._sock_layout.addSpacing(4)
 
         self._sock_rows = []
         for i in range(self._SOCKET_UI_CAPACITY):
@@ -5833,27 +5917,26 @@ QCheckBox::indicator {{
             row.setSpacing(6)
 
             label = QLabel(f"Slot {i+1}:")
-            label.setFixedWidth(55)
+            label.setMinimumWidth(60)
             label.setStyleSheet("font-weight: bold;")
             row.addWidget(label)
 
             combo = QComboBox()
-            combo.setFixedWidth(280)
-            row.addWidget(combo)
+            combo.setMinimumWidth(220)
+            row.addWidget(combo, 1)
 
             cat_filter = QComboBox()
             cat_filter.addItems(["All"] + list(self.GEM_CATEGORIES.keys()))
             cat_filter.setFixedWidth(130)
+            cat_filter.setToolTip("Show only gems of this kind")
             cat_filter.currentTextChanged.connect(lambda text, idx=i: self._filter_gem_combo(idx, text))
             row.addWidget(cat_filter)
 
             search = QLineEdit()
             search.setPlaceholderText("Search...")
-            search.setFixedWidth(120)
+            search.setFixedWidth(130)
             search.textChanged.connect(lambda text, idx=i: self._filter_gem_combo(idx))
             row.addWidget(search)
-
-            row.addStretch(1)
 
             container = QWidget()
             container.setLayout(row)
@@ -5868,20 +5951,19 @@ QCheckBox::indicator {{
         sock_scroll.setWidget(self._sock_group)
         sock_scroll.setWidgetResizable(True)
         sock_scroll.setFrameShape(QFrame.NoFrame)
-        sock_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        sock_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        layout.addWidget(sock_scroll, 1)
+        sock_scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
+        sv.addWidget(sock_scroll, 1)
 
-        self._sock_unlock_group = QGroupBox("Unlock Socket Slots")
+        self._sock_unlock_group = QWidget()
         unlock_layout = QHBoxLayout(self._sock_unlock_group)
-        unlock_layout.addWidget(QLabel("Socket Count:"))
+        unlock_layout.setContentsMargins(0, 0, 0, 0)
+        unlock_layout.addWidget(self._ui_dim("Unlocked sockets", True))
         self._sock_unlock_spin = QSpinBox()
         self._sock_unlock_spin.setRange(0, 5)
         self._sock_unlock_spin.setValue(0)
         self._sock_unlock_spin.setToolTip("Set the number of unlocked socket slots, up to five")
         unlock_layout.addWidget(self._sock_unlock_spin)
         unlock_btn = QPushButton("Unlock Sockets")
-        unlock_btn.setObjectName("accentBtn")
         unlock_btn.setToolTip(
             "Sets maxSocketCount and validSocketCount, up to five.\n"
             "An empty/missing socket record still needs a gem installed in-game before it can be swapped here."
@@ -5890,16 +5972,19 @@ QCheckBox::indicator {{
         unlock_layout.addWidget(unlock_btn)
         unlock_layout.addStretch()
         self._sock_unlock_group.setVisible(False)
-        layout.addWidget(self._sock_unlock_group)
+        sv.addWidget(self._sock_unlock_group)
 
+        sv.addWidget(self._ui_sep())
         btn_row = QHBoxLayout()
+        btn_row.addWidget(self._ui_dim("Changes only filled sockets. Save the file afterwards (Ctrl+S)."), 1)
         apply_sock_btn = QPushButton("Apply Socket Changes")
         apply_sock_btn.setObjectName("accentBtn")
         apply_sock_btn.setToolTip("Write the selected gems into the item's socket slots. Only modifies filled sockets.")
         apply_sock_btn.clicked.connect(self._apply_socket_changes)
         btn_row.addWidget(apply_sock_btn)
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
+        sv.addLayout(btn_row)
+        body.addWidget(sock_card, 5)
+        layout.addLayout(body, 1)
         self._tabs.addTab(tab, tr("tab.sockets"))
         self._sock_current_item: Optional[SaveItem] = None
 
@@ -6065,6 +6150,7 @@ QCheckBox::indicator {{
                 )
             )
         ]
+        _rows = []
         for it in equip:
             if not self._save_data:
                 continue
@@ -6078,11 +6164,65 @@ QCheckBox::indicator {{
                 f"sockets={valid_s}/{max_s}]"
             )
             self._sock_item_combo.addItem(text, id(it))
+            _rows.append((name, enc, source, valid_s, max_s, it))
 
         self._sock_item_combo.blockSignals(False)
+        self._sock_fill_list(_rows)
         if self._sock_item_combo.count() > 0:
             self._sock_item_combo.setCurrentIndex(0)
             self._on_socket_item_changed(0)
+
+    def _sock_fill_list(self, rows) -> None:
+        """Gear list on the left of the Sockets page (same order as the drop-down)."""
+        lw = getattr(self, "_sock_list", None)
+        if lw is None:
+            return
+        lw.blockSignals(True)
+        lw.clear()
+        for name, enc, source, valid_s, max_s, it in rows:
+            where = {"Inventory": "Bag", "Equipment-only": "Equipped",
+                     "Mercenary": "Companion"}.get(source, source)
+            li = QListWidgetItem(f"{name} {enc}".strip() + f"\n{self._ui_tr(where)} · {valid_s}/{max_s} "
+                                 + self._ui_tr("sockets"))
+            li.setToolTip(f"Key {it.item_key} · slot {it.slot_no} · no {it.item_no}")
+            if getattr(self, "_icons_enabled", False):
+                try:
+                    px = self._icon_cache.get_pixmap(it.item_key)
+                    if px:
+                        li.setIcon(QIcon(px))
+                except Exception:  # noqa: BLE001
+                    pass
+            lw.addItem(li)
+        lw.blockSignals(False)
+        if hasattr(self, "_sock_count_label"):
+            self._sock_count_label.setText(str(len(rows)))
+        self._sock_filter_list()
+        self._sock_sync_list(self._sock_item_combo.currentIndex())
+
+    def _sock_list_row_changed(self, row: int) -> None:
+        if row >= 0 and row != self._sock_item_combo.currentIndex():
+            self._sock_item_combo.setCurrentIndex(row)
+
+    def _sock_sync_list(self, index: int) -> None:
+        lw = getattr(self, "_sock_list", None)
+        if lw is None:
+            return
+        if 0 <= index < lw.count() and lw.currentRow() != index:
+            lw.blockSignals(True)
+            lw.setCurrentRow(index)
+            lw.blockSignals(False)
+        if hasattr(self, "_sock_title"):
+            it = lw.item(index) if 0 <= index < lw.count() else None
+            self._sock_title.setText(it.text().split("\n")[0] if it else "No item selected")
+
+    def _sock_filter_list(self, *_a) -> None:
+        lw = getattr(self, "_sock_list", None)
+        if lw is None:
+            return
+        q = self._sock_search.text().strip().lower() if hasattr(self, "_sock_search") else ""
+        for i in range(lw.count()):
+            it = lw.item(i)
+            it.setHidden(bool(q) and q not in it.text().lower() and q not in it.toolTip().lower())
 
     def _get_socket_design_limit(self, item_key: int) -> int:
         """Return the max fillable socket count for this item from iteminfo.pabgb.
@@ -6578,40 +6718,18 @@ QCheckBox::indicator {{
     def _build_swap_tab(self) -> None:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
         layout.addWidget(self._make_scope_label("save"))
+        # New look 2.5: bar, list of items to swap to, card "your item -> new item".
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
 
-        swap_warn = QLabel(
-            "WARNING: Swapping equipment in the Inventory tab may cause items to not appear in-game. "
-            "For reliable equipment swaps, use the Repurchase tab (Vendor Swap) instead."
-        )
-        swap_warn.setWordWrap(True)
-        swap_warn.setStyleSheet(
-            f"color: #FF5252; font-weight: bold; padding: 8px; "
-            f"border: 1px solid #FF5252; border-radius: 4px; "
-            f"background-color: rgba(255,82,82,0.10);"
-        )
-        help_row = QHBoxLayout()
-        help_row.addWidget(swap_warn, 1)
-        help_row.addWidget(self._make_help_btn("swap"))
-        layout.addLayout(help_row)
-
-        info_group = QGroupBox("Selected Item")
-        info_layout = QGridLayout(info_group)
-        self._swap_icon_label = QLabel()
-        self._swap_icon_label.setFixedSize(ICON_SIZE, ICON_SIZE)
-        info_layout.addWidget(self._swap_icon_label, 0, 0)
-        self._swap_current_label = QLabel("No item selected. Select an item from the Inventory tab first.")
-        self._swap_current_label.setWordWrap(True)
-        info_layout.addWidget(self._swap_current_label, 0, 1, 1, 2)
-        layout.addWidget(info_group)
-
-        target_group = QGroupBox("Swap To")
-        target_layout = QVBoxLayout(target_group)
-
-        filter_row = QHBoxLayout()
-        filter_row.addWidget(QLabel("Category:"))
+        top = QHBoxLayout()
+        top.setSpacing(8)
+        self._swap_search = QLineEdit()
+        self._swap_search.setPlaceholderText("Search the new item by name or key…")
+        self._swap_search.setMinimumHeight(34)
+        self._swap_search.textChanged.connect(self._filter_swap_items)
+        top.addWidget(self._swap_search, 1)
         self._swap_category = QComboBox()
         self._swap_category.addItem("All")
         self._swap_category.addItem("Has Template")
@@ -6620,16 +6738,16 @@ QCheckBox::indicator {{
                      "Skill", "Trade", "Recipe", "Currency", "Misc", "Dev"]:
             self._swap_category.addItem(cat)
         self._swap_category.currentTextChanged.connect(self._filter_swap_items)
-        self._swap_category.setFixedWidth(130)
-        filter_row.addWidget(self._swap_category)
+        self._swap_category.setMinimumWidth(140)
+        top.addWidget(self._swap_category)
+        top.addWidget(self._make_help_btn("swap"))
+        layout.addLayout(top)
 
-        filter_row.addWidget(QLabel("Search:"))
-        self._swap_search = QLineEdit()
-        self._swap_search.setPlaceholderText("Type to search items by name or key...")
-        self._swap_search.textChanged.connect(self._filter_swap_items)
-        filter_row.addWidget(self._swap_search, 2)
-        target_layout.addLayout(filter_row)
-
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        list_card, lv = self._ui_card()
+        lv.addWidget(self._ui_title("Swap to"))
+        lv.addWidget(self._ui_dim("Pick the item your item should become."))
         self._swap_list = QTableWidget()
         self._swap_list.setColumnCount(4)
         self._swap_list.setHorizontalHeaderLabels(["", "ItemKey", "Name", "Category"])
@@ -6637,40 +6755,64 @@ QCheckBox::indicator {{
         self._swap_list.setSelectionMode(QAbstractItemView.SingleSelection)
         self._swap_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Interactive)
         self._swap_list.setColumnWidth(0, 0)
-        self._swap_list.horizontalHeader().setSectionResizeMode(2, QHeaderView.Interactive)
-        self._swap_list.setColumnWidth(2, 200)
+        self._swap_list.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self._swap_list.setColumnWidth(1, 90)
+        self._swap_list.setColumnWidth(3, 130)
         self._swap_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._swap_list.setSortingEnabled(True)
-        self._swap_list.verticalHeader().setDefaultSectionSize(22)
+        self._swap_list.verticalHeader().setVisible(False)
+        self._swap_list.setShowGrid(False)
+        self._swap_list.verticalHeader().setDefaultSectionSize(28)
         self._swap_list.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
-        target_layout.addWidget(self._swap_list, 1)
+        self._swap_list.itemSelectionChanged.connect(self._swap_target_changed)
+        lv.addWidget(self._swap_list, 1)
+        body.addWidget(list_card, 1)
 
+        card, cv = self._ui_card(360)
+        cv.addWidget(self._ui_dim("YOUR ITEM", True))
+        cur = QHBoxLayout()
+        self._swap_icon_label = QLabel()
+        self._swap_icon_label.setFixedSize(ICON_SIZE, ICON_SIZE)
+        cur.addWidget(self._swap_icon_label)
+        self._swap_current_label = QLabel("No item selected. Select an item from the Inventory tab first.")
+        self._swap_current_label.setWordWrap(True)
+        self._swap_current_label.setStyleSheet(
+            f"font-weight: 600; color: {COLORS.get('text_strong', COLORS['text'])};")
+        cur.addWidget(self._swap_current_label, 1)
+        cv.addLayout(cur)
+        cv.addWidget(self._ui_dim("Items page: right-click an item → Swap."))
+        arrow = QLabel("↓")
+        arrow.setAlignment(Qt.AlignCenter)
+        arrow.setStyleSheet(f"color: {COLORS['accent']}; font-size: 22px; font-weight: 700;")
+        cv.addWidget(arrow)
+        cv.addWidget(self._ui_dim("NEW ITEM", True))
+        self._swap_target_label = QLabel("Pick one in the list")
+        self._swap_target_label.setWordWrap(True)
+        self._swap_target_label.setStyleSheet(
+            f"font-weight: 600; color: {COLORS.get('text_strong', COLORS['text'])};")
+        cv.addWidget(self._swap_target_label)
         manual_row = QHBoxLayout()
-        manual_row.addWidget(QLabel("Manual Key:"))
+        manual_row.addWidget(self._ui_dim("…or enter its key"))
         self._swap_manual_key = QSpinBox()
         self._swap_manual_key.setRange(1, 0x7FFFFFFF)
-        manual_row.addWidget(self._swap_manual_key)
-        manual_row.addStretch()
-        target_layout.addLayout(manual_row)
+        self._swap_manual_key.setToolTip("Used when nothing is selected in the list")
+        manual_row.addWidget(self._swap_manual_key, 1)
+        cv.addLayout(manual_row)
 
-        layout.addWidget(target_group, 1)
-
+        cv.addStretch(1)
         warn = QLabel(
-            "WARNING: Item swaps change the item key in-place. "
-            "Visual appearance and stats may not match the new item. "
-            "Equipment slot records will also be patched."
+            "The swap changes the item key in place - look and stats come from the new item "
+            "and may not fit. Gear swaps work best within the same type (sword to sword). "
+            "Equipment slot records are patched too."
         )
         warn.setWordWrap(True)
-        warn.setStyleSheet(f"color: {COLORS['warning']}; padding: 6px;")
-        layout.addWidget(warn)
-
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
+        warn.setStyleSheet(f"color: {COLORS['warning']}; font-size: 12px;")
+        cv.addWidget(warn)
         swap_btn = QPushButton("Swap (Single Item)")
         swap_btn.setObjectName("accentBtn")
         swap_btn.setToolTip("Swap only this specific item instance. Other copies of the same item are untouched.")
         swap_btn.clicked.connect(self._perform_swap)
-        btn_row.addWidget(swap_btn)
+        cv.addWidget(swap_btn)
 
         # "Swap All (Global)" removed (2.03.02): replaced every 4-byte match of the key in the whole save.
 
@@ -6678,7 +6820,8 @@ QCheckBox::indicator {{
 
         # "Clean Swap" removed (2.03.02): its extra fields only exist for pre-1.14
         # saves, on 2.x it was a normal swap.
-        layout.addLayout(btn_row)
+        body.addWidget(card)
+        layout.addLayout(body, 1)
 
         self._swap_tab_widget = tab
         self._tabs.addTab(tab, tr("tab.item_swap"))
@@ -6689,65 +6832,69 @@ QCheckBox::indicator {{
     def _build_packs_tab(self) -> None:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
         layout.addWidget(self._make_scope_label("save"))
+        # New look 2.5: pack list card + card with the actions.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
 
-        packs_help_row = QHBoxLayout()
-        packs_help_row.addStretch()
-        packs_help_row.addWidget(self._make_help_btn("packs"))
-        layout.addLayout(packs_help_row)
-
-        local_note = QLabel(
-            "Local packs only: copy optional pack JSON files into the packs folder next to the editor.\n"
-            "No pack index, refresh, or download service is included in this build."
-        )
-        local_note.setWordWrap(True)
-        local_note.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
-        layout.addWidget(local_note)
-
-        local = QGroupBox("My Packs (local)")
-        l_layout = QVBoxLayout(local)
-
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        list_card, lv = self._ui_card()
+        hrow = QHBoxLayout()
+        hrow.addWidget(self._ui_title("My item packs"))
+        hrow.addStretch(1)
+        hrow.addWidget(self._make_help_btn("packs"))
+        lv.addLayout(hrow)
+        lv.addWidget(self._ui_dim(
+            "A pack is a list of items saved as a JSON file in the packs folder next to the tool. "
+            "Make your own or import one somebody shared."))
         self._local_table = QTableWidget()
         self._local_table.setColumnCount(4)
         self._local_table.setHorizontalHeaderLabels(["Name", "Author", "Items", "File"])
         self._local_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._local_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self._local_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Interactive)
-        self._local_table.setColumnWidth(0, 200)
+        self._local_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self._local_table.setColumnWidth(1, 140)
+        self._local_table.setColumnWidth(2, 70)
+        self._local_table.setColumnWidth(3, 200)
         self._local_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._local_table.verticalHeader().setDefaultSectionSize(24)
-        l_layout.addWidget(self._local_table)
+        self._local_table.verticalHeader().setVisible(False)
+        self._local_table.setShowGrid(False)
+        self._local_table.verticalHeader().setDefaultSectionSize(30)
+        lv.addWidget(self._local_table, 1)
+        body.addWidget(list_card, 1)
 
-        l_btn = QHBoxLayout()
+        card, cv = self._ui_card(300)
+        cv.addWidget(self._ui_title("Selected pack"))
+        cv.addWidget(self._ui_dim(
+            "Apply swaps items you already have (donor items) into the items of the pack. "
+            "Save the file afterwards."))
         apply_btn = QPushButton("Apply Pack (Swap)")
         apply_btn.setObjectName("accentBtn")
         apply_btn.setToolTip("Apply pack by swapping existing items (requires donor items)")
         apply_btn.clicked.connect(self._apply_local_pack)
-        l_btn.addWidget(apply_btn)
+        cv.addWidget(apply_btn)
+        export_btn = QPushButton("Export for Sharing")
+        export_btn.clicked.connect(self._export_pack)
+        cv.addWidget(export_btn)
+        del_btn = QPushButton("Delete")
+        del_btn.clicked.connect(self._delete_local_pack)
+        cv.addWidget(del_btn)
 
         # "Add Pack (PARC Insert)" removed (2.03.02): old item templates; crashed afterwards and still reported success.
 
+        cv.addSpacing(6)
+        cv.addWidget(self._ui_sep())
+        cv.addWidget(self._ui_title("New pack"))
         create_btn = QPushButton("Create New Pack")
         create_btn.clicked.connect(self._create_pack)
-        l_btn.addWidget(create_btn)
-
+        cv.addWidget(create_btn)
         import_btn = QPushButton("Import Pack File")
         import_btn.clicked.connect(self._import_pack)
-        l_btn.addWidget(import_btn)
-
-        export_btn = QPushButton("Export for Sharing")
-        export_btn.clicked.connect(self._export_pack)
-        l_btn.addWidget(export_btn)
-
-        del_btn = QPushButton("Delete")
-        del_btn.clicked.connect(self._delete_local_pack)
-        l_btn.addWidget(del_btn)
-
-        l_btn.addStretch()
-        l_layout.addLayout(l_btn)
-        layout.addWidget(local)
+        cv.addWidget(import_btn)
+        cv.addStretch(1)
+        body.addWidget(card)
+        layout.addLayout(body, 1)
 
         self._tabs.addTab(tab, tr("tab.packs"))
         self._refresh_local_packs()
@@ -7649,33 +7796,28 @@ QCheckBox::indicator {{
     def _build_dye_tab(self) -> None:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
         layout.addWidget(self._make_scope_label("save"))
-
-        info = QLabel(
-            "Edit equipment dye colors. Load your save, click Load Dye Data, select an item, "
-            "pick a color and Ctrl+S to save. Items must be dyed once in-game to appear here."
-        )
-        info.setWordWrap(True)
-        info.setStyleSheet(
-            f"color: {COLORS['accent']}; padding: 6px; "
-            f"border: 1px solid {COLORS['border']}; border-radius: 4px; "
-            f"background-color: rgba(218,168,80,0.08);"
-        )
-        layout.addWidget(info)
+        # New look 2.5: bar, gear card, parts card, colour card. Loads by itself.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
 
         top = QHBoxLayout()
-        load_btn = QPushButton("Load Dye Data")
-        load_btn.setObjectName("accentBtn")
+        top.setSpacing(8)
+        self._dye_status = QLabel("")
+        self._dye_status.setWordWrap(True)
+        self._dye_status.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
+        top.addWidget(self._dye_status, 1)
+        top.addWidget(self._ui_info(
+            "Change the colours of your gear.\n\n"
+            "1. Pick a piece of gear, then one of its parts.\n"
+            "2. Pick a colour (or a quick colour), material, grime and colour group.\n"
+            "3. Save the file (Ctrl+S) and load it in the game.\n\n"
+            "Only gear you have dyed once in the game is listed - the save has no\n"
+            "colour data for the rest."))
+        load_btn = QPushButton("Reload")
+        load_btn.setToolTip("Read the dye data from the save again")
         load_btn.clicked.connect(self._dye_load)
         top.addWidget(load_btn)
-
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.setToolTip("Reload dye data from the current save")
-        refresh_btn.clicked.connect(self._dye_load)
-        top.addWidget(refresh_btn)
-
         ensure_btn = QPushButton("Ensure Full Channels")
         ensure_btn.setToolTip(
             "Rebuild all dye slots on the selected item with full mask (R+G+B+A+grime+group+material).\n"
@@ -7683,19 +7825,14 @@ QCheckBox::indicator {{
         )
         ensure_btn.clicked.connect(self._dye_ensure_full)
         top.addWidget(ensure_btn)
-
-        self._dye_status = QLabel("")
-        self._dye_status.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
-        top.addWidget(self._dye_status, 1)
         layout.addLayout(top)
 
-        splitter = QSplitter(Qt.Horizontal)
+        body = QHBoxLayout()
+        body.setSpacing(12)
 
-        gear_frame = QFrame()
-        gear_layout = QVBoxLayout(gear_frame)
-        gear_layout.setContentsMargins(0, 0, 0, 0)
-        gear_layout.addWidget(QLabel("Gears (Equipped Items):"))
-
+        gear_card, gv = self._ui_card()
+        gv.addWidget(self._ui_title("Gear"))
+        gv.addWidget(self._ui_dim("Equipped items with colour data"))
         self._dye_gear_table = QTableWidget()
         self._dye_gear_table.setColumnCount(5)
         self._dye_gear_table.setHorizontalHeaderLabels(["Slot", "", "Item", "Parts", "Dyed"])
@@ -7704,88 +7841,105 @@ QCheckBox::indicator {{
         self._dye_gear_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._dye_gear_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
         self._dye_gear_table.setColumnWidth(1, ICON_SIZE + 8)
-        self._dye_gear_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Interactive)
-        self._dye_gear_table.setColumnWidth(2, 200)
-        self._dye_gear_table.verticalHeader().setDefaultSectionSize(max(ICON_SIZE + 4, 28))
+        self._dye_gear_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self._dye_gear_table.setColumnHidden(0, True)
+        for _c in (3, 4):
+            self._dye_gear_table.horizontalHeader().setSectionResizeMode(_c, QHeaderView.Fixed)
+            self._dye_gear_table.setColumnWidth(_c, 64)
+        self._dye_gear_table.verticalHeader().setVisible(False)
+        self._dye_gear_table.setShowGrid(False)
+        self._dye_gear_table.verticalHeader().setDefaultSectionSize(max(ICON_SIZE + 4, 30))
         self._dye_gear_table.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         self._dye_gear_table.selectionModel().selectionChanged.connect(self._dye_gear_selected)
-        gear_layout.addWidget(self._dye_gear_table)
-        splitter.addWidget(gear_frame)
+        gv.addWidget(self._dye_gear_table, 1)
+        body.addWidget(gear_card, 5)
 
-        right_frame = QFrame()
-        right_layout = QVBoxLayout(right_frame)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        right_layout.addWidget(QLabel("Parts (Dye Slots):"))
+        parts_card, pv = self._ui_card()
+        pv.addWidget(self._ui_title("Parts"))
+        pv.addWidget(self._ui_dim("Each part of the item has its own colour"))
         self._dye_parts_table = QTableWidget()
         self._dye_parts_table.setColumnCount(6)
-        self._dye_parts_table.setHorizontalHeaderLabels(["Slot", "Color", "R", "G", "B", "Material"])
+        self._dye_parts_table.setHorizontalHeaderLabels(["Part", "Color", "R", "G", "B", "Material"])
         self._dye_parts_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._dye_parts_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self._dye_parts_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._dye_parts_table.verticalHeader().setDefaultSectionSize(28)
+        self._dye_parts_table.verticalHeader().setVisible(False)
+        self._dye_parts_table.setShowGrid(False)
+        self._dye_parts_table.verticalHeader().setDefaultSectionSize(30)
         self._dye_parts_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
-        self._dye_parts_table.setColumnWidth(1, 60)
+        self._dye_parts_table.setColumnWidth(1, 80)
+        self._dye_parts_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
+        for _c, _w in ((0, 46), (2, 46), (3, 46), (4, 46)):
+            self._dye_parts_table.setColumnWidth(_c, _w)
         self._dye_parts_table.cellClicked.connect(self._dye_part_clicked)
-        right_layout.addWidget(self._dye_parts_table)
+        pv.addWidget(self._dye_parts_table, 1)
+        body.addWidget(parts_card, 4)
 
-        ctrl = QHBoxLayout()
-
-        pick_btn = QPushButton("Pick Color")
+        col_card, cv = self._ui_card(340)
+        cv.addWidget(self._ui_title("Colour"))
+        cv.addWidget(self._ui_dim("Click a part, then pick its colour."))
+        pick_btn = QPushButton("Pick colour…")
         pick_btn.setObjectName("accentBtn")
         pick_btn.setToolTip("Open color picker for the selected part")
         pick_btn.clicked.connect(self._dye_pick_color)
-        ctrl.addWidget(pick_btn)
+        cv.addWidget(pick_btn)
 
-        ctrl.addWidget(QLabel("Material:"))
-        self._dye_material_combo = QComboBox()
-        for k, v in sorted(self.DYE_MATERIALS.items()):
-            self._dye_material_combo.addItem(f"{k}: {v}", k)
-        self._dye_material_combo.currentIndexChanged.connect(self._dye_material_changed)
-        ctrl.addWidget(self._dye_material_combo)
-
-        ctrl.addWidget(QLabel("Grime:"))
-        self._dye_grime_spin = QSpinBox()
-        self._dye_grime_spin.setRange(0, 127)
-        self._dye_grime_spin.setValue(0)
-        self._dye_grime_spin.valueChanged.connect(self._dye_grime_changed)
-        ctrl.addWidget(self._dye_grime_spin)
-
-        ctrl.addWidget(QLabel("Color Group:"))
-        self._dye_group_combo = QComboBox()
-        self._dye_group_combo.addItem("None", 0)
-        for k, v in self.DYE_COLOR_GROUPS.items():
-            self._dye_group_combo.addItem(v, k)
-        self._dye_group_combo.currentIndexChanged.connect(self._dye_group_changed)
-        ctrl.addWidget(self._dye_group_combo)
-
-        ctrl.addStretch()
-        right_layout.addLayout(ctrl)
-
-        quick_row = QHBoxLayout()
-        quick_row.addWidget(QLabel("Quick:"))
+        cv.addWidget(self._ui_dim("Quick colours", True))
+        quick_grid = QGridLayout()
+        quick_grid.setSpacing(6)
         quick_colors = [
             ("Red", 242, 0, 0), ("Orange", 242, 143, 0), ("Yellow", 242, 231, 0),
             ("Lime", 157, 228, 0), ("Green", 0, 242, 0), ("Cyan", 29, 171, 242),
             ("Blue", 0, 0, 242), ("Purple", 190, 33, 242), ("White", 255, 255, 255),
             ("Black", 20, 20, 20), ("Gold", 218, 168, 80),
         ]
-        for name, r, g, b in quick_colors:
+        for n, (name, r, g, b) in enumerate(quick_colors):
             btn = QPushButton()
-            btn.setFixedSize(24, 24)
+            btn.setFixedSize(30, 30)
             btn.setStyleSheet(
-                f"background-color: rgb({r},{g},{b}); border: 2px solid {COLORS['border']}; "
-                f"border-radius: 4px;"
+                f"QPushButton {{ background-color: rgb({r},{g},{b}); border: 2px solid {COLORS['border']}; "
+                f"border-radius: 15px; padding: 0; min-width: 0; }}"
+                f"QPushButton:hover {{ border-color: {COLORS['accent']}; }}"
             )
             btn.setToolTip(name)
+            btn.setProperty("swatch", True)
             btn.clicked.connect(lambda checked, cr=r, cg=g, cb=b: self._dye_apply_quick_color(cr, cg, cb))
-            quick_row.addWidget(btn)
-        quick_row.addStretch()
+            quick_grid.addWidget(btn, n // 6, n % 6)
+        cv.addLayout(quick_grid)
+        cv.addWidget(self._ui_sep())
 
-        apply_all_btn = QPushButton("Apply Color to All Parts")
+        form = QGridLayout()
+        form.setHorizontalSpacing(10)
+        form.setVerticalSpacing(8)
+        form.addWidget(self._ui_dim("Material", True), 0, 0)
+        self._dye_material_combo = QComboBox()
+        for k, v in sorted(self.DYE_MATERIALS.items()):
+            self._dye_material_combo.addItem(f"{k}: {v}", k)
+        self._dye_material_combo.currentIndexChanged.connect(self._dye_material_changed)
+        form.addWidget(self._dye_material_combo, 0, 1)
+        form.addWidget(self._ui_dim("Grime", True), 1, 0)
+        self._dye_grime_spin = QSpinBox()
+        self._dye_grime_spin.setRange(0, 127)
+        self._dye_grime_spin.setValue(0)
+        self._dye_grime_spin.setToolTip("0 = clean, 127 = very dirty")
+        self._dye_grime_spin.valueChanged.connect(self._dye_grime_changed)
+        form.addWidget(self._dye_grime_spin, 1, 1)
+        form.addWidget(self._ui_dim("Colour group", True), 2, 0)
+        self._dye_group_combo = QComboBox()
+        self._dye_group_combo.addItem("None", 0)
+        for k, v in self.DYE_COLOR_GROUPS.items():
+            self._dye_group_combo.addItem(v, k)
+        self._dye_group_combo.currentIndexChanged.connect(self._dye_group_changed)
+        form.addWidget(self._dye_group_combo, 2, 1)
+        form.setColumnStretch(1, 1)
+        cv.addLayout(form)
+
+        cv.addStretch(1)
+        cv.addWidget(self._ui_sep())
+        apply_all_btn = QPushButton("Apply colour to all parts")
         apply_all_btn.setToolTip("Set the current color to all dye slots on this item")
         apply_all_btn.clicked.connect(self._dye_apply_to_all_parts)
-        quick_row.addWidget(apply_all_btn)
+        cv.addWidget(apply_all_btn)
 
         self._dye_add_btn = QPushButton("Add Dye to Undyed Item")
         self._dye_add_btn.setToolTip(
@@ -7798,13 +7952,22 @@ QCheckBox::indicator {{
         # save. Dyeing once in the game is the safe way, so this stays behind
         # the experimental switch.
         self._dye_add_btn.setVisible(bool(getattr(self, '_experimental_mode', False)))
-        quick_row.addWidget(self._dye_add_btn)
+        cv.addWidget(self._dye_add_btn)
+        cv.addWidget(self._ui_dim("Save the file afterwards (Ctrl+S)."))
+        body.addWidget(col_card)
+        layout.addLayout(body, 1)
 
-        right_layout.addLayout(quick_row)
+        # Read the dye data by itself when the page opens (fast since 2.5).
+        _owner = self
 
-        splitter.addWidget(right_frame)
-        splitter.setSizes([280, 500])
-        layout.addWidget(splitter, 1)
+        class _DyeShowFilter(QObject):
+            def eventFilter(self, obj, ev):  # noqa: N802
+                if ev.type() == QEvent.Show:
+                    QTimer.singleShot(60, _owner._dye_autoload)
+                return False
+
+        self._dye_show_filter = _DyeShowFilter(tab)
+        tab.installEventFilter(self._dye_show_filter)
 
         self._dye_tab_widget = tab
         self._tabs.addTab(tab, "Dye")
@@ -7814,12 +7977,26 @@ QCheckBox::indicator {{
         self._dye_current_part = None
         self._dye_updating = False
 
+    def _dye_autoload(self) -> None:
+        """Page shown: read the dye data once per loaded save."""
+        if not self._save_data or getattr(self, "_dye_loaded_for", None) is self._save_data:
+            return
+        tab = getattr(self, "_dye_tab_widget", None)
+        if tab is not None and not tab.isVisible():
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            self._dye_load()
+        finally:
+            QApplication.restoreOverrideCursor()
+
     @perf_log.timed
     def _dye_load(self) -> None:
         if not self._save_data:
             QMessageBox.warning(self, "Dye", "Load a save file first.")
             return
 
+        self._dye_loaded_for = self._save_data
         self._dye_status.setText("Parsing dye data...")
         QApplication.processEvents()
 
@@ -33241,52 +33418,63 @@ QCheckBox::indicator {{
     def _build_backup_tab(self) -> None:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
         layout.addWidget(self._make_scope_label("save"))
+        # New look 2.5: backup list card + card for the selected backup.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
 
-        info_label = QLabel(
-            "Auto-backups are created every time you save. "
-            "Backups are stored alongside the save file in a 'backups' folder."
-        )
-        info_label.setWordWrap(True)
-        help_row = QHBoxLayout()
-        help_row.addWidget(info_label, 1)
-        help_row.addWidget(self._make_help_btn("backup"))
-        layout.addLayout(help_row)
-
-        self._backup_list = QListWidget()
-        layout.addWidget(self._backup_list, 1)
-
-        btn_row = QHBoxLayout()
-
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        list_card, lv = self._ui_card()
+        hrow = QHBoxLayout()
+        hrow.addWidget(self._ui_title("Backups of this save"))
+        hrow.addStretch(1)
         refresh_btn = QPushButton("Refresh")
         refresh_btn.clicked.connect(self._refresh_backups)
-        btn_row.addWidget(refresh_btn)
+        hrow.addWidget(refresh_btn)
+        hrow.addWidget(self._make_help_btn("backup"))
+        lv.addLayout(hrow)
+        lv.addWidget(self._ui_dim(
+            "A backup is made every time you save, in a 'backups' folder next to the save file. "
+            "PRISTINE is the very first copy, before any change by this tool."))
+        self._backup_list = QListWidget()
+        self._backup_list.setSpacing(3)
+        self._backup_list.currentItemChanged.connect(lambda *_a: self._backup_update_detail())
+        lv.addWidget(self._backup_list, 1)
+        body.addWidget(list_card, 1)
 
+        card, cv = self._ui_card(330)
+        self._backup_detail_name = self._ui_title("No backup selected", 16)
+        cv.addWidget(self._backup_detail_name)
+        self._backup_detail_sub = QLabel("Click a backup in the list.")
+        self._backup_detail_sub.setWordWrap(True)
+        self._backup_detail_sub.setTextFormat(Qt.RichText)
+        self._backup_detail_sub.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']};")
+        cv.addWidget(self._backup_detail_sub)
         restore_btn = QPushButton("Restore Selected")
         restore_btn.setObjectName("accentBtn")
+        restore_btn.setToolTip("Put this backup back as your save (the current save is backed up first)")
         restore_btn.clicked.connect(self._restore_backup)
-        btn_row.addWidget(restore_btn)
-
-        open_folder_btn = QPushButton("Open Backup Folder")
-        open_folder_btn.clicked.connect(self._open_backup_folder)
-        btn_row.addWidget(open_folder_btn)
-
+        cv.addWidget(restore_btn)
         delete_btn = QPushButton("Delete Selected")
         delete_btn.clicked.connect(self._delete_backup)
-        btn_row.addWidget(delete_btn)
-
+        cv.addWidget(delete_btn)
+        open_folder_btn = QPushButton("Open Backup Folder")
+        open_folder_btn.clicked.connect(self._open_backup_folder)
+        cv.addWidget(open_folder_btn)
+        cv.addStretch(1)
+        cv.addWidget(self._ui_sep())
+        cv.addWidget(self._ui_dim("PRISTINE damaged?", True))
+        cv.addWidget(self._ui_dim("Make the save that is loaded now the new PRISTINE copy."))
         reset_pristine_btn = QPushButton("Set Current as PRISTINE")
         reset_pristine_btn.setToolTip(
             "Replace the PRISTINE backup with the currently loaded save. "
             "Use this if the old PRISTINE was corrupted."
         )
         reset_pristine_btn.clicked.connect(self._reset_pristine)
-        btn_row.addWidget(reset_pristine_btn)
-
-        btn_row.addStretch()
-        layout.addLayout(btn_row)
+        cv.addWidget(reset_pristine_btn)
+        body.addWidget(card)
+        layout.addLayout(body, 1)
 
         self._backup_tab_index = self._tabs.addTab(tab, tr("tab.backup"))
         self._backup_tab_widget = tab
@@ -34897,6 +35085,19 @@ QCheckBox::indicator {{
         cat = self._swap_category.currentText() if hasattr(self, '_swap_category') else "All"
         self._populate_swap_list(text, cat)
 
+    def _swap_target_changed(self) -> None:
+        lab = getattr(self, "_swap_target_label", None)
+        if lab is None:
+            return
+        rows = sorted({i.row() for i in self._swap_list.selectedIndexes()})
+        if not rows:
+            lab.setText("Pick one in the list")
+            return
+        r = rows[0]
+        name = self._swap_list.item(r, 2).text() if self._swap_list.item(r, 2) else ""
+        key = self._swap_list.item(r, 1).text() if self._swap_list.item(r, 1) else ""
+        lab.setText(f"{name}  (key {key})" if name else f"Key {key}")
+
     def _perform_swap(self) -> None:
         if not self._save_data:
             QMessageBox.warning(self, "Swap", "No save file loaded.")
@@ -35705,6 +35906,7 @@ QCheckBox::indicator {{
         backup_dir = self._get_backup_dir()
         if not backup_dir or not os.path.isdir(backup_dir):
             self._backup_list.addItem("(No backups found)")
+            self._backup_update_detail()
             self._set_backup_tab_text("Backup/Restore")
             return
 
@@ -35720,6 +35922,7 @@ QCheckBox::indicator {{
 
         if not backups:
             self._backup_list.addItem("(No backups found)")
+            self._backup_update_detail()
             self._set_backup_tab_text("Backup/Restore")
             return
 
@@ -35727,14 +35930,36 @@ QCheckBox::indicator {{
             dt = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
             is_pristine = ".PRISTINE." in name
             tag = "  [PRISTINE]" if is_pristine else ""
-            display = f"{name}  |  {dt}  |  {size:,} bytes{tag}"
+            display = f"{dt}   ·   {size / 1048576:.1f} MB{tag}\n{name}"
             item = QListWidgetItem(display)
             item.setData(Qt.UserRole, path)
+            item.setToolTip(path)
             if is_pristine:
                 item.setForeground(QBrush(QColor(COLORS["success"])))
             self._backup_list.addItem(item)
 
         self._set_backup_tab_text(f"Backup/Restore ({len(backups)})")
+
+    def _backup_update_detail(self) -> None:
+        if not hasattr(self, "_backup_detail_name"):
+            return
+        cur = self._backup_list.currentItem()
+        path = cur.data(Qt.UserRole) if cur is not None else None
+        if not path:
+            self._backup_detail_name.setText("No backup selected")
+            self._backup_detail_sub.setText(
+                "Click a backup in the list." if self._backup_list.count() and
+                cur is None else "No backups yet - one is made every time you save.")
+            return
+        import html as _h
+        name = os.path.basename(path)
+        lines = cur.text().split("\n")
+        self._backup_detail_name.setText(
+            "PRISTINE - the first copy" if ".PRISTINE." in name else (lines[0].split("   ")[0] if lines else name))
+        strong = COLORS.get("text_strong", COLORS["text"])
+        self._backup_detail_sub.setText(
+            f"File: <span style='color:{strong}'>{_h.escape(name)}</span><br>"
+            f"{_h.escape(lines[0]) if lines else ''}")
 
     def _restore_backup(self) -> None:
         current = self._backup_list.currentItem()

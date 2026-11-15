@@ -14,6 +14,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
+    QGridLayout,
     QAbstractItemView,
     QApplication,
     QFileDialog,
@@ -114,46 +115,32 @@ class BagSpaceTab(QWidget):
         self._game_path = path or ""
 
     def _build_ui(self) -> None:
+        from gui.utils import ui_card, ui_title, ui_dim
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
         layout.addWidget(make_scope_label("game"))
+        # New look 2.5: bar, quick changes card, table card, footer with Save as mod.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
 
         top_row = QHBoxLayout()
+        top_row.setSpacing(8)
         load_btn = QPushButton("Load Inventory Fields")
         load_btn.setObjectName("accentBtn")
+        load_btn.setToolTip("Read the storage sizes from the game (with your mounted mods)")
         load_btn.clicked.connect(self._load_from_game)
         top_row.addWidget(load_btn)
-
         vanilla_btn = QPushButton("Load Vanilla")
+        vanilla_btn.setToolTip("Read the game's own sizes, without mods")
         vanilla_btn.clicked.connect(self._load_vanilla)
         top_row.addWidget(vanilla_btn)
-
-        # Game 2.04: the character bag starts at 50 and grows to 240. 732 is the
-        # highest size that worked in earlier tests (same ceiling as the storages).
-        set_btn = QPushButton("Set Character 240 / 732")
-        set_btn.setToolTip("Your bag starts with 240 slots (the game's normal maximum)\n"
-                           "and can still be upgraded up to 732.")
-        set_btn.clicked.connect(lambda: self._set_character_slots(240, 732))
-        top_row.addWidget(set_btn)
-
-        force_btn = QPushButton("Force Character 732 / 732")
-        force_btn.setToolTip("Your bag has 732 slots right away - the highest size that\n"
-                             "worked in earlier tests. More is not offered.")
-        force_btn.clicked.connect(lambda: self._set_character_slots(732, 732))
-        top_row.addWidget(force_btn)
-
-        storages_btn = QPushButton("Enlarge Storages")
-        storages_btn.setToolTip(
-            "Camp storage starts at 640 (camp upgrades still add on top, up to 1000).\n"
-            "Dresser, refrigerator, symbol, collection and gathered-materials storage\n"
-            "and the Kuku pot get 732 slots.\n"
-            "The ship hold (game 2.04) starts at its full 36 slots.\n"
-            "Town warehouse and bank are not changed (edit them in the table).\n"
-            "Values are only raised, never lowered.")
-        storages_btn.clicked.connect(self._enlarge_storages)
-        top_row.addWidget(storages_btn)
-
+        self._status = QLabel("")
+        self._status.setWordWrap(True)
+        self._status.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
+        top_row.addWidget(self._status, 1)
+        restore_btn = QPushButton("Restore")
+        restore_btn.setToolTip("Remove this tab's overlay from the game folder")
+        restore_btn.clicked.connect(self._restore_overlay)
+        top_row.addWidget(restore_btn)
         top_row.addWidget(QLabel("Mod#:"))
         self._overlay_spin = QSpinBox()
         self._overlay_spin.setRange(1, 9999)
@@ -166,41 +153,47 @@ class BagSpaceTab(QWidget):
         self._overlay_spin.valueChanged.connect(
             lambda v: self._config.update({"bagspace_overlay_dir": int(v)}))
         top_row.addWidget(self._overlay_spin)
-
-        apply_btn = QPushButton("Apply to Game")
-        apply_btn.setObjectName("accentBtn")
-        apply_btn.clicked.connect(self._apply_to_game)
-        top_row.addWidget(apply_btn)
-
-        export_btn = QPushButton("Export as Mod")
-        export_btn.clicked.connect(self._export_as_mod)
-        top_row.addWidget(export_btn)
-
-        export_field_btn = QPushButton("Export Field JSON")
-        export_field_btn.setStyleSheet(button_css("success") + " font-weight: bold;")
-        export_field_btn.setToolTip(
-            "Export edits as Format 3 field-name JSON.\n"
-            "Uses field names — survives game updates.")
-        export_field_btn.clicked.connect(self._export_field_json)
-        top_row.addWidget(export_field_btn)
-
-        import_field_btn = QPushButton("Import Field JSON")
-        import_field_btn.setToolTip(
-            "Import a Format 3 field-name JSON and apply its intents.")
-        import_field_btn.clicked.connect(self._import_field_json)
-        top_row.addWidget(import_field_btn)
-
-        restore_btn = QPushButton("Restore")
-        restore_btn.clicked.connect(self._restore_overlay)
-        top_row.addWidget(restore_btn)
-        top_row.addStretch()
         layout.addLayout(top_row)
 
-        self._status = QLabel("")
-        self._status.setWordWrap(True)
-        self._status.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
-        layout.addWidget(self._status)
+        quick, qv = ui_card()
+        qv.addWidget(ui_title("Quick changes"))
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(8)
 
+        # Game 2.04: the character bag starts at 50 and grows to 240. 732 is the
+        # highest size that worked in earlier tests (same ceiling as the storages).
+        set_btn = QPushButton("Set Character 240 / 732")
+        set_btn.setToolTip("Your bag starts with 240 slots (the game's normal maximum)\n"
+                           "and can still be upgraded up to 732.")
+        set_btn.clicked.connect(lambda: self._set_character_slots(240, 732))
+        force_btn = QPushButton("Force Character 732 / 732")
+        force_btn.setToolTip("Your bag has 732 slots right away - the highest size that\n"
+                             "worked in earlier tests. More is not offered.")
+        force_btn.clicked.connect(lambda: self._set_character_slots(732, 732))
+        storages_btn = QPushButton("Enlarge Storages")
+        storages_btn.setToolTip(
+            "Camp storage starts at 640 (camp upgrades still add on top, up to 1000).\n"
+            "Dresser, refrigerator, symbol, collection and gathered-materials storage\n"
+            "and the Kuku pot get 732 slots.\n"
+            "The ship hold (game 2.04) starts at its full 36 slots.\n"
+            "Town warehouse and bank are not changed (edit them in the table).\n"
+            "Values are only raised, never lowered.")
+        storages_btn.clicked.connect(self._enlarge_storages)
+        for r, (btn, text) in enumerate((
+                (set_btn, "Your bag starts with 240 slots and can still be upgraded up to 732."),
+                (force_btn, "Your bag has 732 slots right away."),
+                (storages_btn, "Camp storage 640, dresser, fridge, collections and Kuku pot 732, "
+                               "ship hold 36 - values are only raised."))):
+            btn.setMinimumWidth(220)
+            grid.addWidget(btn, r, 0)
+            grid.addWidget(ui_dim(text), r, 1)
+        grid.setColumnStretch(1, 1)
+        qv.addLayout(grid)
+        layout.addWidget(quick)
+
+        table_card, tv = ui_card()
+        tv.addWidget(ui_title("All storage values"))
         self._table = QTableWidget(0, 6)
         self._table.setHorizontalHeaderLabels(
             ["Key", "Record", "Field", "Value", "Offset", "Type"]
@@ -221,7 +214,36 @@ class BagSpaceTab(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        layout.addWidget(self._table, 1)
+        self._table.setShowGrid(False)
+        self._table.verticalHeader().setVisible(False)
+        tv.addWidget(self._table, 1)
+        tv.addWidget(ui_dim("Double-click a value to change it."))
+        layout.addWidget(table_card, 1)
+
+        foot = QHBoxLayout()
+        foot.setSpacing(8)
+        apply_btn = QPushButton("Apply to Game")
+        apply_btn.clicked.connect(self._apply_to_game)
+        foot.addWidget(apply_btn)
+        export_btn = QPushButton("Export as Mod")
+        export_btn.setToolTip("Export as a classic overlay mod")
+        export_btn.clicked.connect(self._export_as_mod)
+        foot.addWidget(export_btn)
+        import_field_btn = QPushButton("Import Field JSON")
+        import_field_btn.setToolTip(
+            "Import a Format 3 field-name JSON and apply its intents.")
+        import_field_btn.clicked.connect(self._import_field_json)
+        foot.addWidget(import_field_btn)
+        foot.addStretch(1)
+        export_field_btn = QPushButton("Save as mod (Field JSON for DMM)")
+        export_field_btn.setStyleSheet(button_css("primary") + " font-weight: bold; padding: 8px 16px;")
+        export_field_btn.setMinimumHeight(40)
+        export_field_btn.setToolTip(
+            "Export edits as Format 3 field-name JSON.\n"
+            "Uses field names — survives game updates.")
+        export_field_btn.clicked.connect(self._export_field_json)
+        foot.addWidget(export_field_btn)
+        layout.addLayout(foot)
 
         if self._game_path:
             self._status.setText(f"Game path: {self._game_path}")

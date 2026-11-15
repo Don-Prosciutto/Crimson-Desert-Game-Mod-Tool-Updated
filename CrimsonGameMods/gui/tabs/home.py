@@ -69,8 +69,31 @@ def _soft() -> str:
     return COLORS.get("border_soft", COLORS["border"])
 
 
+class _Chip(QLabel):
+    """A tab of an area on its Home card; a click opens that tab."""
+
+    def __init__(self, text: str, on_click: Callable[[], None]):
+        super().__init__(text)
+        self._on_click = on_click
+        self.setCursor(Qt.PointingHandCursor)
+        self.setObjectName("homeChip")
+        self.setStyleSheet(
+            f"QLabel#homeChip {{ background: {COLORS['selected']}; color: {COLORS['text']}; "
+            f"border: 1px solid {_soft()}; border-radius: 10px; padding: 2px 9px; font-size: 11px; }}"
+            f"QLabel#homeChip:hover {{ border-color: {COLORS['accent']}; color: {_strong()}; }}")
+
+    def mousePressEvent(self, event):  # noqa: N802
+        event.accept()
+
+    def mouseReleaseEvent(self, event):  # noqa: N802
+        if event.button() == Qt.LeftButton:
+            self._on_click()
+        event.accept()
+
+
 class _Card(QFrame):
-    def __init__(self, title: str, desc: str, accent: str, on_click: Callable[[], None]):
+    def __init__(self, title: str, desc: str, accent: str, on_click: Callable[[], None],
+                 icon_name: str = "", chips=None):
         super().__init__()
         self._on_click = on_click
         self.setCursor(Qt.PointingHandCursor)
@@ -89,17 +112,32 @@ class _Card(QFrame):
         tile.setStyleSheet(f"QLabel {{ background: {COLORS['selected']}; border-radius: 9px; }}")
         try:
             from gui.icons import icon, icon_name_for
-            tile.setPixmap(icon(icon_name_for(title), accent, 18).pixmap(18, 18))
+            tile.setPixmap(icon(icon_name or icon_name_for(title), accent, 18).pixmap(18, 18))
         except Exception:  # noqa: BLE001
             pass
-        lay.addWidget(tile)
         t = QLabel(title)
         t.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {_strong()};")
         d = QLabel(desc)
         d.setWordWrap(True)
         d.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px;")
-        lay.addWidget(t)
+        head = QHBoxLayout()
+        head.setSpacing(10)
+        head.addWidget(tile)
+        head.addWidget(t, 1)
+        lay.addLayout(head)
         lay.addWidget(d)
+        if chips:
+            from gui.flow_layout import FlowLayout
+            fw = QWidget()
+            fw.setStyleSheet("background: transparent;")
+            fl = FlowLayout(fw)
+            try:
+                fl.setContentsMargins(0, 2, 0, 0)
+            except Exception:  # noqa: BLE001
+                pass
+            for text, cb in chips:
+                fl.addWidget(_Chip(text, cb))
+            lay.addWidget(fw)
         lay.addStretch()
         self.setMinimumHeight(124)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -188,7 +226,7 @@ class HomePage(QWidget):
         head.setSpacing(4)
         title = QLabel("Welcome back")
         title.setStyleSheet(f"font-size: 28px; font-weight: 700; color: {_strong()};")
-        sub = QLabel("Make mods for DMM and edit your save – pick a page on the left or a card below.")
+        sub = QLabel("Make mods for DMM and edit your save – pick an area on the left or a card below.")
         sub.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 14px;")
         head.addWidget(title)
         head.addWidget(sub)
@@ -209,13 +247,29 @@ class HomePage(QWidget):
         cols.setSpacing(24)
         left = QVBoxLayout()
         left.setSpacing(12)
-        left.addWidget(self._section("Game mods", "export a mod, load it in DMM", COLORS["scope_game"]))
-        left.addLayout(self._grid(GAME_CARDS, COLORS["accent"]))
-        left.addWidget(self._section("Save editor", "changes your loaded save – back it up first",
-                                     COLORS["scope_save"]))
-        left.addLayout(self._grid(SAVE_CARDS, COLORS["scope_save"]))
-        left.addWidget(self._section("More", "reference", COLORS["text_dim"]))
-        left.addLayout(self._grid(MORE_CARDS, COLORS["text_dim"]))
+        try:
+            from gui.area_nav import SECTIONS
+        except Exception:  # noqa: BLE001
+            SECTIONS = []
+        heads = {
+            "MOD THE GAME": ("Mod the game", "export a mod, load it in DMM", COLORS["scope_game"],
+                             COLORS["accent"]),
+            "MY SAVE": ("My save", "changes your loaded save – back it up first",
+                        COLORS["scope_save"], COLORS["scope_save"]),
+            "LIBRARY": ("Library", "reference", COLORS["text_dim"], COLORS["text_dim"]),
+        }
+        for group, _gcolor, areas in SECTIONS:
+            if group not in heads:
+                continue                         # START = this page
+            name, hint, hcolor, accent = heads[group]
+            left.addWidget(self._section(name, hint, hcolor))
+            left.addLayout(self._area_grid(areas, accent))
+        if not SECTIONS:                         # fallback: the old page cards
+            left.addWidget(self._section("Game mods", "export a mod, load it in DMM", COLORS["scope_game"]))
+            left.addLayout(self._grid(GAME_CARDS, COLORS["accent"]))
+            left.addWidget(self._section("Save editor", "changes your loaded save – back it up first",
+                                         COLORS["scope_save"]))
+            left.addLayout(self._grid(SAVE_CARDS, COLORS["scope_save"]))
         left.addStretch()
         cols.addLayout(left, 1)
 
@@ -261,12 +315,9 @@ class HomePage(QWidget):
 
         how_box, how_lay = _box("How a mod gets into the game")
         how = QLabel(
-            f"<b style='color:{COLORS['accent']}'>1</b>&nbsp; Change something on a "
-            f"<span style='color:{COLORS['scope_game']}'>game mods</span> page<br>"
-            f"<b style='color:{COLORS['accent']}'>2</b>&nbsp; Click <b>Save as mod</b> / "
-            "<b>Export Field JSON</b><br>"
-            f"<b style='color:{COLORS['accent']}'>3</b>&nbsp; Load the file in <b>DMM</b> and mount "
-            "– disable it there to undo"
+            f"<b style='color:{COLORS['accent']}'>1</b>&nbsp; Change something on a game mods page<br>"
+            f"<b style='color:{COLORS['accent']}'>2</b>&nbsp; Click Save as mod / Export Field JSON<br>"
+            f"<b style='color:{COLORS['accent']}'>3</b>&nbsp; Load the file in DMM and mount – disable it there to undo"
             f"<br><br><span style='color:{COLORS['text_dim']}'>[DLC] = needs the DLC. DMM skips "
             "such a mod without it.</span>")
         how.setTextFormat(Qt.RichText)
@@ -300,6 +351,21 @@ class HomePage(QWidget):
         for i, (label, desc) in enumerate(cards):
             g.addWidget(_Card(label, desc, accent, lambda l=label: self._goto(l)), i // 3, i % 3)
         for c in range(3):
+            g.setColumnStretch(c, 1)
+        return g
+
+    def _area_grid(self, areas, accent) -> QGridLayout:
+        """One card per area: click = its first tab, chips = its tabs."""
+        g = QGridLayout()
+        g.setSpacing(12)
+        for i, (name, icon_name, _scope, desc, tabs) in enumerate(areas):
+            pages = [(tab, page) for tab, page, _note in tabs]
+            first = pages[0][1] if pages else name
+            chips = ([(tab, (lambda pg=page: self._goto(pg))) for tab, page in pages]
+                     if len(pages) > 1 else None)
+            g.addWidget(_Card(name, desc, accent, lambda pg=first: self._goto(pg),
+                              icon_name=icon_name, chips=chips), i // 2, i % 2)
+        for c in range(2):
             g.setColumnStretch(c, 1)
         return g
 

@@ -21,6 +21,8 @@ _names_data: Dict[str, Any] = {}
 _reverse: Dict[str, str] = {}        # translation -> English (tab names)
 
 _harvest: Set[str] = set()
+_templates: list = []                # (compiled regex, translation with {#}) from keys with {#}
+_composite_cache: Dict[str, Optional[str]] = {}
 
 _installed: bool = False
 _patched_count: int = 0
@@ -165,10 +167,103 @@ def _load_translations(lang: str) -> None:
     _reverse = {}
     for _en, _loc in _translations.items():
         _reverse.setdefault(_loc, _en)
+    _build_templates()
     _names_data = _load_names(lang)
     log.info("gui_i18n: loaded %d english-keyed, %d legacy-keyed, %d english->key, %d names",
              len(_translations), len(_legacy_translations),
              len(_english_to_key), len(_names_data))
+
+
+def _build_templates() -> None:
+    """Keys with {#} are templates for texts with a changing part (numbers, names)."""
+    import re
+    global _templates
+    _templates = []
+    _composite_cache.clear()
+    for k, v in _translations.items():
+        if "{#}" not in k or v.count("{#}") != k.count("{#}"):
+            continue
+        rx = "^" + re.escape(k).replace(r"\{\#\}", "(.+?)") + "$"
+        try:
+            _templates.append((re.compile(rx, re.S), v))
+        except re.error:
+            continue
+    # longer (more specific) templates first
+    _templates.sort(key=lambda t: -len(t[0].pattern))
+
+
+_PIECE_RE = None
+_COUNT_RE = None
+
+
+def _tr_piece(seg: str) -> Optional[str]:
+    """One plain piece of text (no tags). None = nothing to translate."""
+    global _PIECE_RE, _COUNT_RE
+    import re
+    if _PIECE_RE is None:
+        _PIECE_RE = re.compile(r"^((?:\s|&nbsp;|[●•▸·\-–—])*)(.*?)((?:\s|&nbsp;|[:：…])*)$", re.S)
+        _COUNT_RE = re.compile(r"^(.*?\S)\s+\(([\d.,]+)\)$", re.S)
+    m = _PIECE_RE.match(seg)
+    if not m:
+        return None
+    pre, core, post = m.group(1), m.group(2), m.group(3)
+    if not core or not any(c.isalpha() for c in core):
+        return None
+    for cand, a, b in ((core + post.strip(), pre, post[len(post.rstrip()):] if post.strip() else post),
+                       (core, pre, post)):
+        hit = _translations.get(cand)
+        if hit is not None:
+            return a + hit + b
+    m2 = _COUNT_RE.match(core)
+    if m2:
+        name = _translations.get(m2.group(1))
+        if name is not None:
+            return f"{pre}{name} ({m2.group(2)}){post}"
+    for rx, out in _templates:
+        mt = rx.match(core)
+        if mt:
+            res = out
+            for g in mt.groups():
+                res = res.replace("{#}", g, 1)
+            return pre + res + post
+    return None
+
+
+def _tr_composite(text: str) -> Optional[str]:
+    """Texts put together at runtime -> translated, or None."""
+    if text in _composite_cache:
+        return _composite_cache[text]
+    if len(_composite_cache) > 20000:
+        _composite_cache.clear()
+    import re
+    out = None
+    if "<" in text and ">" in text:
+        parts = re.split(r"(<[^<>]+>)", text)
+        changed = False
+        for i, part in enumerate(parts):
+            if not part or part.startswith("<"):
+                continue
+            t = _translations.get(part.strip())
+            new = (part.replace(part.strip(), t) if t is not None else _tr_piece(part))
+            if new is not None and new != part:
+                parts[i] = new
+                changed = True
+        out = "".join(parts) if changed else None
+    elif " | " in text or "  |  " in text:
+        parts = re.split(r"(\s+\|\s+)", text)
+        changed = False
+        for i, part in enumerate(parts):
+            if i % 2:
+                continue
+            new = _translations.get(part.strip()) or _tr_piece(part)
+            if new is not None and new != part:
+                parts[i] = new
+                changed = True
+        out = "".join(parts) if changed else None
+    else:
+        out = _tr_piece(text)
+    _composite_cache[text] = out
+    return out
 
 
 def _classify_and_load(lang: str) -> None:
@@ -192,6 +287,8 @@ def tr(text: Any, **fmt: Any) -> Any:
         if out is None:
             if text in _legacy_translations:
                 out = _legacy_translations[text]
+        if out is None and any(c.isalpha() for c in text):
+            out = _tr_composite(text)
         if out is None:
             _harvest.add(text)
             out = text

@@ -134,6 +134,59 @@ def make_scope_label(scope: str) -> QLabel:
     return lbl
 
 
+# ── new look 2.5: cards, titles, dim text ──────────────────────────────
+def ui_card(width: int = 0):
+    """A rounded panel card -> (frame, its QVBoxLayout)."""
+    from PySide6.QtWidgets import QFrame, QVBoxLayout
+    soft = COLORS.get("border_soft", COLORS["border"])
+    card = QFrame()
+    card.setObjectName("uiCard")
+    card.setStyleSheet(
+        f"QFrame#uiCard {{ background: {COLORS['panel']}; border: 1px solid {soft}; "
+        f"border-radius: 12px; }}"
+        f"QFrame#uiCard QLabel, QFrame#uiCard QCheckBox, QFrame#uiCard QRadioButton "
+        f"{{ background: transparent; }}")
+    v = QVBoxLayout(card)
+    v.setContentsMargins(12, 10, 12, 12)
+    v.setSpacing(8)
+    if width:
+        card.setFixedWidth(width)
+    return card, v
+
+
+def ui_title(text: str, size: int = 14) -> QLabel:
+    lab = QLabel(text)
+    lab.setWordWrap(True)
+    lab.setStyleSheet(f"font-size: {size}px; font-weight: 700; "
+                      f"color: {COLORS.get('text_strong', COLORS['text'])};")
+    return lab
+
+
+def ui_dim(text: str, bold: bool = False) -> QLabel:
+    lab = QLabel(text)
+    lab.setWordWrap(True)
+    lab.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px;"
+                      + (" font-weight: 600;" if bold else ""))
+    return lab
+
+
+def ui_sep():
+    from PySide6.QtWidgets import QFrame
+    f = QFrame()
+    f.setFrameShape(QFrame.HLine)
+    f.setStyleSheet(f"color: {COLORS.get('border_soft', COLORS['border'])};")
+    return f
+
+
+def ui_info(tip: str) -> QLabel:
+    """The small (i) with a longer explanation as tooltip."""
+    lab = QLabel("ⓘ")
+    lab.setCursor(Qt.WhatsThisCursor)
+    lab.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 16px; padding: 0 4px;")
+    lab.setToolTip(tip)
+    return lab
+
+
 def _num_item(value: int) -> QTableWidgetItem:
     item = QTableWidgetItem()
     item.setData(Qt.DisplayRole, value)

@@ -83,8 +83,11 @@ class SkillTreeTab(QWidget):
     # -- UI construction -----------------------------------------------
 
     def _build_ui(self) -> None:
+        from gui.utils import ui_card, ui_title, ui_dim
         root = QVBoxLayout(self)
-        root.setContentsMargins(8, 8, 8, 8)
+        # New look 2.5: bar, quick changes card, skill table card, footer with Save as mod.
+        root.setContentsMargins(14, 12, 14, 10)
+        root.setSpacing(10)
 
         # --- top row: Extract + Apply + Restore ---
         top_row = QHBoxLayout()
@@ -212,47 +215,45 @@ class SkillTreeTab(QWidget):
         # ═══════════════════════════════════════════════════════════════
         # Skill Editor — Stamina & Cooldown Mods  (skill.pabgb)
         # ═══════════════════════════════════════════════════════════════
-        self._skill_group = QGroupBox("Skill Editor — Stamina + Cooldown Mods")
-        self._skill_group.setStyleSheet(
-            f"QGroupBox {{ font-weight: bold; color: {COLORS['accent']}; "
-            f"border: 1px solid {COLORS.get('border', '#555')}; "
-            f"border-radius: 4px; margin-top: 8px; padding-top: 14px; }}"
-            f"QGroupBox::title {{ subcontrol-origin: margin; left: 10px; }}"
-        )
-        sg_layout = QVBoxLayout(self._skill_group)
-
-        # --- buttons row ---
-        skill_btn_row = QHBoxLayout()
-
+        # The old top row (Extract / Apply / Overlay / Restore) moves into the bar.
+        _keep = (self._btn_apply, self._btn_restore, self._overlay_spin)
+        while top_row.count():
+            _it = top_row.takeAt(0)
+            _w = _it.widget() if _it is not None else None
+            if _w is not None and _w not in _keep:
+                _w.hide()              # old "Overlay:" label, hidden Extract buttons
+        root.removeItem(top_row)
+        bar = QHBoxLayout()
+        bar.setSpacing(8)
         self._btn_skill_load = QPushButton("Load SkillInfo")
+        self._btn_skill_load.setObjectName("accentBtn")
         self._btn_skill_load.setToolTip(
             "Extract skill.pabgb + skill.pabgh from the game.\n"
             "Populates the table below with all skill entries.")
         self._btn_skill_load.clicked.connect(self._on_skill_load)
-        skill_btn_row.addWidget(self._btn_skill_load)
+        bar.addWidget(self._btn_skill_load)
+        self._lbl_status = QLabel("")
+        self._lbl_status.setWordWrap(True)
+        self._lbl_status.setStyleSheet(f"color: {COLORS['text_dim']};")
+        bar.addWidget(self._lbl_status, 1)
+        bar.addWidget(self._btn_restore)
+        bar.addWidget(QLabel("Overlay:"))
+        bar.addWidget(self._overlay_spin)
+        root.insertLayout(0, bar)
 
+        # one group object stays (other code may toggle it); it is the page body now
+        self._skill_group = QWidget()
+        sg_layout = QVBoxLayout(self._skill_group)
+        sg_layout.setContentsMargins(0, 0, 0, 0)
+        sg_layout.setSpacing(10)
 
-        self._btn_skill_export = QPushButton("Export Field JSON v3")
-        self._btn_skill_export.setStyleSheet(button_css("primary") + " font-weight: bold;")
-        self._btn_skill_export.setToolTip(
-            "Export current modifications as Format 3 field-name JSON.\n"
-            "This format survives game updates.")
-        self._btn_skill_export.clicked.connect(self._on_skill_export_json)
-        self._btn_skill_export.setEnabled(False)
-        skill_btn_row.addWidget(self._btn_skill_export)
-
-
-        skill_btn_row.addStretch()
-        sg_layout.addLayout(skill_btn_row)
-
-        # --- stamina preset row ---
-        # --- stamina preset row ---
+        quick, qv = ui_card()
+        qv.addWidget(ui_title("Quick changes"))
         preset_row = QHBoxLayout()
-        preset_row.setSpacing(4)
-        preset_lbl = QLabel("Stamina/Spirit:")
-        preset_lbl.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
+        preset_row.setSpacing(6)
+        preset_lbl = ui_dim("Stamina / spirit use", True)
+        preset_lbl.setMinimumWidth(150)
         preset_row.addWidget(preset_lbl)
-
         stamina_presets = [
             ("10%", 0.10, "10% stamina drain — barely noticeable reduction."),
             ("25%", 0.25, "25% stamina drain — mild reduction."),
@@ -263,22 +264,17 @@ class SkillTreeTab(QWidget):
         for label, factor, tip in stamina_presets:
             btn = QPushButton(label)
             btn.setToolTip(f"Apply Stamina Preset: {tip}")
-            btn.setStyleSheet(
-                "QPushButton { " + button_css("success") + " "
-                "font-weight: bold; padding: 4px 10px; }")
             btn.clicked.connect(
                 lambda _c=False, f=factor: self._on_stamina_preset(f))
             preset_row.addWidget(btn)
-
         preset_row.addStretch()
-        sg_layout.addLayout(preset_row)
+        qv.addLayout(preset_row)
 
         bulk_row = QHBoxLayout()
-        bulk_row.setSpacing(4)
-        bulk_lbl = QLabel("Bulk Mods:")
-        bulk_lbl.setStyleSheet(f"color: {COLORS['accent']}; font-weight: bold;")
+        bulk_row.setSpacing(6)
+        bulk_lbl = ui_dim("All skills", True)
+        bulk_lbl.setMinimumWidth(150)
         bulk_row.addWidget(bulk_lbl)
-
         for label, tip, handler in [
             ("Zero Cooldown", "Set cooldown to 0 on ALL skills.",
              self._bulk_zero_cooldown),
@@ -287,16 +283,14 @@ class SkillTreeTab(QWidget):
         ]:
             btn = QPushButton(label)
             btn.setToolTip(tip)
-            btn.setStyleSheet(
-                "QPushButton { " + button_css("danger") + " "
-                "font-weight: bold; padding: 4px 10px; }")
             btn.clicked.connect(handler)
             bulk_row.addWidget(btn)
-
         bulk_row.addStretch()
-        sg_layout.addLayout(bulk_row)
+        qv.addLayout(bulk_row)
+        sg_layout.addWidget(quick)
 
-        # --- skill table ---
+        table_card, tv = ui_card()
+        tv.addWidget(ui_title("Skills"))
         self._skill_table = QTableWidget()
         self._skill_table.setColumnCount(6)
         self._skill_table.setHorizontalHeaderLabels([
@@ -310,18 +304,31 @@ class SkillTreeTab(QWidget):
         self._skill_table.cellChanged.connect(self._on_skill_cell_changed)
         self._skill_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows)
-        self._skill_table.setAlternatingRowColors(True)
-        sg_layout.addWidget(self._skill_table)
-
-        # --- skill status ---
+        self._skill_table.setShowGrid(False)
+        self._skill_table.verticalHeader().setVisible(False)
+        tv.addWidget(self._skill_table, 1)
         self._lbl_skill_status = QLabel("")
-        sg_layout.addWidget(self._lbl_skill_status)
+        self._lbl_skill_status.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 12px;")
+        tv.addWidget(self._lbl_skill_status)
+        tv.addWidget(ui_dim("Double-click a cooldown to change it."))
+        sg_layout.addWidget(table_card, 1)
+        root.addWidget(self._skill_group, 1)
 
-        root.addWidget(self._skill_group)
-
-        # --- status ---
-        self._lbl_status = QLabel("")
-        root.addWidget(self._lbl_status)
+        foot = QHBoxLayout()
+        foot.setSpacing(8)
+        self._btn_apply.setStyleSheet("")
+        foot.addWidget(self._btn_apply)
+        foot.addStretch(1)
+        self._btn_skill_export = QPushButton("Save as mod (Field JSON for DMM)")
+        self._btn_skill_export.setStyleSheet(button_css("primary") + " font-weight: bold; padding: 8px 16px;")
+        self._btn_skill_export.setMinimumHeight(40)
+        self._btn_skill_export.setToolTip(
+            "Export current modifications as Format 3 field-name JSON.\n"
+            "This format survives game updates.")
+        self._btn_skill_export.clicked.connect(self._on_skill_export_json)
+        self._btn_skill_export.setEnabled(False)
+        foot.addWidget(self._btn_skill_export)
+        root.addLayout(foot)
 
     def _make_preset_btn(
         self, label: str, color: str, tooltip: str,

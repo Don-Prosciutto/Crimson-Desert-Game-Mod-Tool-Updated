@@ -89,40 +89,25 @@ class DatabaseBrowserTab(QWidget):
         self._filter_database()
 
     def _build_ui(self) -> None:
+        from gui.utils import ui_card, ui_title, ui_dim, ui_sep
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
         layout.addWidget(make_scope_label("readonly"))
-
-        db_info = QLabel(tr("Item ID lookup database — search for item keys by name or category. Read-only."))
-        db_info.setStyleSheet(f"color: {COLORS['text_dim']}; padding: 4px;")
-        layout.addWidget(db_info)
+        # New look 2.5: bar, item list card, card for the selected item.
+        layout.setContentsMargins(14, 12, 14, 10)
+        layout.setSpacing(10)
 
         top = QHBoxLayout()
-
-        top.addWidget(QLabel(tr("Search:")))
+        top.setSpacing(8)
         self._db_search = QLineEdit()
-        self._db_search.setPlaceholderText(tr("Search by name or key..."))
+        self._db_search.setPlaceholderText(tr("Search every item in the game by name or key…"))
+        self._db_search.setMinimumHeight(34)
         self._db_search.textChanged.connect(self._filter_database)
-        top.addWidget(self._db_search, 2)
-
-        top.addWidget(QLabel(tr("Category:")))
+        top.addWidget(self._db_search, 1)
         self._db_category = QComboBox()
         self._db_category.addItem("All")
+        self._db_category.setMinimumWidth(140)
         self._db_category.currentTextChanged.connect(self._filter_database)
         top.addWidget(self._db_category)
-
-        # sync_btn = QPushButton(tr("Sync from GitHub"))
-        # sync_btn.clicked.connect(self._sync_github)
-        # top.addWidget(sync_btn)
-
-        sync_local_btn = QPushButton("Sync Items Local")
-        sync_local_btn.setToolTip(
-            "Extract item database directly from your game installation.\n"
-            "Reads iteminfo + English localization from game PAZ files.\n"
-            "Requires game path to be set.")
-        sync_local_btn.clicked.connect(self._sync_items_local)
-        top.addWidget(sync_local_btn)
 
         self._db_freshness_badge = QLabel("")
         self._db_freshness_badge.setStyleSheet(
@@ -135,6 +120,14 @@ class DatabaseBrowserTab(QWidget):
         self._db_show_icons_btn.setToolTip(tr("Download and display all item icons from GitHub.\nFirst time requires internet. Icons cached locally."))
         self._db_show_icons_btn.clicked.connect(self.toggle_icons_requested)
         top.addWidget(self._db_show_icons_btn)
+
+        sync_local_btn = QPushButton("Sync Items Local")
+        sync_local_btn.setToolTip(
+            "Extract item database directly from your game installation.\n"
+            "Reads iteminfo + English localization from game PAZ files.\n"
+            "Requires game path to be set.")
+        sync_local_btn.clicked.connect(self._sync_items_local)
+        top.addWidget(sync_local_btn)
 
         if getattr(self, "_show_goto_knowledge", False):
             goto_knowledge_btn = QPushButton(tr("Knowledge Tab"))
@@ -149,9 +142,11 @@ class DatabaseBrowserTab(QWidget):
             top.addWidget(goto_quest_btn)
 
         top.addWidget(make_help_btn("database", self._show_guide_fn))
-
         layout.addLayout(top)
 
+        body = QHBoxLayout()
+        body.setSpacing(12)
+        list_card, lv = ui_card()
         self._db_table = QTableWidget()
         self._db_table.setColumnCount(6)
         self._db_table.setHorizontalHeaderLabels([
@@ -161,34 +156,58 @@ class DatabaseBrowserTab(QWidget):
         self._db_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Interactive)
         self._db_table.horizontalHeader().setMinimumSectionSize(0)
         self._db_table.setColumnWidth(0, (ICON_SIZE + 16) if self._icons_enabled else 0)
-        self._db_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Interactive)
-        self._db_table.setColumnWidth(2, 200)
+        self._db_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self._db_table.setColumnWidth(1, 90)
+        self._db_table.setColumnWidth(3, 220)
+        self._db_table.setColumnWidth(4, 120)
+        self._db_table.setColumnWidth(5, 110)
         self._db_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._db_table.setSortingEnabled(True)
-        self._db_table.verticalHeader().setDefaultSectionSize(22)
+        self._db_table.verticalHeader().setVisible(False)
+        self._db_table.setShowGrid(False)
+        self._db_table.verticalHeader().setDefaultSectionSize(28)
         self._db_table.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         self._db_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self._db_table.customContextMenuRequested.connect(self._db_context_menu)
-        layout.addWidget(self._db_table, 1)
+        self._db_table.itemSelectionChanged.connect(self._db_update_detail)
+        lv.addWidget(self._db_table, 1)
+        self._db_info_label = QLabel("")
+        self._db_info_label.setWordWrap(True)
+        self._db_info_label.setStyleSheet(f"color: {COLORS['text_dim']}; font-size: 11px;")
+        lv.addWidget(self._db_info_label)
+        body.addWidget(list_card, 1)
 
-        rename_row = QHBoxLayout()
-        rename_row.addWidget(QLabel(tr("Rename selected:")))
-        self._db_rename_input = QLineEdit()
-        self._db_rename_input.setPlaceholderText(tr("New name..."))
-        rename_row.addWidget(self._db_rename_input, 1)
-        rename_btn = QPushButton(tr("Rename"))
-        rename_btn.clicked.connect(self._rename_item)
-        rename_row.addWidget(rename_btn)
-
+        card, cv = ui_card(330)
+        self._db_detail_icon = QLabel()
+        self._db_detail_icon.setFixedSize(64, 64)
+        self._db_detail_icon.setAlignment(Qt.AlignCenter)
+        cv.addWidget(self._db_detail_icon)
+        self._db_detail_name = ui_title(tr("No item selected"), 17)
+        cv.addWidget(self._db_detail_name)
+        self._db_detail_sub = QLabel(tr("Click an item in the list to see its key and details."))
+        self._db_detail_sub.setWordWrap(True)
+        self._db_detail_sub.setTextFormat(Qt.RichText)
+        self._db_detail_sub.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self._db_detail_sub.setStyleSheet(f"font-size: 12px; color: {COLORS['text_dim']};")
+        cv.addWidget(self._db_detail_sub)
         copy_key_btn = QPushButton(tr("Copy Key"))
+        copy_key_btn.setObjectName("accentBtn")
         copy_key_btn.setToolTip(tr("Copy selected item's key to clipboard"))
         copy_key_btn.clicked.connect(self._copy_item_key)
-        rename_row.addWidget(copy_key_btn)
-
-        layout.addLayout(rename_row)
-
-        self._db_info_label = QLabel("")
-        layout.addWidget(self._db_info_label)
+        cv.addWidget(copy_key_btn)
+        cv.addWidget(ui_dim(tr("Right-click items in the list for more (e.g. export as a drop pack).")))
+        cv.addStretch(1)
+        cv.addWidget(ui_sep())
+        cv.addWidget(ui_dim(tr("Own name for this item"), True))
+        cv.addWidget(ui_dim(tr("Shown only in this tool, the game is not changed.")))
+        self._db_rename_input = QLineEdit()
+        self._db_rename_input.setPlaceholderText(tr("New name..."))
+        cv.addWidget(self._db_rename_input)
+        rename_btn = QPushButton(tr("Rename"))
+        rename_btn.clicked.connect(self._rename_item)
+        cv.addWidget(rename_btn)
+        body.addWidget(card)
+        layout.addLayout(body, 1)
 
         self._db_tab_widget = self
 
@@ -335,6 +354,36 @@ class DatabaseBrowserTab(QWidget):
         self.status_message.emit(f"Renamed item {key}: '{old_name}' -> '{new_name}'")
         self._db_rename_input.clear()
 
+
+    def _db_update_detail(self) -> None:
+        """Selected row of All items -> the card on the right."""
+        if not hasattr(self, "_db_detail_name"):
+            return
+        t = self._db_table
+        rows = sorted({i.row() for i in t.selectedIndexes()})
+        if not rows:
+            self._db_detail_name.setText(tr("No item selected"))
+            self._db_detail_sub.setText(tr("Click an item in the list to see its key and details."))
+            self._db_detail_icon.clear()
+            return
+
+        def cell(r, c):
+            it = t.item(r, c)
+            return it.text() if it is not None else ""
+        r = rows[0]
+        import html as _h
+        self._db_detail_name.setText(cell(r, 2) or "Item")
+        strong = COLORS.get("text_strong", COLORS["text"])
+        bits = [(tr("Key"), cell(r, 1)), (tr("Internal name"), cell(r, 3)),
+                (tr("Category"), cell(r, 4)), (tr("Max stack"), cell(r, 5))]
+        extra = f"<br><br>{len(rows)} " + tr("items selected") if len(rows) > 1 else ""
+        self._db_detail_sub.setText("<br>".join(
+            f"{k}: <span style='color:{strong}'>{_h.escape(v)}</span>"
+            for k, v in bits if v) + extra)
+        self._db_detail_icon.clear()
+        icon_cell = t.item(r, 0)
+        if icon_cell is not None and not icon_cell.icon().isNull():
+            self._db_detail_icon.setPixmap(icon_cell.icon().pixmap(64, 64))
 
     def _copy_item_key(self) -> None:
         rows = set(idx.row() for idx in self._db_table.selectedIndexes())
