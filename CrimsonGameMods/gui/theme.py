@@ -753,7 +753,10 @@ def apply_theme(app, mode: str) -> str:
         mode = "dark"
     COLORS.update(palette(mode))
     sheet = stylesheet_for(mode)
-    app.setStyleSheet(sheet)
+    # Setting the very same sheet again makes Qt re-polish every widget
+    # (seconds at start-up) without changing anything.
+    if app.styleSheet() != sheet:
+        app.setStyleSheet(sheet)
     return sheet
 
 
