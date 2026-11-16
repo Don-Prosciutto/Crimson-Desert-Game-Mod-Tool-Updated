@@ -35,6 +35,7 @@ from gui.theme import COLORS, button_css
 from gui.utils import make_scope_label
 from overlay_coordinator import safe_rmtree  # refuses to delete game data folders
 
+CHARACTER_KEY = 2          # inventory record of the player's bag
 log = logging.getLogger(__name__)
 
 
@@ -473,7 +474,7 @@ class BagSpaceTab(QWidget):
                 if key in getattr(self, "_highlight_keys", ()):
                     item.setForeground(QBrush(QColor(COLORS.get("success", "#6BCB77"))))
                     item.setToolTip("Changed by Enlarge Storages")
-                elif name == "Character":
+                elif name == "Character" or (not name and int(key or 0) == CHARACTER_KEY):
                     item.setForeground(QBrush(QColor(COLORS["accent"])))
                 table.setItem(row, col, item)
         table.setSortingEnabled(True)
@@ -559,7 +560,7 @@ class BagSpaceTab(QWidget):
             if self._inventory_data is None:
                 return
 
-        char = next((r for r in self._records if r.get("name") == "Character"), None)
+        char = self._character_record()
         if not char:
             QMessageBox.warning(
                 self,
@@ -577,7 +578,8 @@ class BagSpaceTab(QWidget):
             struct.pack_into("<H", self._inventory_data, int(char["max_offset"]), max_slots)
         elif self._dmm_items is not None:
             for it in self._dmm_items:
-                if it.get('string_key') == 'Character':
+                if it.get('string_key') == 'Character' or (
+                        not it.get('string_key') and int(it.get('key', 0) or 0) == CHARACTER_KEY):
                     it['default_slot_count'] = default_slots
                     it['max_slot_count'] = max_slots
                     break
@@ -888,8 +890,16 @@ class BagSpaceTab(QWidget):
     def _has_bagspace_overlay(self, game_path: str) -> bool:
         return os.path.isfile(os.path.join(game_path, self._overlay_group, ".se_bagspace"))
 
+    def _character_record(self):
+        """The player's bag (inventory record "Character", key 2). Found by key
+        too: on some game versions the record names come out empty."""
+        recs = [r for r in self._records if not r.get("dlc")]
+        return (next((r for r in recs if r.get("name") == "Character"), None)
+                or next((r for r in recs if int(r.get("key", 0) or 0) == CHARACTER_KEY
+                         and not r.get("name")), None))
+
     def _character_summary(self) -> str:
-        char = next((r for r in self._records if r.get("name") == "Character"), None)
+        char = self._character_record()
         if not char or "default_slots" not in char or "max_slots" not in char:
             return "unknown"
         return f"{char['default_slots']}/{char['max_slots']}"
