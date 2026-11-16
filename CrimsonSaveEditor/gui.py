@@ -15171,7 +15171,9 @@ QCheckBox::indicator {{
         unlock_abyss_btn.setObjectName("accentBtn")
         unlock_abyss_btn.setToolTip(
             "Choose the areas (e.g. only the Abyss in the sky) - 398 gates, +37 with the DLC.\n"
-            "Uses fast inject — no map reveal needed.")
+            "Uses fast inject — no map reveal needed.\n\n"
+            "Only from chapter 2 on: in the prologue and chapter 1 the story teaches the\n"
+            "abyss gates, and that quest gets stuck because the game thinks you know them already.")
         unlock_abyss_btn.clicked.connect(self._unlock_all_abyss_gates)
         abyss_btn_row.addWidget(unlock_abyss_btn)
 
@@ -15200,7 +15202,9 @@ QCheckBox::indicator {{
 
         warning = QLabel(
             "Reveal Map and Unlock Abyss Gates can be done independently.\n"
-            "Save (Ctrl+S) and reload in-game after each action."
+            "Save (Ctrl+S) and reload in-game after each action.\n"
+            "Unlock Abyss Gates only from chapter 2 on - before that the story teaches the gates "
+            "and its quest gets stuck."
         )
         warning.setWordWrap(True)
         warning.setStyleSheet(
@@ -15454,11 +15458,20 @@ QCheckBox::indicator {{
         row.addWidget(none_btn)
         row.addStretch(1)
         v.addLayout(row)
-        note = QLabel(
-            "Gates you found yourself are locked too - visit them again in the game."
-            if lock else "The DLC areas only with the DLC Charting the Unknown.")
+        if lock:
+            note = QLabel(
+                "Gates you found yourself are locked too - visit them again in the game.\n"
+                "Gates you already activated in the game (stood on them, they lowered) stay "
+                "active - that is the game's own state and cannot be locked here.")
+            note.setStyleSheet(f"color: {COLORS['text_dim']};")
+        else:
+            note = QLabel(
+                "Only from chapter 2 on: in the prologue and chapter 1 the story teaches the "
+                "abyss gates, and that quest gets stuck because the game thinks you know them "
+                "already.\nThe DLC areas only with the DLC Charting the Unknown.")
+            note.setStyleSheet(f"color: {COLORS['warning']}; font-weight: 600;")
         note.setWordWrap(True)
-        note.setStyleSheet(f"color: {COLORS['text_dim']};")
+        note.setMaximumWidth(460)
         v.addWidget(note)
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         bb.button(QDialogButtonBox.Ok).setText("Lock" if lock else "Unlock")
