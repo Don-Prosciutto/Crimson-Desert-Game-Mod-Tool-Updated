@@ -57,7 +57,24 @@ RARITY_STEP = 5                                                  # % for Legenda
 RARITY_OLD_NAMES = {"Mild": 25, "Normal": 50, "Strong": 100}     # earlier versions: % for Legendary
 
 
-def rarity_factors(level) -> Dict[int, float]:
+RARITY_MODES = ("stronger", "harder")
+
+
+def rarity_param(param):
+    """(mode, level) from what a preset/page passes: a level (1-10), an old
+    name, ("harder", 5) or {"mode": .., "level": ..}."""
+    if isinstance(param, dict):
+        return (param.get("mode") or "stronger"), param.get("level", 5)
+    if isinstance(param, (tuple, list)) and len(param) == 2:
+        return (param[0] or "stronger"), param[1]
+    return "stronger", (5 if param is None else param)
+
+
+def rarity_factors(level, mode: str = "stronger") -> Dict[int, float]:
+    """item_tier -> factor on attack/defense.
+    stronger: Legendary +p %, Epic/Rare/Uncommon 70/40/20 % of that, Common stays.
+    harder:   the same gaps, but Legendary stays vanilla and the rest goes down
+              (Common too, else it would end up above Uncommon)."""
     if level in RARITY_OLD_NAMES:
         pct = float(RARITY_OLD_NAMES[level])
     else:
@@ -66,14 +83,21 @@ def rarity_factors(level) -> Dict[int, float]:
         except (TypeError, ValueError):
             lv = 5.0
         pct = min(10.0, max(1.0, lv)) * RARITY_STEP
-    return {t: 1.0 + sh * pct / 100.0 for t, sh in RARITY_SHARES.items()}
+    up = {t: 1.0 + sh * pct / 100.0 for t, sh in RARITY_SHARES.items()}
+    if mode != "harder":
+        return up
+    top = up[5]
+    down = {1: 1.0 / top}
+    down.update({t: f / top for t, f in up.items() if t != 5})
+    return down
 
 
 RARITY_STATS = (1000002, 1000003)        # DDD attack, DPV defense (statusinfo)
 
 
-def _rarity_matters(recs: list, level) -> List[dict]:
-    factors = rarity_factors(level if level is not None else 5)
+def _rarity_matters(recs: list, param) -> List[dict]:
+    mode, level = rarity_param(param)
+    factors = rarity_factors(level, mode)
     out = []
     for r in recs:
         f = factors.get(r.get("item_tier") or 0)
@@ -109,7 +133,7 @@ PRESETS = [
              "Includes the DLC items (skipped by DMM without the DLC).",
      "choices": RARITY_LEVELS, "default": 5,
      "choice_names": [f"Level {n} - up to +{n * RARITY_STEP} % over vanilla" for n in RARITY_LEVELS],
-     "dlc_too": True},
+     "dlc_too": True, "hidden": True},          # has its own page (gui/tabs/rarity.py)
 ]
 
 

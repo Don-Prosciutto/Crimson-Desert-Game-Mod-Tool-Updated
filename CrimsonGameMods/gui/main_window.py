@@ -917,6 +917,15 @@ class MainWindow(SelfTestMixin, QMainWindow):
             log.warning("Presets tab load failed: %s", e)
 
         try:
+            # Rarity Matters: rarer gear stronger (or the rest weaker), with a table
+            from gui.tabs.rarity import RarityTab
+            self._rarity_tab = RarityTab(config=self._config)
+            self._rarity_tab.status_message.connect(self._update_status)
+            self._mods_tabs.addTab(self._rarity_tab, "Rarity")
+        except Exception as e:
+            log.warning("Rarity tab load failed: %s", e)
+
+        try:
             from gui.tabs.load_manager import LoadManagerTab
             self._load_manager_tab = LoadManagerTab(config=self._config)
             self._load_manager_tab.status_message.connect(self._update_status)
@@ -3118,6 +3127,8 @@ QCheckBox {{
             self._bagspace_tab.set_game_path(path)
         if hasattr(self, '_presets_tab'):
             self._presets_tab.set_game_path(path)
+        if hasattr(self, '_rarity_tab'):
+            self._rarity_tab.set_game_path(path)
         if hasattr(self, '_skill_tree_tab'):      # was missing: kept the old path
             self._skill_tree_tab.set_game_path(path)
         if hasattr(self, '_load_manager_tab'):

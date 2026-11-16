@@ -30,9 +30,10 @@ SECTIONS = [
             ("Home", "Home", "")]),
     ]),
     ("MOD THE GAME", "scope_game", [
-        ("Items & Gear", "buffs", "game", "Change any item – stats, buffs, sockets, stacks – or apply presets to many items", [
+        ("Items & Gear", "buffs", "game", "Change any item – stats, buffs, sockets, stacks – apply presets to many items, or make rarity matter", [
             ("Edit items", "ItemBuffs", "Formerly “ItemBuffs”"),
             ("Quick presets", "Presets", "Formerly “Presets”"),
+            ("Rarity Matters", "Rarity", "Rarer gear stronger, or the lower rarities weaker - with a table of the effect"),
             ("Combine mods", "Stacker Tool", "Formerly “Stacker Tool”")]),
         ("Shops & Loot", "stores", "game", "What vendors sell, what enemies, chests and gathering drop, and your business bonuses", [
             ("Shops", "Stores", "Formerly “Stores” – incl. the DLC Vendor"),

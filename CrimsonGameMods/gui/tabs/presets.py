@@ -65,6 +65,8 @@ class PresetsTab(QWidget):
         cl.setContentsMargins(0, 0, 0, 0)
         cl.setSpacing(6)
         for p in PRESETS:
+            if p.get("hidden"):
+                continue
             card = QFrame()
             card.setStyleSheet(f"QFrame {{ border: 1px solid {COLORS['border']}; "
                                f"border-radius: 6px; background: {COLORS['panel']}; }}")
