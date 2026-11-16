@@ -4433,5 +4433,9 @@
  "In the game, rarity barely matters: at the same refinement level a Common and a Legendary weapon have almost the same attack and defense. This page changes that.\n\nStronger: rarer gear gets more attack and defense than in the game. Common stays.\nHarder: Legendary stays as in the game, all lower rarities get weaker (Common too). No gear is stronger than in the game.\n\nThe percentage is the same at every refinement level (+0 to +10), so refining still matters. Includes the DLC items (DMM skips them without the DLC).": "게임에서는 희귀도가 거의 의미가 없습니다: 같은 재련 단계에서 일반 무기와 전설 무기의 공격력과 방어력이 거의 같습니다. 이 페이지는 그것을 바꿉니다.\n\n강화: 더 희귀한 장비가 게임보다 공격력과 방어력이 높아집니다. 일반은 그대로입니다.\n하드: 전설은 게임 그대로이고, 낮은 등급은 모두 약해집니다(일반 포함). 게임보다 강한 장비는 없습니다.\n\n비율은 모든 재련 단계(+0~+10)에서 같으므로 재련은 여전히 의미가 있습니다. DLC 아이템 포함 (DLC가 없으면 DMM이 건너뜁니다).",
  "Rarer gear stronger, or the lower rarities weaker - with a table of the effect": "희귀한 장비를 강하게, 또는 낮은 등급을 약하게 – 효과 표 포함",
  "Change any item – stats, buffs, sockets, stacks – apply presets to many items, or make rarity matter": "모든 아이템 변경 – 능력치, 버프, 소켓, 스택 –, 여러 아이템에 프리셋 적용, 또는 희귀도가 중요하게",
- "Rarity Matters saved: {#}": "Rarity Matters 저장됨: {#}"
+ "Rarity Matters saved: {#}": "Rarity Matters 저장됨: {#}",
+ "Longer Elixir & Food Buffs": "엘릭서·음식 버프 지속시간 증가",
+ "Longer Elixir && Food Buffs": "엘릭서·음식 버프 지속시간 증가",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "엘릭서, 연금술, 음식 버프가 더 오래 지속됩니다(공격력, 방어력, 생명력, 저항, 면역 등). 시간에 따른 생명력·정신력 회복은 그대로입니다. 새 DLC 엘릭서 포함 (DLC가 없으면 DMM이 건너뜁니다).\n테이블: skill",
+ "Longer Elixir and Food Buffs": "엘릭서 및 음식 버프 지속시간 증가"
 }

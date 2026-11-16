@@ -115,6 +115,40 @@ def _rarity_matters(recs: list, param) -> List[dict]:
     return out
 
 
+# Longer item buffs: duration (ms) of the buffs that elixirs, alchemy and food
+# give - skill.buff_level_list[level][i].base.qword_a. The same set as the
+# DMM "buff_time" preset, plus Food_DPV and every Potion_/Alchemy_ skill, so
+# the DLC elixirs (Breath_Max, SwimSpeed, ElementResist) are included.
+ITEM_BUFF_SKILLS = {
+    5104, 5204, 5209, 5301, 5302, 5401, 5501, 5502, 5503, 5504, 5505, 5506, 5507,
+    5508, 5509, 5510, 5511, 5512, 5513, 5514, 5515, 5516, 5517, 6700, 6701, 6703,
+    6709, 6721, 40018, 40022,
+}
+ITEM_BUFF_PREFIXES = ("Item_Active_Potion_", "Item_Active_Alchemy_")
+ITEM_BUFF_MAX_MS = 2_000_000_000          # ~23 days; nothing goes above this
+
+
+def _is_item_buff_skill(r: dict) -> bool:
+    return (r.get("key") in ITEM_BUFF_SKILLS
+            or str(r.get("string_key") or "").startswith(ITEM_BUFF_PREFIXES))
+
+
+def _longer_item_buffs(recs: list, factor) -> List[dict]:
+    factor = int(factor or 2)
+    out = []
+    for r in recs:
+        if not _is_item_buff_skill(r):
+            continue
+        for i, lvl in enumerate(r.get("buff_level_list") or []):
+            for j, b in enumerate(lvl or []):
+                v = (b.get("base") or {}).get("qword_a")
+                if isinstance(v, int) and 0 < v < ITEM_BUFF_MAX_MS:
+                    out.append({"entry": r.get("string_key", ""), "key": r.get("key", 0),
+                                "field": f"buff_level_list[{i}][{j}].base.qword_a",
+                                "op": "set", "new": min(v * factor, ITEM_BUFF_MAX_MS)})
+    return out
+
+
 PRESETS = [
     {"id": "refine_cost_1", "table": "multichangeinfo", "fn": _refine_cost_1,
      "title": "Refinement Costs 1",
@@ -123,6 +157,12 @@ PRESETS = [
      "title": "More Trust from Gifts",
      "desc": "Gifts to NPCs give more trust. Talking and quests are not changed.",
      "choices": [2, 5, 10, 20], "default": 5, "choice_label": "x"},
+    {"id": "longer_item_buffs", "table": "skill", "fn": _longer_item_buffs,
+     "title": "Longer Elixir and Food Buffs",
+     "desc": "Buffs from elixirs, alchemy and food last longer (attack, defense, health, "
+             "resistances, immunities, ...). Health and Spirit recovery over time stay as they are. "
+             "Includes the new DLC elixirs (skipped by DMM without the DLC).",
+     "choices": [2, 5, 10, 50, 100], "default": 10, "choice_label": "x", "dlc_too": True},
     {"id": "rarity_matters", "table": "iteminfo", "fn": _rarity_matters,
      "title": "Rarity Matters",
      "desc": "Rarer gear has more attack and defense at every refinement level, so a "

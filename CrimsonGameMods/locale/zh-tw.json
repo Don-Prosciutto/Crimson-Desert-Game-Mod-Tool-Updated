@@ -4381,5 +4381,9 @@
  "In the game, rarity barely matters: at the same refinement level a Common and a Legendary weapon have almost the same attack and defense. This page changes that.\n\nStronger: rarer gear gets more attack and defense than in the game. Common stays.\nHarder: Legendary stays as in the game, all lower rarities get weaker (Common too). No gear is stronger than in the game.\n\nThe percentage is the same at every refinement level (+0 to +10), so refining still matters. Includes the DLC items (DMM skips them without the DLC).": "遊戲中稀有度幾乎不重要：同一精煉等級下，普通和傳說武器的攻擊和防禦幾乎相同。此頁面改變這一點。\n\n更強：更稀有的裝備獲得比遊戲更高的攻擊和防禦。普通不變。\n更難：傳說維持遊戲原樣，所有較低稀有度變弱（普通也是）。沒有裝備比遊戲中更強。\n\n百分比在每個精煉等級（+0 到 +10）都相同，因此精煉仍然有用。包含 DLC 物品（沒有 DLC 時 DMM 會跳過）。",
  "Rarer gear stronger, or the lower rarities weaker - with a table of the effect": "稀有裝備更強，或較低稀有度更弱 – 附效果表",
  "Change any item – stats, buffs, sockets, stacks – apply presets to many items, or make rarity matter": "修改任何物品 – 屬性、增益、插槽、堆疊 –，對許多物品套用預設，或讓稀有度更重要",
- "Rarity Matters saved: {#}": "Rarity Matters 已儲存：{#}"
+ "Rarity Matters saved: {#}": "Rarity Matters 已儲存：{#}",
+ "Longer Elixir & Food Buffs": "更長的藥劑與食物增益",
+ "Longer Elixir && Food Buffs": "更長的藥劑與食物增益",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "藥劑、煉金和食物的增益持續更久（攻擊、防禦、生命、抗性、免疫等）。隨時間恢復的生命與精神不變。包含新的 DLC 藥劑（沒有 DLC 時 DMM 會跳過）。\n資料表: skill",
+ "Longer Elixir and Food Buffs": "更長的藥劑和食物增益"
 }

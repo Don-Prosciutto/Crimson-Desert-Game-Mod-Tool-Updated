@@ -4371,5 +4371,9 @@
  "In the game, rarity barely matters: at the same refinement level a Common and a Legendary weapon have almost the same attack and defense. This page changes that.\n\nStronger: rarer gear gets more attack and defense than in the game. Common stays.\nHarder: Legendary stays as in the game, all lower rarities get weaker (Common too). No gear is stronger than in the game.\n\nThe percentage is the same at every refinement level (+0 to +10), so refining still matters. Includes the DLC items (DMM skips them without the DLC).": "ゲームではレア度がほとんど意味を持ちません：同じ精錬段階なら、コモンとレジェンダリーの武器の攻撃力と防御力はほぼ同じです。このページはそれを変えます。\n\n強化：レアな装備ほどゲームより攻撃力と防御力が上がります。コモンは変わりません。\nハード：レジェンダリーはゲームのまま、下位のレア度はすべて弱くなります（コモンも）。ゲームより強い装備はありません。\n\n割合はどの精錬段階（+0〜+10）でも同じなので、精錬は引き続き有効です。DLCのアイテムも含みます（DLCがない場合DMMはスキップします）。",
  "Rarer gear stronger, or the lower rarities weaker - with a table of the effect": "レアな装備を強く、または下位レア度を弱く – 効果の表付き",
  "Change any item – stats, buffs, sockets, stacks – apply presets to many items, or make rarity matter": "あらゆるアイテムを変更 – 能力値、バフ、ソケット、スタック –、多くのアイテムにプリセットを適用、またはレア度に意味を持たせる",
- "Rarity Matters saved: {#}": "Rarity Mattersを保存しました：{#}"
+ "Rarity Matters saved: {#}": "Rarity Mattersを保存しました：{#}",
+ "Longer Elixir & Food Buffs": "エリクサーと料理のバフ延長",
+ "Longer Elixir && Food Buffs": "エリクサーと料理のバフ延長",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "エリクサー、錬金術、料理のバフが長く続きます（攻撃、防御、体力、耐性、免疫など）。時間経過による体力・精神力の回復は変わりません。DLCの新しいエリクサーも含みます（DLCがない場合DMMはスキップします）。\nテーブル: skill",
+ "Longer Elixir and Food Buffs": "エリクサーと料理のバフ延長"
 }
