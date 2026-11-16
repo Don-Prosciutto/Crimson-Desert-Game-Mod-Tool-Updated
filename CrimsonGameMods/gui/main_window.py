@@ -1570,6 +1570,10 @@ class MainWindow(SelfTestMixin, QMainWindow):
         """Navigation by task: ten areas, their pages as tabs (gui/area_nav.py)."""
         from gui import area_nav
         area_nav.rebuild(self)
+        try:
+            self._rebuild_view_tab_list()        # View › Go to, same areas
+        except Exception as e:  # noqa: BLE001
+            log.warning("View menu rebuild failed: %s", e)
 
     def _nav_clicked(self, item, _col=0) -> None:
         from gui import area_nav
@@ -2466,50 +2470,43 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
 
     def _rebuild_view_tab_list(self) -> None:
-        if not hasattr(self, '_tabs'):
+        """View › Go to: the pages by area, as in the navigation (2.5)."""
+        if not hasattr(self, '_view_menu'):
             return
         for action in self._tab_actions:
             self._view_menu.removeAction(action)
         self._tab_actions.clear()
-
-        _real_tabs = self._tabs
-        sub_groups = [
-            ("Save Editor", self._save_tabs),
-            ("Game Mods", self._mods_tabs),
-            ("Items", self._items_tabs),
-            ("World", self._world_tabs),
-        ]
-
-        for group_name, sub_widget in sub_groups:
-            group_idx = _real_tabs.indexOf(sub_widget)
-
-            header = QAction(f"--- {group_name} ---", self)
-            header.setEnabled(False)
-            self._view_menu.addAction(header)
-            self._tab_actions.append(header)
-
-            for si in range(sub_widget.count()):
-                if hasattr(sub_widget, "isTabVisible") and not sub_widget.isTabVisible(si):
-                    continue
-                sub_name = sub_widget.tabText(si)
-                action = QAction(f"    {sub_name}", self)
-                action.triggered.connect(
-                    lambda checked, g=group_idx, s=si, sw=sub_widget:
-                    (_real_tabs.setCurrentIndex(g), sw.setCurrentIndex(s))
-                )
-                self._view_menu.addAction(action)
-                self._tab_actions.append(action)
-
-        self._view_menu.addSeparator()
-        for ti in range(_real_tabs.count()):
-            name = _real_tabs.tabText(ti)
-            if name not in [g[0] for g in sub_groups]:
-                action = QAction(name, self)
-                action.triggered.connect(
-                    lambda checked, idx=ti: _real_tabs.setCurrentIndex(idx)
-                )
-                self._view_menu.addAction(action)
-                self._tab_actions.append(action)
+        areas = getattr(self, "_areas", None) or {}
+        if not areas:
+            return
+        from gui import area_nav
+        goto = QMenu("Go to", self)
+        first = True
+        for _section, _ckey, section_areas in area_nav.SECTIONS:
+            names = [a[0] for a in section_areas if a[0] in areas]
+            if not names:
+                continue
+            if not first:
+                goto.addSeparator()
+            first = False
+            for name in names:
+                tabs = areas[name]["tabs"]
+                target = goto if len(tabs) > 1 else None
+                if target is not None:
+                    target = goto.addMenu(name)
+                for e in tabs:
+                    act = (target or goto).addAction(e["tab"] if target is not None else name)
+                    act.setEnabled(not getattr(e["widget"], "_selftest_blocked", False))
+                    act.triggered.connect(
+                        lambda _c=False, h=e["holder"], w=e["widget"]: area_nav._show(self, h, w))
+        anchor = getattr(self, "_experimental_action", None)
+        if anchor is not None and anchor in self._view_menu.actions():
+            self._view_menu.insertMenu(anchor, goto)
+            sep = self._view_menu.insertSeparator(anchor)
+        else:
+            self._view_menu.addMenu(goto)
+            sep = self._view_menu.addSeparator()
+        self._tab_actions = [goto.menuAction(), sep]
 
     def _goto_subtab(self, group_widget, tab_widget) -> None:
         _real_tabs = getattr(self, '_real_tabs', None)
@@ -2529,8 +2526,8 @@ class MainWindow(SelfTestMixin, QMainWindow):
             group_widget.setCurrentIndex(sub_idx)
 
     def _on_tab_changed_view_menu(self, index: int) -> None:
-        if len(self._tab_actions) != self._tabs.count():
-            self._rebuild_view_tab_list()
+        # View › Go to follows the navigation (rebuilt in _nav_rebuild).
+        return
 
 
     def _set_ui_scale(self, pct: int) -> None:
