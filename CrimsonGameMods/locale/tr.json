@@ -4436,5 +4436,8 @@
  "Longer Elixir & Food Buffs": "Daha uzun iksir ve yemek buffları",
  "Longer Elixir && Food Buffs": "Daha uzun iksir ve yemek buffları",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "İksir, simya ve yemek buffları daha uzun sürer (saldırı, savunma, can, dirençler, bağışıklıklar…). Zamanla can ve ruh yenilenmesi değişmez. Yeni DLC iksirleri dahil (DLC yoksa DMM bunları atlar).\nTablo: skill",
- "Longer Elixir and Food Buffs": "Daha uzun iksir ve yemek buffları"
+ "Longer Elixir and Food Buffs": "Daha uzun iksir ve yemek buffları",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "İksir, simya ve yemek buffları daha uzun sürer (saldırı, savunma, can, dirençler, bağışıklıklar…): x2 ile x100 arası ya da her buff için sabit süre (1 ile 24 saat; zaten daha uzun sürenler kalır). Zamanla can ve ruh yenilenmesi değişmez. Yeni DLC iksirleri dahil (DLC yoksa DMM bunları atlar).\nTablo: skill",
+ "1 hour - every buff": "1 saat – her buff",
+ "{#} hours - every buff": "{#} saat – her buff"
 }

@@ -4385,5 +4385,8 @@
  "Longer Elixir & Food Buffs": "更長的藥劑與食物增益",
  "Longer Elixir && Food Buffs": "更長的藥劑與食物增益",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "藥劑、煉金和食物的增益持續更久（攻擊、防禦、生命、抗性、免疫等）。隨時間恢復的生命與精神不變。包含新的 DLC 藥劑（沒有 DLC 時 DMM 會跳過）。\n資料表: skill",
- "Longer Elixir and Food Buffs": "更長的藥劑和食物增益"
+ "Longer Elixir and Food Buffs": "更長的藥劑和食物增益",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "藥劑、煉金和食物的增益持續更久（攻擊、防禦、生命、抗性、免疫等）：x2 到 x100，或為每個增益設定固定時長（1 到 24 小時；原本更長的維持不變）。隨時間恢復的生命與精神不變。包含新的 DLC 藥劑（沒有 DLC 時 DMM 會跳過）。\n資料表: skill",
+ "1 hour - every buff": "1 小時 – 每個增益",
+ "{#} hours - every buff": "{#} 小時 – 每個增益"
 }

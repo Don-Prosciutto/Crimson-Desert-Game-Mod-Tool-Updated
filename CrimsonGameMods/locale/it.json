@@ -4437,5 +4437,8 @@
  "Longer Elixir & Food Buffs": "Buff di elisir e cibo più lunghi",
  "Longer Elixir && Food Buffs": "Buff di elisir e cibo più lunghi",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "I buff di elisir, alchimia e cibo durano di più (attacco, difesa, salute, resistenze, immunità…). Il recupero di salute e spirito nel tempo resta invariato. Include i nuovi elisir del DLC (DMM li salta senza il DLC).\nTabella: skill",
- "Longer Elixir and Food Buffs": "Buff di elisir e cibo più lunghi"
+ "Longer Elixir and Food Buffs": "Buff di elisir e cibo più lunghi",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "I buff di elisir, alchimia e cibo durano di più (attacco, difesa, salute, resistenze, immunità…): da x2 a x100, o una durata fissa per ogni buff (da 1 a 24 ore; quelli che durano già di più restano). Il recupero di salute e spirito nel tempo resta invariato. Include i nuovi elisir del DLC (DMM li salta senza il DLC).\nTabella: skill",
+ "1 hour - every buff": "1 ora – ogni buff",
+ "{#} hours - every buff": "{#} ore – ogni buff"
 }

@@ -4437,5 +4437,8 @@
  "Longer Elixir & Food Buffs": "Dłuższe buffy z eliksirów i jedzenia",
  "Longer Elixir && Food Buffs": "Dłuższe buffy z eliksirów i jedzenia",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Buffy z eliksirów, alchemii i jedzenia trwają dłużej (atak, obrona, zdrowie, odporności, niewrażliwości…). Regeneracja zdrowia i ducha w czasie bez zmian. Razem z nowymi eliksirami z DLC (bez DLC DMM je pomija).\nTabela: skill",
- "Longer Elixir and Food Buffs": "Dłuższe buffy z eliksirów i jedzenia"
+ "Longer Elixir and Food Buffs": "Dłuższe buffy z eliksirów i jedzenia",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Buffy z eliksirów, alchemii i jedzenia trwają dłużej (atak, obrona, zdrowie, odporności, niewrażliwości…): od x2 do x100 albo stały czas dla każdego buffa (1 do 24 godzin; dłuższe zostają). Regeneracja zdrowia i ducha w czasie bez zmian. Razem z nowymi eliksirami z DLC (bez DLC DMM je pomija).\nTabela: skill",
+ "1 hour - every buff": "1 godzina – każdy buff",
+ "{#} hours - every buff": "{#} godz. – każdy buff"
 }

@@ -133,8 +133,18 @@ def _is_item_buff_skill(r: dict) -> bool:
             or str(r.get("string_key") or "").startswith(ITEM_BUFF_PREFIXES))
 
 
-def _longer_item_buffs(recs: list, factor) -> List[dict]:
-    factor = int(factor or 2)
+ITEM_BUFF_HOURS = [1, 2, 3, 6, 12, 24]
+
+
+def _item_buff_target(param):
+    """('x', factor) or ('h', hours) from a choice: 10 or "24h"."""
+    if isinstance(param, str) and param.endswith("h"):
+        return "h", int(param[:-1] or 1)
+    return "x", int(param or 2)
+
+
+def _longer_item_buffs(recs: list, param) -> List[dict]:
+    kind, n = _item_buff_target(param)
     out = []
     for r in recs:
         if not _is_item_buff_skill(r):
@@ -142,10 +152,15 @@ def _longer_item_buffs(recs: list, factor) -> List[dict]:
         for i, lvl in enumerate(r.get("buff_level_list") or []):
             for j, b in enumerate(lvl or []):
                 v = (b.get("base") or {}).get("qword_a")
-                if isinstance(v, int) and 0 < v < ITEM_BUFF_MAX_MS:
+                if not (isinstance(v, int) and 0 < v < ITEM_BUFF_MAX_MS):
+                    continue
+                # fixed hours: every buff lasts that long (never shorter than the game's)
+                new = max(v, n * 3_600_000) if kind == "h" else v * n
+                new = min(new, ITEM_BUFF_MAX_MS)
+                if new != v:
                     out.append({"entry": r.get("string_key", ""), "key": r.get("key", 0),
                                 "field": f"buff_level_list[{i}][{j}].base.qword_a",
-                                "op": "set", "new": min(v * factor, ITEM_BUFF_MAX_MS)})
+                                "op": "set", "new": new})
     return out
 
 
@@ -160,9 +175,15 @@ PRESETS = [
     {"id": "longer_item_buffs", "table": "skill", "fn": _longer_item_buffs,
      "title": "Longer Elixir and Food Buffs",
      "desc": "Buffs from elixirs, alchemy and food last longer (attack, defense, health, "
-             "resistances, immunities, ...). Health and Spirit recovery over time stay as they are. "
-             "Includes the new DLC elixirs (skipped by DMM without the DLC).",
-     "choices": [2, 5, 10, 50, 100], "default": 10, "choice_label": "x", "dlc_too": True},
+             "resistances, immunities, ...): x2 to x100, or a fixed time for every buff "
+             "(1 to 24 hours; buffs that already last longer stay). Health and Spirit "
+             "recovery over time stay as they are. Includes the new DLC elixirs "
+             "(skipped by DMM without the DLC).",
+     "choices": [2, 5, 10, 50, 100] + [f"{h}h" for h in ITEM_BUFF_HOURS], "default": 10,
+     "choice_names": [f"x{f}" for f in (2, 5, 10, 50, 100)]
+                     + ["1 hour - every buff"]
+                     + [f"{h} hours - every buff" for h in ITEM_BUFF_HOURS[1:]],
+     "dlc_too": True},
     {"id": "rarity_matters", "table": "iteminfo", "fn": _rarity_matters,
      "title": "Rarity Matters",
      "desc": "Rarer gear has more attack and defense at every refinement level, so a "

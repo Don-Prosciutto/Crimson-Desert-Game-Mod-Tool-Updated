@@ -4437,5 +4437,8 @@
  "Longer Elixir & Food Buffs": "엘릭서·음식 버프 지속시간 증가",
  "Longer Elixir && Food Buffs": "엘릭서·음식 버프 지속시간 증가",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "엘릭서, 연금술, 음식 버프가 더 오래 지속됩니다(공격력, 방어력, 생명력, 저항, 면역 등). 시간에 따른 생명력·정신력 회복은 그대로입니다. 새 DLC 엘릭서 포함 (DLC가 없으면 DMM이 건너뜁니다).\n테이블: skill",
- "Longer Elixir and Food Buffs": "엘릭서 및 음식 버프 지속시간 증가"
+ "Longer Elixir and Food Buffs": "엘릭서 및 음식 버프 지속시간 증가",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "엘릭서, 연금술, 음식 버프가 더 오래 지속됩니다(공격력, 방어력, 생명력, 저항, 면역 등): x2~x100 또는 모든 버프에 고정 시간(1~24시간, 원래 더 긴 버프는 유지). 시간에 따른 생명력·정신력 회복은 그대로입니다. 새 DLC 엘릭서 포함 (DLC가 없으면 DMM이 건너뜁니다).\n테이블: skill",
+ "1 hour - every buff": "1시간 – 모든 버프",
+ "{#} hours - every buff": "{#}시간 – 모든 버프"
 }

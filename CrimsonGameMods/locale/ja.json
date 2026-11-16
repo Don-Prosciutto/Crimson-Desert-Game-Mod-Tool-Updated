@@ -4375,5 +4375,8 @@
  "Longer Elixir & Food Buffs": "エリクサーと料理のバフ延長",
  "Longer Elixir && Food Buffs": "エリクサーと料理のバフ延長",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "エリクサー、錬金術、料理のバフが長く続きます（攻撃、防御、体力、耐性、免疫など）。時間経過による体力・精神力の回復は変わりません。DLCの新しいエリクサーも含みます（DLCがない場合DMMはスキップします）。\nテーブル: skill",
- "Longer Elixir and Food Buffs": "エリクサーと料理のバフ延長"
+ "Longer Elixir and Food Buffs": "エリクサーと料理のバフ延長",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "エリクサー、錬金術、料理のバフが長く続きます（攻撃、防御、体力、耐性、免疫など）：x2〜x100、またはすべてのバフに固定時間（1〜24時間。もともと長いバフはそのまま）。時間経過による体力・精神力の回復は変わりません。DLCの新しいエリクサーも含みます（DLCがない場合DMMはスキップします）。\nテーブル: skill",
+ "1 hour - every buff": "1時間 – すべてのバフ",
+ "{#} hours - every buff": "{#}時間 – すべてのバフ"
 }

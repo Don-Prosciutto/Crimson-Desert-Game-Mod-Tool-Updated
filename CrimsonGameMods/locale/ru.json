@@ -4436,5 +4436,8 @@
  "Longer Elixir & Food Buffs": "Более долгие баффы эликсиров и еды",
  "Longer Elixir && Food Buffs": "Более долгие баффы эликсиров и еды",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Баффы от эликсиров, алхимии и еды длятся дольше (атака, защита, здоровье, сопротивления, иммунитеты…). Восстановление здоровья и духа со временем не меняется. Вместе с новыми эликсирами DLC (без DLC DMM их пропускает).\nТаблица: skill",
- "Longer Elixir and Food Buffs": "Более долгие баффы эликсиров и еды"
+ "Longer Elixir and Food Buffs": "Более долгие баффы эликсиров и еды",
+ "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Баффы от эликсиров, алхимии и еды длятся дольше (атака, защита, здоровье, сопротивления, иммунитеты…): от x2 до x100 или фиксированное время для каждого баффа (от 1 до 24 часов; более долгие остаются). Восстановление здоровья и духа со временем не меняется. Вместе с новыми эликсирами DLC (без DLC DMM их пропускает).\nТаблица: skill",
+ "1 hour - every buff": "1 час – каждый бафф",
+ "{#} hours - every buff": "{#} ч – каждый бафф"
 }
