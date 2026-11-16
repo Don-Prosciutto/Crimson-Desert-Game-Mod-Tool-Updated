@@ -4390,5 +4390,19 @@
  "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "Geliştirme her seviyede her malzemeden yalnızca 1 tane ister.\nTablo: multichangeinfo",
  "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "NPC'lere hediyeler daha fazla güven verir. Konuşmalar ve görevler değişmez.\nTablo: characterinfo",
  "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "Daha nadir ekipman her geliştirme seviyesinde daha fazla saldırı ve savunmaya sahip olur; Efsanevi +10, Sıradan +10'u geçer. Normal: Sıradışı +10 %, Nadir +20 %, Epik +35 %, Efsanevi +50 % (Mild: yarısı, Strong: iki katı). Sıradan aynı kalır. Ana oyun eşyaları (yalnızca DLC'ye ait olanlar değil).\nTablo: iteminfo",
- "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "Daha nadir ekipman her geliştirme seviyesinde daha fazla saldırı ve savunmaya sahip olur; Efsanevi +10, Sıradan +10'u geçer. Normal: Sıradışı +10 %, Nadir +20 %, Epik +35 %, Efsanevi +50 % (Mild: yarısı, Strong: iki katı). Sıradan aynı kalır. DLC eşyaları dahil (DLC yoksa DMM bunları atlar).\nTablo: iteminfo"
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "Daha nadir ekipman her geliştirme seviyesinde daha fazla saldırı ve savunmaya sahip olur; Efsanevi +10, Sıradan +10'u geçer. Normal: Sıradışı +10 %, Nadir +20 %, Epik +35 %, Efsanevi +50 % (Mild: yarısı, Strong: iki katı). Sıradan aynı kalır. DLC eşyaları dahil (DLC yoksa DMM bunları atlar).\nTablo: iteminfo",
+ "Ice Blue": "Buz mavisi",
+ "Teal": "Deniz mavisi",
+ "Toxic Green": "Zehir yeşili",
+ "Crimson Red": "Kızıl",
+ "Magenta": "Macenta",
+ "Violet": "Mor",
+ "Silver": "Gümüş",
+ "Custom…": "Özel…",
+ "Pick any colour": "Herhangi bir renk seç",
+ "Weapon effect colour": "Silah efekti rengi",
+ "A weapon's glow in another colour, as bright as the game's - e.g. the Lumen Sword's pink beam in blue. Saved as its own DMM mod.": "Bir silahın parıltısı başka bir renkte, oyundaki kadar parlak – ör. Lumen Sword'un pembe ışını mavi. Ayrı bir DMM modu olarak kaydedilir.",
+ "Saves a DMM mod that recolours the effect (load it in DMM and mount).": "Efekti yeniden renklendiren bir DMM modu kaydeder (DMM'de yükle ve bağla).",
+ "Saved ({#} colour values).\n\nLoad the file in DMM, activate it and mount. Only one colour mod per weapon at a time.\n\nFile: {#}": "Kaydedildi ({#} renk değeri).\n\nDosyayı DMM'de yükle, etkinleştir ve bağla. Silah başına aynı anda yalnızca bir renk modu.\n\nDosya: {#}",
+ "{#}: {#} colour values saved to {#}": "{#}: {#} renk değeri {#} dosyasına kaydedildi"
 }

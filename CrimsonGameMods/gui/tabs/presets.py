@@ -18,8 +18,9 @@ import tempfile
 from typing import Dict, Optional, Tuple
 
 from PySide6.QtCore import Signal
+from PySide6.QtGui import QColor, QIcon, QPixmap
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QMessageBox,
+    QCheckBox, QColorDialog, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QMessageBox,
     QPushButton, QSpinBox, QVBoxLayout, QWidget, QScrollArea, QApplication,
 )
 
@@ -87,6 +88,7 @@ class PresetsTab(QWidget):
                 h.addWidget(combo)
             self._rows[p["id"]] = (cb, combo)
             cl.addWidget(card)
+        cl.addWidget(self._build_lumen_card())
         cl.addStretch(1)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -118,6 +120,107 @@ class PresetsTab(QWidget):
         self._status = QLabel("")
         self._status.setStyleSheet(f"color: {COLORS['accent']}; padding: 2px;")
         lay.addWidget(self._status)
+
+    # ── Weapon effect colour (own mod, byte patch) ──
+    def _build_lumen_card(self) -> QFrame:
+        import weapon_colors
+        card = QFrame()
+        card.setStyleSheet(f"QFrame {{ border: 1px solid {COLORS['border']}; "
+                           f"border-radius: 6px; background: {COLORS['panel']}; }}")
+        h = QHBoxLayout(card)
+        h.setContentsMargins(10, 8, 10, 8)
+        v = QVBoxLayout()
+        t = QLabel("Weapon effect colour")
+        t.setStyleSheet("font-weight: bold; border: none;")
+        v.addWidget(t)
+        d = QLabel("A weapon's glow in another colour, as bright as the game's - e.g. the "
+                   "Lumen Sword's pink beam in blue. Saved as its own DMM mod.")
+        d.setStyleSheet(f"color: {COLORS['text_dim']}; border: none;")
+        d.setWordWrap(True)
+        v.addWidget(d)
+        h.addLayout(v, 1)
+        self._lumen_weapon = QComboBox()
+        self._lumen_weapon.setMinimumWidth(220)
+        for wid, w in weapon_colors.WEAPONS.items():
+            self._lumen_weapon.addItem(w["name"] + (" (DLC)" if w.get("dlc") else ""), wid)
+        h.addWidget(self._lumen_weapon)
+        self._lumen_combo = QComboBox()
+        self._lumen_combo.setMinimumWidth(150)
+        for name, hexc in weapon_colors.PRESETS:
+            self._lumen_combo.addItem(self._swatch_icon(hexc), name, hexc)
+        self._lumen_combo.currentIndexChanged.connect(lambda _i: self._lumen_update_swatch())
+        h.addWidget(self._lumen_combo)
+        custom = QPushButton("Custom…")
+        custom.setToolTip("Pick any colour")
+        custom.clicked.connect(self._lumen_custom)
+        h.addWidget(custom)
+        self._lumen_swatch = QLabel()
+        self._lumen_swatch.setFixedSize(26, 26)
+        h.addWidget(self._lumen_swatch)
+        save = QPushButton("Save as mod")
+        save.setStyleSheet("QPushButton { " + button_css("primary") + " font-weight: bold; "
+                           "padding: 6px 14px; }")
+        save.setToolTip("Saves a DMM mod that recolours the effect (load it in DMM and mount).")
+        save.clicked.connect(self._lumen_save)
+        h.addWidget(save)
+        self._lumen_update_swatch()
+        return card
+
+    @staticmethod
+    def _swatch_icon(hexc: str) -> QIcon:
+        pm = QPixmap(14, 14)
+        pm.fill(QColor(hexc))
+        return QIcon(pm)
+
+    def _lumen_color(self) -> str:
+        return self._lumen_combo.currentData() or "#2f6bff"
+
+    def _lumen_update_swatch(self) -> None:
+        self._lumen_swatch.setStyleSheet(
+            f"background: {self._lumen_color()}; border: 1px solid {COLORS['border']}; "
+            f"border-radius: 4px;")
+
+    def _lumen_custom(self) -> None:
+        c = QColorDialog.getColor(QColor(self._lumen_color()), self, "Weapon effect colour")
+        if not c.isValid():
+            return
+        hexc = c.name()
+        for i in range(self._lumen_combo.count()):
+            if self._lumen_combo.itemData(i) == hexc:
+                self._lumen_combo.setCurrentIndex(i)
+                return
+        self._lumen_combo.addItem(self._swatch_icon(hexc), hexc.upper(), hexc)
+        self._lumen_combo.setCurrentIndex(self._lumen_combo.count() - 1)
+
+    def _lumen_save(self) -> None:
+        import weapon_colors
+        gp = self._game_path or self._config.get("game_install_path", "")
+        if not gp or not os.path.isfile(os.path.join(gp, "meta", "0.papgt")):
+            QMessageBox.warning(self, "Weapon effect colour", "Set the game folder first.")
+            return
+        hexc = self._lumen_color()
+        wid = self._lumen_weapon.currentData() or "lumen"
+        wname = weapon_colors.WEAPONS[wid]["name"]
+        cname = self._lumen_combo.currentText()
+        try:
+            mod = weapon_colors.build_mod(weapon_colors.read_files(gp, wid), hexc,
+                                         title=f"{wname} - {cname}", weapon=wid)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Weapon effect colour failed: %s", e)
+            QMessageBox.critical(self, "Weapon effect colour", str(e))
+            return
+        fname = (wname.split("/")[0].strip() + "_" + cname).replace("#", "").replace(" ", "")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save as mod", f"{fname}.json", "DMM mod (*.json);;All Files (*)")
+        if not path:
+            return
+        weapon_colors.write_mod(path, mod)
+        n = sum(len(p["changes"]) for p in mod["patches"])
+        self._status.setText(f"{wname}: {n} colour values saved to {os.path.basename(path)}")
+        QMessageBox.information(
+            self, "Save as mod",
+            f"Saved ({n} colour values).\n\nLoad the file in DMM, activate it and mount. "
+            f"Only one colour mod per weapon at a time.\n\nFile: {path}")
 
     # ── helpers ──
     def _chosen(self) -> Dict[str, object]:

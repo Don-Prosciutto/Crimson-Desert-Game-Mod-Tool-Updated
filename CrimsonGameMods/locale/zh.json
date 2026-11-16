@@ -4390,5 +4390,19 @@
  "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "精炼在每个等级都只需每种材料 1 个。\n数据表: multichangeinfo",
  "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "送给 NPC 的礼物会带来更多信任。对话和任务不变。\n数据表: characterinfo",
  "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "稀有度越高的装备在每个精炼等级都有更高的攻击和防御，传说 +10 会强于普通 +10。Normal：优秀 +10 %、稀有 +20 %、史诗 +35 %、传说 +50 %（Mild：一半，Strong：两倍）。普通不变。仅本体物品（不含 DLC 专属物品）。\n数据表: iteminfo",
- "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "稀有度越高的装备在每个精炼等级都有更高的攻击和防御，传说 +10 会强于普通 +10。Normal：优秀 +10 %、稀有 +20 %、史诗 +35 %、传说 +50 %（Mild：一半，Strong：两倍）。普通不变。包含 DLC 物品（没有 DLC 时 DMM 会跳过）。\n数据表: iteminfo"
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "稀有度越高的装备在每个精炼等级都有更高的攻击和防御，传说 +10 会强于普通 +10。Normal：优秀 +10 %、稀有 +20 %、史诗 +35 %、传说 +50 %（Mild：一半，Strong：两倍）。普通不变。包含 DLC 物品（没有 DLC 时 DMM 会跳过）。\n数据表: iteminfo",
+ "Ice Blue": "冰蓝",
+ "Teal": "青绿",
+ "Toxic Green": "毒绿",
+ "Crimson Red": "深红",
+ "Magenta": "洋红",
+ "Violet": "紫罗兰",
+ "Silver": "银色",
+ "Custom…": "自定义…",
+ "Pick any colour": "选择任意颜色",
+ "Weapon effect colour": "武器特效颜色",
+ "A weapon's glow in another colour, as bright as the game's - e.g. the Lumen Sword's pink beam in blue. Saved as its own DMM mod.": "将武器的光效改为其他颜色，亮度与游戏相同——例如把 Lumen Sword 的粉色光束改成蓝色。保存为单独的 DMM Mod。",
+ "Saves a DMM mod that recolours the effect (load it in DMM and mount).": "保存一个改变特效颜色的 DMM Mod（在 DMM 中加载并挂载）。",
+ "Saved ({#} colour values).\n\nLoad the file in DMM, activate it and mount. Only one colour mod per weapon at a time.\n\nFile: {#}": "已保存（{#} 个颜色值）。\n\n在 DMM 中加载文件、启用并挂载。每把武器同时只能用一个颜色 Mod。\n\n文件：{#}",
+ "{#}: {#} colour values saved to {#}": "{#}：已将 {#} 个颜色值保存到 {#}"
 }

@@ -4391,5 +4391,19 @@
  "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "Ulepszanie wymaga tylko 1 sztuki każdego materiału, na każdym poziomie.\nTabela: multichangeinfo",
  "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "Prezenty dla NPC dają więcej zaufania. Rozmowy i zadania bez zmian.\nTabela: characterinfo",
  "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "Rzadszy ekwipunek ma więcej ataku i obrony na każdym poziomie ulepszenia, więc Legendarny +10 pokonuje Zwykły +10. Normal: Niezwykły +10 %, Rzadki +20 %, Epicki +35 %, Legendarny +50 % (Mild: połowa, Strong: podwójnie). Zwykły bez zmian. Przedmioty gry podstawowej (nie tylko z DLC).\nTabela: iteminfo",
- "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "Rzadszy ekwipunek ma więcej ataku i obrony na każdym poziomie ulepszenia, więc Legendarny +10 pokonuje Zwykły +10. Normal: Niezwykły +10 %, Rzadki +20 %, Epicki +35 %, Legendarny +50 % (Mild: połowa, Strong: podwójnie). Zwykły bez zmian. Razem z przedmiotami z DLC (bez DLC DMM je pomija).\nTabela: iteminfo"
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "Rzadszy ekwipunek ma więcej ataku i obrony na każdym poziomie ulepszenia, więc Legendarny +10 pokonuje Zwykły +10. Normal: Niezwykły +10 %, Rzadki +20 %, Epicki +35 %, Legendarny +50 % (Mild: połowa, Strong: podwójnie). Zwykły bez zmian. Razem z przedmiotami z DLC (bez DLC DMM je pomija).\nTabela: iteminfo",
+ "Ice Blue": "Lodowy błękit",
+ "Teal": "Morski",
+ "Toxic Green": "Toksyczna zieleń",
+ "Crimson Red": "Karmazynowy",
+ "Magenta": "Magenta",
+ "Violet": "Fiolet",
+ "Silver": "Srebrny",
+ "Custom…": "Własny…",
+ "Pick any colour": "Wybierz dowolny kolor",
+ "Weapon effect colour": "Kolor efektu broni",
+ "A weapon's glow in another colour, as bright as the game's - e.g. the Lumen Sword's pink beam in blue. Saved as its own DMM mod.": "Poświata broni w innym kolorze, tak jasna jak w grze – np. różowy promień Lumen Sword na niebiesko. Zapisywana jako osobny mod DMM.",
+ "Saves a DMM mod that recolours the effect (load it in DMM and mount).": "Zapisuje mod DMM zmieniający kolor efektu (wczytaj w DMM i zamontuj).",
+ "Saved ({#} colour values).\n\nLoad the file in DMM, activate it and mount. Only one colour mod per weapon at a time.\n\nFile: {#}": "Zapisano ({#} wartości kolorów).\n\nWczytaj plik w DMM, aktywuj i zamontuj. Tylko jeden mod koloru na broń naraz.\n\nPlik: {#}",
+ "{#}: {#} colour values saved to {#}": "{#}: zapisano {#} wartości kolorów w {#}"
 }

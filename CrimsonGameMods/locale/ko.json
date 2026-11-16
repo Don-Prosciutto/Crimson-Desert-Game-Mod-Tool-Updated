@@ -4391,5 +4391,19 @@
  "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "재련에 모든 단계에서 각 재료가 1개만 필요합니다.\n테이블: multichangeinfo",
  "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "NPC에게 주는 선물로 더 많은 신뢰를 얻습니다. 대화와 퀘스트는 그대로입니다.\n테이블: characterinfo",
  "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "희귀한 장비일수록 모든 재련 단계에서 공격력과 방어력이 높아져, 전설 +10이 일반 +10보다 강해집니다. Normal: 고급 +10 %, 희귀 +20 %, 영웅 +35 %, 전설 +50 % (Mild: 절반, Strong: 2배). 일반은 그대로입니다. 본편 아이템만 (DLC 전용 아이템 제외).\n테이블: iteminfo",
- "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "희귀한 장비일수록 모든 재련 단계에서 공격력과 방어력이 높아져, 전설 +10이 일반 +10보다 강해집니다. Normal: 고급 +10 %, 희귀 +20 %, 영웅 +35 %, 전설 +50 % (Mild: 절반, Strong: 2배). 일반은 그대로입니다. DLC 아이템 포함 (DLC가 없으면 DMM이 건너뜁니다).\n테이블: iteminfo"
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "희귀한 장비일수록 모든 재련 단계에서 공격력과 방어력이 높아져, 전설 +10이 일반 +10보다 강해집니다. Normal: 고급 +10 %, 희귀 +20 %, 영웅 +35 %, 전설 +50 % (Mild: 절반, Strong: 2배). 일반은 그대로입니다. DLC 아이템 포함 (DLC가 없으면 DMM이 건너뜁니다).\n테이블: iteminfo",
+ "Ice Blue": "아이스 블루",
+ "Teal": "청록",
+ "Toxic Green": "독성 녹색",
+ "Crimson Red": "진홍",
+ "Magenta": "마젠타",
+ "Violet": "바이올렛",
+ "Silver": "은색",
+ "Custom…": "사용자 지정…",
+ "Pick any colour": "원하는 색 선택",
+ "Weapon effect colour": "무기 이펙트 색상",
+ "A weapon's glow in another colour, as bright as the game's - e.g. the Lumen Sword's pink beam in blue. Saved as its own DMM mod.": "무기의 빛을 다른 색으로 (게임과 같은 밝기) – 예: Lumen Sword의 분홍 광선을 파란색으로. 별도의 DMM 모드로 저장됩니다.",
+ "Saves a DMM mod that recolours the effect (load it in DMM and mount).": "이펙트 색을 바꾸는 DMM 모드를 저장합니다 (DMM에서 불러와 마운트).",
+ "Saved ({#} colour values).\n\nLoad the file in DMM, activate it and mount. Only one colour mod per weapon at a time.\n\nFile: {#}": "저장했습니다 (색상 값 {#}개).\n\nDMM에서 파일을 불러와 활성화하고 마운트하세요. 무기당 색상 모드는 하나만.\n\n파일: {#}",
+ "{#}: {#} colour values saved to {#}": "{#}: 색상 값 {#}개를 {#}에 저장"
 }
