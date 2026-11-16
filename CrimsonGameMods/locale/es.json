@@ -4405,5 +4405,7 @@
  "A weapon's glow in another colour, as bright as the game's - e.g. the Lumen Sword's pink beam in blue. Saved as its own DMM mod.": "El brillo de un arma en otro color, tan intenso como en el juego; p. ej., el rayo rosa de la Lumen Sword en azul. Se guarda como un mod de DMM aparte.",
  "Saves a DMM mod that recolours the effect (load it in DMM and mount).": "Guarda un mod de DMM que cambia el color del efecto (cárgalo en DMM y móntalo).",
  "Saved ({#} colour values).\n\nLoad the file in DMM, activate it and mount. Only one colour mod per weapon at a time.\n\nFile: {#}": "Guardado ({#} valores de color).\n\nCarga el archivo en DMM, actívalo y móntalo. Solo un mod de color por arma a la vez.\n\nArchivo: {#}",
- "{#}: {#} colour values saved to {#}": "{#}: {#} valores de color guardados en {#}"
+ "{#}: {#} colour values saved to {#}": "{#}: {#} valores de color guardados en {#}",
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Level 1-10: Legendary +10 % per level, Epic 70 %, Rare 40 %, Uncommon 20 % of that. Level 5: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 %. Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "El equipo más raro tiene más ataque y defensa en cada nivel de refinamiento: un Legendario +10 supera a un Común +10. Nivel 1–10: Legendario +10 % por nivel, Épico 70 %, Raro 40 %, Poco común 20 % de eso. Nivel 5: Poco común +10 %, Raro +20 %, Épico +35 %, Legendario +50 %. Común no cambia. Incluye los objetos del DLC (DMM los omite sin el DLC).\nTabla: iteminfo",
+ "Level {#} - Legendary +{#} %": "Nivel {#} – Legendario +{#} %"
 }

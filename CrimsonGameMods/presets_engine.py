@@ -48,17 +48,29 @@ def _gift_trust(recs: list, factor) -> List[dict]:
     return out
 
 
-# Rarity Matters: item_tier 1 Common ... 5 Legendary -> factor on attack/defense
-RARITY_FACTORS = {
-    "Mild":   {2: 1.05, 3: 1.10, 4: 1.175, 5: 1.25},
-    "Normal": {2: 1.10, 3: 1.20, 4: 1.35, 5: 1.50},
-    "Strong": {2: 1.20, 3: 1.40, 4: 1.70, 5: 2.00},
-}
+# Rarity Matters: item_tier 1 Common ... 5 Legendary -> factor on attack/defense.
+# Level 1-10: Legendary +10 % per level, the other tiers get a share of that
+# (level 5 = Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 %).
+RARITY_SHARES = {2: 0.2, 3: 0.4, 4: 0.7, 5: 1.0}
+RARITY_LEVELS = list(range(1, 11))
+RARITY_OLD_NAMES = {"Mild": 2.5, "Normal": 5, "Strong": 10}     # earlier versions
+
+
+def rarity_factors(level) -> Dict[int, float]:
+    lv = RARITY_OLD_NAMES.get(level, level)
+    try:
+        lv = float(lv)
+    except (TypeError, ValueError):
+        lv = 5.0
+    lv = min(10.0, max(1.0, lv))
+    return {t: 1.0 + sh * lv / 10.0 for t, sh in RARITY_SHARES.items()}
+
+
 RARITY_STATS = (1000002, 1000003)        # DDD attack, DPV defense (statusinfo)
 
 
-def _rarity_matters(recs: list, strength) -> List[dict]:
-    factors = RARITY_FACTORS.get(strength or "Normal", RARITY_FACTORS["Normal"])
+def _rarity_matters(recs: list, level) -> List[dict]:
+    factors = rarity_factors(level if level is not None else 5)
     out = []
     for r in recs:
         f = factors.get(r.get("item_tier") or 0)
@@ -87,10 +99,12 @@ PRESETS = [
     {"id": "rarity_matters", "table": "iteminfo", "fn": _rarity_matters,
      "title": "Rarity Matters",
      "desc": "Rarer gear has more attack and defense at every refinement level, so a "
-             "Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, "
-             "Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. "
+             "Legendary +10 beats a Common +10. Level 1-10: Legendary +10 % per level, "
+             "Epic 70 %, Rare 40 %, Uncommon 20 % of that. Level 5: Uncommon +10 %, "
+             "Rare +20 %, Epic +35 %, Legendary +50 %. Common stays. "
              "Includes the DLC items (skipped by DMM without the DLC).",
-     "choices": ["Mild", "Normal", "Strong"], "default": "Normal", "choice_label": "",
+     "choices": RARITY_LEVELS, "default": 5,
+     "choice_names": [f"Level {n} - Legendary +{n * 10} %" for n in RARITY_LEVELS],
      "dlc_too": True},
 ]
 

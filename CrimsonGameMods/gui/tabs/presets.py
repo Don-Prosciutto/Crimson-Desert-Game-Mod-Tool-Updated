@@ -82,8 +82,10 @@ class PresetsTab(QWidget):
             combo = None
             if p.get("choices"):
                 combo = QComboBox()
-                for c in p["choices"]:
-                    combo.addItem(f"{p.get('choice_label', '')}{c}", c)
+                names = p.get("choice_names") or []
+                for i, c in enumerate(p["choices"]):
+                    text = names[i] if i < len(names) else f"{p.get('choice_label', '')}{c}"
+                    combo.addItem(text, c)
                 combo.setCurrentIndex(p["choices"].index(p.get("default", p["choices"][0])))
                 h.addWidget(combo)
             self._rows[p["id"]] = (cb, combo)
