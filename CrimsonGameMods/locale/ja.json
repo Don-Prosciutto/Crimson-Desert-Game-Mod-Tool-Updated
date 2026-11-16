@@ -4345,5 +4345,7 @@
  "Saved ({#} colour values).\n\nLoad the file in DMM, activate it and mount. Only one colour mod per weapon at a time.\n\nFile: {#}": "保存しました（色の値 {#} 件）。\n\nDMMでファイルを読み込み、有効化してマウントしてください。1つの武器につき色Modは1つだけ。\n\nファイル：{#}",
  "{#}: {#} colour values saved to {#}": "{#}：色の値 {#} 件を {#} に保存",
  "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Level 1-10: Legendary +10 % per level, Epic 70 %, Rare 40 %, Uncommon 20 % of that. Level 5: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 %. Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "レアな装備ほど、どの精錬段階でも攻撃力と防御力が高くなり、レジェンダリー+10がコモン+10を上回ります。レベル1～10：レジェンダリーはレベルごとに+10 %、エピックはその70 %、レアは40 %、アンコモンは20 %。レベル5：アンコモン+10 %、レア+20 %、エピック+35 %、レジェンダリー+50 %。コモンは変わりません。DLCのアイテムも含みます（DLCがない場合DMMはスキップします）。\nテーブル: iteminfo",
- "Level {#} - Legendary +{#} %": "レベル{#} – レジェンダリー+{#} %"
+ "Level {#} - Legendary +{#} %": "レベル{#} – レジェンダリー+{#} %",
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Every rarity above Common gets stronger than vanilla: each level adds +10 % for Legendary and 70 % / 40 % / 20 % of that for Epic / Rare / Uncommon. Level 5: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 %. Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "レアな装備ほど、どの精錬段階でも攻撃力と防御力が高くなり、レジェンダリー+10がコモン+10を上回ります。コモンより上のすべてのレア度がバニラより強くなります：レベルごとにレジェンダリーは+10 %、エピック／レア／アンコモンはその70 %／40 %／20 %。レベル5：アンコモン+10 %、レア+20 %、エピック+35 %、レジェンダリー+50 %。コモンは変わりません。DLCのアイテムも含みます（DLCがない場合DMMはスキップします）。\nテーブル: iteminfo",
+ "Level {#} - up to +{#} % over vanilla": "レベル{#} – バニラより最大+{#} %"
 }

@@ -4355,5 +4355,7 @@
  "Saved ({#} colour values).\n\nLoad the file in DMM, activate it and mount. Only one colour mod per weapon at a time.\n\nFile: {#}": "已儲存（{#} 個顏色值）。\n\n在 DMM 中載入檔案、啟用並掛載。每把武器同時只能用一個顏色 Mod。\n\n檔案：{#}",
  "{#}: {#} colour values saved to {#}": "{#}：已將 {#} 個顏色值儲存到 {#}",
  "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Level 1-10: Legendary +10 % per level, Epic 70 %, Rare 40 %, Uncommon 20 % of that. Level 5: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 %. Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "稀有度越高的裝備在每個精煉等級都有更高的攻擊和防禦，傳說 +10 會強於普通 +10。等級 1–10：傳說每級 +10 %，史詩為其 70 %，稀有 40 %，優秀 20 %。等級 5：優秀 +10 %、稀有 +20 %、史詩 +35 %、傳說 +50 %。普通不變。包含 DLC 物品（沒有 DLC 時 DMM 會跳過）。\n資料表: iteminfo",
- "Level {#} - Legendary +{#} %": "等級 {#} – 傳說 +{#} %"
+ "Level {#} - Legendary +{#} %": "等級 {#} – 傳說 +{#} %",
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Every rarity above Common gets stronger than vanilla: each level adds +10 % for Legendary and 70 % / 40 % / 20 % of that for Epic / Rare / Uncommon. Level 5: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 %. Common stays. Includes the DLC items (skipped by DMM without the DLC).\nTable: iteminfo": "稀有度越高的裝備在每個精煉等級都有更高的攻擊和防禦，傳說 +10 會強於普通 +10。普通以上的所有稀有度都會比原版更強：每級傳說 +10 %，史詩 / 稀有 / 優秀獲得其 70 % / 40 % / 20 %。等級 5：優秀 +10 %、稀有 +20 %、史詩 +35 %、傳說 +50 %。普通不變。包含 DLC 物品（沒有 DLC 時 DMM 會跳過）。\n資料表: iteminfo",
+ "Level {#} - up to +{#} % over vanilla": "等級 {#} – 比原版最多 +{#} %"
 }

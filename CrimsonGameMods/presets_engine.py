@@ -99,12 +99,13 @@ PRESETS = [
     {"id": "rarity_matters", "table": "iteminfo", "fn": _rarity_matters,
      "title": "Rarity Matters",
      "desc": "Rarer gear has more attack and defense at every refinement level, so a "
-             "Legendary +10 beats a Common +10. Level 1-10: Legendary +10 % per level, "
-             "Epic 70 %, Rare 40 %, Uncommon 20 % of that. Level 5: Uncommon +10 %, "
-             "Rare +20 %, Epic +35 %, Legendary +50 %. Common stays. "
+             "Legendary +10 beats a Common +10. Every rarity above Common gets stronger "
+             "than vanilla: each level adds +10 % for Legendary and 70 % / 40 % / 20 % of "
+             "that for Epic / Rare / Uncommon. Level 5: Uncommon +10 %, Rare +20 %, "
+             "Epic +35 %, Legendary +50 %. Common stays. "
              "Includes the DLC items (skipped by DMM without the DLC).",
      "choices": RARITY_LEVELS, "default": 5,
-     "choice_names": [f"Level {n} - Legendary +{n * 10} %" for n in RARITY_LEVELS],
+     "choice_names": [f"Level {n} - up to +{n * 10} % over vanilla" for n in RARITY_LEVELS],
      "dlc_too": True},
 ]
 
