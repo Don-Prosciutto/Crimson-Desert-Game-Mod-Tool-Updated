@@ -582,7 +582,7 @@ PASSENGER_TARGETS = [{'file': 'vehicleinfo.pabgb',
                                                           'type': 'ConditionData_CheckRidingVehicleType'}}}}}]}]
 
 
-def passenger_field_json(title: str = "Wyvern passenger & carry") -> dict:
+def passenger_field_json(title: str = "Wyvern: Passenger & Carry (tables)") -> dict:
     return {"modinfo": {"title": title, "version": "1.0", "author": "CrimsonGameMods",
                         "description": "Wyvern: second seat, carry dead/bound people, NPC on the "
                                        "back seat. Use together with the wyvern mod (.zip)."},
@@ -598,7 +598,7 @@ def read_game_files(game_path: str) -> Dict[str, bytes]:
 
 def build_mod(files: Dict[str, bytes], fire_breath=True, fireballs=True, passenger=True,
               key: str = KEYS[DEFAULT_KEY], interval: Optional[float] = None,
-              title: str = "Wyvern Fire Breath & Passenger") -> dict:
+              title: Optional[str] = None) -> dict:
     """{'zip': bytes or None, 'field_json': dict or None, 'info': dict}"""
     if not (fire_breath or fireballs or passenger):
         raise WyvernError("nothing selected")
@@ -617,6 +617,10 @@ def build_mod(files: Dict[str, bytes], fire_breath=True, fireballs=True, passeng
         parts.append("fireballs instead of wind balls")
     if passenger:
         parts.append("passenger seat on the back (load the .field.json too)")
+    if not title:
+        names = (["Fire Breath"] if fire_breath else []) + (["Fireballs"] if fireballs else []) \
+            + (["Second Seat"] if passenger else [])
+        title = "Wyvern: " + " + ".join(names)
     modinfo = {"name": title, "title": title, "version": "1.0", "author": "CrimsonGameMods",
                "type": "mesh_loose_mod", "format": "v1", "game": "Crimson Desert",
                "files_dir": "files", "game_version": "2.05.00",

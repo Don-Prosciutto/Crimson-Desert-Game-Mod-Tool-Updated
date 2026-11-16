@@ -298,7 +298,7 @@ class PresetsTab(QWidget):
             QMessageBox.critical(self, "Wyvern", str(e))
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save as mod", "Wyvern_FireBreath_Passenger.zip",
+            self, "Save as mod", "Wyvern_FireBreath.zip",
             "DMM mod (*.zip);;All Files (*)")
         if not path:
             return
@@ -308,7 +308,9 @@ class PresetsTab(QWidget):
             f.write(mod["zip"])
         saved = [os.path.basename(path)]
         if mod["field_json"]:
-            fj = path[:-4] + ".field.json"
+            # own base name: DMM names the mod folder after the file, the same name
+            # for the .zip and the .field.json makes the second import fail
+            fj = path[:-4] + "_Passenger.field.json"
             with open(fj, "w", encoding="utf-8") as f:
                 json.dump(mod["field_json"], f, indent=2, ensure_ascii=False)
             saved.append(os.path.basename(fj))
