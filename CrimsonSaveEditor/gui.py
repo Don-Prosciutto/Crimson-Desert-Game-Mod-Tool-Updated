@@ -3210,6 +3210,10 @@ class _SaveStructureWatch(QObject):
 
 
 class MainWindow(QMainWindow):
+    # Set by the Game Mod Tool before it builds the merged Save Editor: the
+    # last save is then opened by start_deferred_autoload() once the window
+    # is on screen, not during the build (2.5).
+    DEFER_AUTOLOAD = False
 
     _icon_ready = Signal(int)
 
@@ -3308,12 +3312,12 @@ class MainWindow(QMainWindow):
 
         self._refresh_sidebar()
         last_path = self._config.get("last_save_path", "")
-        if last_path and os.path.isfile(last_path):
-            self._load_save(last_path)
-            self._update_status(
-                f"Loaded last save: {os.path.basename(last_path)}  |  "
-                f"Item DB: {len(self._name_db.items)} items"
-            )
+        self._deferred_autoload_path = ""
+        if last_path and os.path.isfile(last_path) and type(self).DEFER_AUTOLOAD:
+            self._deferred_autoload_path = last_path   # see start_deferred_autoload
+            self._update_status(f"Opening the last save: {os.path.basename(last_path)}...")
+        elif last_path and os.path.isfile(last_path):
+            self._autoload_last_save(last_path)
         else:
             self._update_status(
                 f"Ready. Item DB: {len(self._name_db.items)} items"
@@ -33791,6 +33795,21 @@ QCheckBox::indicator {{
         if dialog.exec() == QDialog.Accepted and list_widget.currentRow() >= 0:
             idx = list_widget.currentRow()
             self._load_save(saves[idx]["path"])
+
+    def _autoload_last_save(self, last_path: str) -> None:
+        self._load_save(last_path)
+        self._update_status(
+            f"Loaded last save: {os.path.basename(last_path)}  |  "
+            f"Item DB: {len(self._name_db.items)} items"
+        )
+
+    def start_deferred_autoload(self, delay_ms: int = 150) -> None:
+        """Open the remembered last save shortly after the window is shown."""
+        path, self._deferred_autoload_path = getattr(self, "_deferred_autoload_path", ""), ""
+        if not path or self._save_data is not None or not os.path.isfile(path):
+            return
+        QTimer.singleShot(delay_ms, lambda p=path: (
+            None if self._save_data is not None else self._autoload_last_save(p)))
 
     def _load_save(self, path: str) -> None:
         self._start_save_load(path)

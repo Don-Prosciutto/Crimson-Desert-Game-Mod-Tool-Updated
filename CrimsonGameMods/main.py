@@ -305,6 +305,14 @@ def main() -> None:
     except Exception as e:
         print(f"[lang] first-run hookup failed: {e}")
 
+    # The last save opens now that the window is on screen (2.5) - not while
+    # it was being built. A save given on the command line wins.
+    if not (len(sys.argv) > 1 and os.path.isfile(sys.argv[1])):
+        try:
+            window.start_deferred_autoload()
+        except Exception as e:  # noqa: BLE001
+            print(f"[startup] opening the last save failed: {e}")
+
     if len(sys.argv) > 1:
         path = sys.argv[1]
         if os.path.isfile(path):

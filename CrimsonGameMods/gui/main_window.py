@@ -1035,6 +1035,12 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._se_load_started = False
         QTimer.singleShot(250, self.finish_startup_loading)
 
+    def start_deferred_autoload(self) -> None:
+        """The Save Editor's last save, once the window is on screen (main.py)."""
+        se = getattr(self, "_se_window", None)
+        if se is not None and hasattr(se, "start_deferred_autoload"):
+            se.start_deferred_autoload()
+
     def finish_startup_loading(self) -> None:
         """Build the embedded Save Editor once (the slow part of startup)."""
         if self._se_load_started:
@@ -1074,6 +1080,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
                                        "(is the CrimsonSaveEditor folder next to CrimsonGameMods?)")
             from save_editor import gui as se_gui
             self._se_seed_config(se_gui)
+            se_gui.MainWindow.DEFER_AUTOLOAD = True   # last save: after the window is shown
             win = se_gui.MainWindow()
             # The engine window itself never appears: a hidden 0x0 child.
             win.setParent(self, Qt.Widget)
