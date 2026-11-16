@@ -4388,5 +4388,16 @@
  "Longer Elixir and Food Buffs": "更長的藥劑和食物增益",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "藥劑、煉金和食物的增益持續更久（攻擊、防禦、生命、抗性、免疫等）：x2 到 x100，或為每個增益設定固定時長（1 到 24 小時；原本更長的維持不變）。隨時間恢復的生命與精神不變。包含新的 DLC 藥劑（沒有 DLC 時 DMM 會跳過）。\n資料表: skill",
  "1 hour - every buff": "1 小時 – 每個增益",
- "{#} hours - every buff": "{#} 小時 – 每個增益"
+ "{#} hours - every buff": "{#} 小時 – 每個增益",
+ "Wyvern: fire breath and passenger": "飛龍：火焰吐息與乘客",
+ "Fire breath": "火焰吐息",
+ "RT (strong attack)": "RT（重攻擊）",
+ "LB (guard)": "LB（格擋）",
+ "Key for the fire breath": "火焰吐息按鍵",
+ "Fireballs instead of wind balls": "火球取代風球",
+ "Passenger seat": "乘客座位",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "背上第二個座位，可搬運被綁或死亡的人（另存一個 .field.json）",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "儲存一個 DMM 模組（.zip），選擇乘客座位時在旁邊另存一個 .field.json。在 DMM 中載入兩者並掛載。",
+ "Tick at least one option.": "請至少勾選一項。",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "飛龍在飛行中噴火（按住按鍵），發射火球取代風球，並可搭載乘客、被綁或死亡的人。無 ASI、不改速度的自製版本（速度在 Mounts 頁面設定）。"
 }

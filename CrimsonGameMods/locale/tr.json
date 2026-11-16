@@ -4439,5 +4439,16 @@
  "Longer Elixir and Food Buffs": "Daha uzun iksir ve yemek buffları",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "İksir, simya ve yemek buffları daha uzun sürer (saldırı, savunma, can, dirençler, bağışıklıklar…): x2 ile x100 arası ya da her buff için sabit süre (1 ile 24 saat; zaten daha uzun sürenler kalır). Zamanla can ve ruh yenilenmesi değişmez. Yeni DLC iksirleri dahil (DLC yoksa DMM bunları atlar).\nTablo: skill",
  "1 hour - every buff": "1 saat – her buff",
- "{#} hours - every buff": "{#} saat – her buff"
+ "{#} hours - every buff": "{#} saat – her buff",
+ "Wyvern: fire breath and passenger": "Wyvern: ateş nefesi ve yolcu",
+ "Fire breath": "Ateş nefesi",
+ "RT (strong attack)": "RT (güçlü saldırı)",
+ "LB (guard)": "LB (blok)",
+ "Key for the fire breath": "Ateş nefesi tuşu",
+ "Fireballs instead of wind balls": "Rüzgar topu yerine ateş topu",
+ "Passenger seat": "Yolcu koltuğu",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "Sırtta ikinci koltuk, bağlı veya ölü kişileri taşıma (ayrıca bir .field.json kaydeder)",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "Bir DMM modu (.zip) ve yolcu koltuğuyla yanına bir .field.json kaydeder. İkisini de DMM'e yükleyip bağlayın.",
+ "Tick at least one option.": "En az bir seçeneği işaretleyin.",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "Wyvern uçarken ateş püskürtür (tuşu basılı tutun), rüzgar topu yerine ateş topu atar ve bir yolcu, bağlı ya da ölü kişileri taşıyabilir. ASI'siz ve hız değişikliği olmadan kendi yapımımız (hız Mounts sayfasında)."
 }

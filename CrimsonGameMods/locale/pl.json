@@ -4440,5 +4440,16 @@
  "Longer Elixir and Food Buffs": "Dłuższe buffy z eliksirów i jedzenia",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Buffy z eliksirów, alchemii i jedzenia trwają dłużej (atak, obrona, zdrowie, odporności, niewrażliwości…): od x2 do x100 albo stały czas dla każdego buffa (1 do 24 godzin; dłuższe zostają). Regeneracja zdrowia i ducha w czasie bez zmian. Razem z nowymi eliksirami z DLC (bez DLC DMM je pomija).\nTabela: skill",
  "1 hour - every buff": "1 godzina – każdy buff",
- "{#} hours - every buff": "{#} godz. – każdy buff"
+ "{#} hours - every buff": "{#} godz. – każdy buff",
+ "Wyvern: fire breath and passenger": "Wywerna: ogniste tchnienie i pasażer",
+ "Fire breath": "Ogniste tchnienie",
+ "RT (strong attack)": "RT (silny atak)",
+ "LB (guard)": "LB (blok)",
+ "Key for the fire breath": "Klawisz ognistego tchnienia",
+ "Fireballs instead of wind balls": "Kule ognia zamiast kul wiatru",
+ "Passenger seat": "Miejsce pasażera",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "Drugie miejsce na grzbiecie, przewóz związanych lub martwych (zapisuje też plik .field.json)",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "Zapisuje mod DMM (.zip), a z miejscem pasażera także plik .field.json obok. Wczytaj oba w DMM i zamontuj.",
+ "Tick at least one option.": "Zaznacz co najmniej jedną opcję.",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "Wywerna zieje ogniem w locie (przytrzymaj klawisz), strzela kulami ognia zamiast kul wiatru i może zabrać pasażera, związanych lub martwych. Własna wersja bez ASI i bez zmiany prędkości (prędkość na stronie Mounts)."
 }

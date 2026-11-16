@@ -4439,5 +4439,16 @@
  "Longer Elixir and Food Buffs": "Более долгие баффы эликсиров и еды",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Баффы от эликсиров, алхимии и еды длятся дольше (атака, защита, здоровье, сопротивления, иммунитеты…): от x2 до x100 или фиксированное время для каждого баффа (от 1 до 24 часов; более долгие остаются). Восстановление здоровья и духа со временем не меняется. Вместе с новыми эликсирами DLC (без DLC DMM их пропускает).\nТаблица: skill",
  "1 hour - every buff": "1 час – каждый бафф",
- "{#} hours - every buff": "{#} ч – каждый бафф"
+ "{#} hours - every buff": "{#} ч – каждый бафф",
+ "Wyvern: fire breath and passenger": "Виверна: огненное дыхание и пассажир",
+ "Fire breath": "Огненное дыхание",
+ "RT (strong attack)": "RT (сильная атака)",
+ "LB (guard)": "LB (блок)",
+ "Key for the fire breath": "Клавиша огненного дыхания",
+ "Fireballs instead of wind balls": "Огненные шары вместо ветряных",
+ "Passenger seat": "Место пассажира",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "Второе место на спине, перевозка связанных или мёртвых (дополнительно сохраняет .field.json)",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "Сохраняет мод DMM (.zip), а с местом пассажира ещё и .field.json рядом. Загрузите оба в DMM и смонтируйте.",
+ "Tick at least one option.": "Отметьте хотя бы один вариант.",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "Виверна дышит огнём в полёте (удерживайте клавишу), стреляет огненными шарами вместо ветряных и может везти пассажира, связанных или мёртвых. Собственная сборка без ASI и без изменения скорости (скорость на странице Mounts)."
 }

@@ -4378,5 +4378,16 @@
  "Longer Elixir and Food Buffs": "エリクサーと料理のバフ延長",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "エリクサー、錬金術、料理のバフが長く続きます（攻撃、防御、体力、耐性、免疫など）：x2〜x100、またはすべてのバフに固定時間（1〜24時間。もともと長いバフはそのまま）。時間経過による体力・精神力の回復は変わりません。DLCの新しいエリクサーも含みます（DLCがない場合DMMはスキップします）。\nテーブル: skill",
  "1 hour - every buff": "1時間 – すべてのバフ",
- "{#} hours - every buff": "{#}時間 – すべてのバフ"
+ "{#} hours - every buff": "{#}時間 – すべてのバフ",
+ "Wyvern: fire breath and passenger": "ワイバーン：火炎ブレスと同乗者",
+ "Fire breath": "火炎ブレス",
+ "RT (strong attack)": "RT（強攻撃）",
+ "LB (guard)": "LB（ガード）",
+ "Key for the fire breath": "火炎ブレスのキー",
+ "Fireballs instead of wind balls": "風の球の代わりに火球",
+ "Passenger seat": "同乗席",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "背中に2つ目の座席、拘束・死亡した人を運ぶ（.field.json も保存）",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "DMM用MOD（.zip）を保存し、同乗席ありの場合は横に .field.json も保存します。両方をDMMで読み込みマウントしてください。",
+ "Tick at least one option.": "少なくとも1つ選択してください。",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "ワイバーンが飛行中に火を吐き（キーを長押し）、風の球の代わりに火球を撃ち、同乗者や拘束・死亡した人を運べます。ASIなし・速度変更なしの独自版（速度はMountsページで設定）。"
 }

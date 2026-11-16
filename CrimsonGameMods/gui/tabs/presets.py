@@ -93,6 +93,7 @@ class PresetsTab(QWidget):
             self._rows[p["id"]] = (cb, combo)
             cl.addWidget(card)
         cl.addWidget(self._build_lumen_card())
+        cl.addWidget(self._build_wyvern_card())
         cl.addStretch(1)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -225,6 +226,97 @@ class PresetsTab(QWidget):
             self, "Save as mod",
             f"Saved ({n} colour values).\n\nLoad the file in DMM, activate it and mount. "
             f"Only one colour mod per weapon at a time.\n\nFile: {path}")
+
+    # ── Wyvern: fire breath, fireballs, passenger (own mod, loose files) ──
+    def _build_wyvern_card(self) -> QFrame:
+        card = QFrame()
+        card.setStyleSheet(f"QFrame {{ border: 1px solid {COLORS['border']}; "
+                           f"border-radius: 6px; background: {COLORS['panel']}; }}")
+        h = QHBoxLayout(card)
+        h.setContentsMargins(10, 8, 10, 8)
+        v = QVBoxLayout()
+        t = QLabel("Wyvern: fire breath and passenger")
+        t.setStyleSheet("font-weight: bold; border: none;")
+        v.addWidget(t)
+        d = QLabel("The wyvern breathes fire while flying (hold the key), shoots fireballs "
+                   "instead of wind balls and can carry a passenger, bound or dead people. "
+                   "Own build without ASI and without speed changes (set the speed on the "
+                   "Mounts page).")
+        d.setStyleSheet(f"color: {COLORS['text_dim']}; border: none;")
+        d.setWordWrap(True)
+        v.addWidget(d)
+        row = QHBoxLayout()
+        self._wyv_breath = QCheckBox("Fire breath")
+        self._wyv_breath.setChecked(True)
+        self._wyv_breath.setStyleSheet("QCheckBox { border: none; }")
+        row.addWidget(self._wyv_breath)
+        self._wyv_key = QComboBox()
+        self._wyv_key.addItem("RT (strong attack)", "key_hardattack")
+        self._wyv_key.addItem("LB (guard)", "key_guard")
+        self._wyv_key.setToolTip("Key for the fire breath")
+        row.addWidget(self._wyv_key)
+        self._wyv_fireball = QCheckBox("Fireballs instead of wind balls")
+        self._wyv_fireball.setChecked(True)
+        self._wyv_fireball.setStyleSheet("QCheckBox { border: none; }")
+        row.addWidget(self._wyv_fireball)
+        self._wyv_passenger = QCheckBox("Passenger seat")
+        self._wyv_passenger.setChecked(True)
+        self._wyv_passenger.setToolTip("Second seat on the back, carry bound or dead people "
+                                       "(saves an extra .field.json)")
+        self._wyv_passenger.setStyleSheet("QCheckBox { border: none; }")
+        row.addWidget(self._wyv_passenger)
+        row.addStretch(1)
+        v.addLayout(row)
+        h.addLayout(v, 1)
+        save = QPushButton("Save as mod")
+        save.setStyleSheet("QPushButton { " + button_css("primary") + " font-weight: bold; "
+                           "padding: 6px 14px; }")
+        save.setToolTip("Saves a DMM mod (.zip) and, with the passenger seat, a .field.json "
+                        "next to it. Load both in DMM and mount.")
+        save.clicked.connect(self._wyvern_save)
+        h.addWidget(save)
+        return card
+
+    def _wyvern_save(self) -> None:
+        import wyvern_mod
+        gp = self._game_path or self._config.get("game_install_path", "")
+        if not gp or not os.path.isfile(os.path.join(gp, "meta", "0.papgt")):
+            QMessageBox.warning(self, "Wyvern", "Set the game folder first.")
+            return
+        breath = self._wyv_breath.isChecked()
+        fireball = self._wyv_fireball.isChecked()
+        passenger = self._wyv_passenger.isChecked()
+        if not (breath or fireball or passenger):
+            QMessageBox.warning(self, "Wyvern", "Tick at least one option.")
+            return
+        key = self._wyv_key.currentData() or "key_hardattack"
+        try:
+            mod = wyvern_mod.build_mod(wyvern_mod.read_game_files(gp), breath, fireball,
+                                       passenger, key=key)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Wyvern mod failed: %s", e)
+            QMessageBox.critical(self, "Wyvern", str(e))
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save as mod", "Wyvern_FireBreath_Passenger.zip",
+            "DMM mod (*.zip);;All Files (*)")
+        if not path:
+            return
+        if not path.lower().endswith(".zip"):
+            path += ".zip"
+        with open(path, "wb") as f:
+            f.write(mod["zip"])
+        saved = [os.path.basename(path)]
+        if mod["field_json"]:
+            fj = path[:-4] + ".field.json"
+            with open(fj, "w", encoding="utf-8") as f:
+                json.dump(mod["field_json"], f, indent=2, ensure_ascii=False)
+            saved.append(os.path.basename(fj))
+        self._status.setText("Wyvern: saved " + " + ".join(saved))
+        QMessageBox.information(
+            self, "Save as mod",
+            "Saved:\n" + "\n".join(saved) + "\n\nLoad the file(s) in DMM, activate and mount. "
+            "Do not use together with other wyvern mods.")
 
     # ── helpers ──
     def _chosen(self) -> Dict[str, object]:

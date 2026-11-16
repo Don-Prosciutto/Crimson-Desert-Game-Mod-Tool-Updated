@@ -4440,5 +4440,16 @@
  "Longer Elixir and Food Buffs": "Buffs de elixires e comida mais longos",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Buffs de elixires, alquimia e comida duram mais (ataque, defesa, vida, resistências, imunidades…): x2 a x100, ou uma duração fixa para cada buff (1 a 24 horas; os que já duram mais ficam). A recuperação de vida e espírito ao longo do tempo não muda. Inclui os novos elixires do DLC (o DMM os ignora sem o DLC).\nTabela: skill",
  "1 hour - every buff": "1 hora – cada buff",
- "{#} hours - every buff": "{#} horas – cada buff"
+ "{#} hours - every buff": "{#} horas – cada buff",
+ "Wyvern: fire breath and passenger": "Wyvern: sopro de fogo e passageiro",
+ "Fire breath": "Sopro de fogo",
+ "RT (strong attack)": "RT (ataque forte)",
+ "LB (guard)": "LB (defesa)",
+ "Key for the fire breath": "Tecla do sopro de fogo",
+ "Fireballs instead of wind balls": "Bolas de fogo em vez de bolas de vento",
+ "Passenger seat": "Assento de passageiro",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "Segundo assento nas costas, levar pessoas amarradas ou mortas (salva também um .field.json)",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "Salva um mod DMM (.zip) e, com o assento de passageiro, um .field.json ao lado. Carregue ambos no DMM e monte.",
+ "Tick at least one option.": "Marque pelo menos uma opção.",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "O wyvern cospe fogo voando (segure a tecla), atira bolas de fogo em vez de bolas de vento e pode levar um passageiro, pessoas amarradas ou mortas. Versão própria sem ASI e sem mudar a velocidade (velocidade na página Mounts)."
 }

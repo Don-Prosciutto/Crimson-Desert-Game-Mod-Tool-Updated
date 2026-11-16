@@ -4440,5 +4440,16 @@
  "Longer Elixir and Food Buffs": "Buffs d'élixirs et de nourriture plus longs",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Les buffs des élixirs, de l'alchimie et de la nourriture durent plus longtemps (attaque, défense, santé, résistances, immunités…) : x2 à x100, ou une durée fixe pour chaque buff (1 à 24 heures ; les buffs déjà plus longs restent). La récupération de santé et d'esprit dans le temps reste inchangée. Avec les nouveaux élixirs du DLC (ignorés par DMM sans le DLC).\nTable: skill",
  "1 hour - every buff": "1 heure – chaque buff",
- "{#} hours - every buff": "{#} heures – chaque buff"
+ "{#} hours - every buff": "{#} heures – chaque buff",
+ "Wyvern: fire breath and passenger": "Wyvern : souffle de feu et passager",
+ "Fire breath": "Souffle de feu",
+ "RT (strong attack)": "RT (attaque puissante)",
+ "LB (guard)": "LB (garde)",
+ "Key for the fire breath": "Touche du souffle de feu",
+ "Fireballs instead of wind balls": "Boules de feu au lieu de boules de vent",
+ "Passenger seat": "Siège passager",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "Second siège sur le dos, transporter des personnes ligotées ou mortes (enregistre aussi un .field.json)",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "Enregistre un mod DMM (.zip) et, avec le siège passager, un .field.json à côté. Chargez les deux dans DMM et montez.",
+ "Tick at least one option.": "Cochez au moins une option.",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "La wyvern crache du feu en vol (maintenir la touche), tire des boules de feu au lieu de boules de vent et peut emmener un passager, des personnes ligotées ou mortes. Version maison sans ASI ni changement de vitesse (vitesse sur la page Mounts)."
 }

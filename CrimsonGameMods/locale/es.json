@@ -4440,5 +4440,16 @@
  "Longer Elixir and Food Buffs": "Buffs de elixires y comida más largos",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "Los buffs de elixires, alquimia y comida duran más (ataque, defensa, salud, resistencias, inmunidades…): x2 a x100, o una duración fija para cada buff (1 a 24 horas; los que ya duran más se quedan). La recuperación de salud y espíritu con el tiempo no cambia. Incluye los nuevos elixires del DLC (DMM los omite sin el DLC).\nTabla: skill",
  "1 hour - every buff": "1 hora – cada buff",
- "{#} hours - every buff": "{#} horas – cada buff"
+ "{#} hours - every buff": "{#} horas – cada buff",
+ "Wyvern: fire breath and passenger": "Wyvern: aliento de fuego y pasajero",
+ "Fire breath": "Aliento de fuego",
+ "RT (strong attack)": "RT (ataque fuerte)",
+ "LB (guard)": "LB (bloquear)",
+ "Key for the fire breath": "Tecla del aliento de fuego",
+ "Fireballs instead of wind balls": "Bolas de fuego en vez de bolas de viento",
+ "Passenger seat": "Asiento de pasajero",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "Segundo asiento en la espalda, llevar personas atadas o muertas (guarda además un .field.json)",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "Guarda un mod de DMM (.zip) y, con el asiento de pasajero, un .field.json al lado. Carga ambos en DMM y monta.",
+ "Tick at least one option.": "Marca al menos una opción.",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "El wyvern lanza fuego en vuelo (mantén la tecla), dispara bolas de fuego en vez de bolas de viento y puede llevar un pasajero o personas atadas o muertas. Versión propia sin ASI ni cambio de velocidad (velocidad en la página Mounts)."
 }

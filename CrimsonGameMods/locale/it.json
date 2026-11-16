@@ -4440,5 +4440,16 @@
  "Longer Elixir and Food Buffs": "Buff di elisir e cibo più lunghi",
  "Buffs from elixirs, alchemy and food last longer (attack, defense, health, resistances, immunities, ...): x2 to x100, or a fixed time for every buff (1 to 24 hours; buffs that already last longer stay). Health and Spirit recovery over time stay as they are. Includes the new DLC elixirs (skipped by DMM without the DLC).\nTable: skill": "I buff di elisir, alchimia e cibo durano di più (attacco, difesa, salute, resistenze, immunità…): da x2 a x100, o una durata fissa per ogni buff (da 1 a 24 ore; quelli che durano già di più restano). Il recupero di salute e spirito nel tempo resta invariato. Include i nuovi elisir del DLC (DMM li salta senza il DLC).\nTabella: skill",
  "1 hour - every buff": "1 ora – ogni buff",
- "{#} hours - every buff": "{#} ore – ogni buff"
+ "{#} hours - every buff": "{#} ore – ogni buff",
+ "Wyvern: fire breath and passenger": "Viverna: soffio di fuoco e passeggero",
+ "Fire breath": "Soffio di fuoco",
+ "RT (strong attack)": "RT (attacco forte)",
+ "LB (guard)": "LB (parata)",
+ "Key for the fire breath": "Tasto per il soffio di fuoco",
+ "Fireballs instead of wind balls": "Palle di fuoco invece di sfere di vento",
+ "Passenger seat": "Sedile passeggero",
+ "Second seat on the back, carry bound or dead people (saves an extra .field.json)": "Secondo sedile sulla schiena, trasporta persone legate o morte (salva anche un .field.json)",
+ "Saves a DMM mod (.zip) and, with the passenger seat, a .field.json next to it. Load both in DMM and mount.": "Salva una mod DMM (.zip) e, con il sedile passeggero, un .field.json accanto. Carica entrambi in DMM e monta.",
+ "Tick at least one option.": "Seleziona almeno un'opzione.",
+ "The wyvern breathes fire while flying (hold the key), shoots fireballs instead of wind balls and can carry a passenger, bound or dead people. Own build without ASI and without speed changes (set the speed on the Mounts page).": "La viverna sputa fuoco in volo (tieni premuto il tasto), lancia palle di fuoco invece di sfere di vento e può portare un passeggero, persone legate o morte. Versione propria senza ASI e senza modifiche alla velocità (velocità nella pagina Mounts)."
 }
