@@ -89,8 +89,9 @@ PRESETS = [
      "desc": "Rarer gear has more attack and defense at every refinement level, so a "
              "Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, "
              "Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. "
-             "Base game items (not the DLC-only ones).",
-     "choices": ["Mild", "Normal", "Strong"], "default": "Normal", "choice_label": ""},
+             "Includes the DLC items (skipped by DMM without the DLC).",
+     "choices": ["Mild", "Normal", "Strong"], "default": "Normal", "choice_label": "",
+     "dlc_too": True},
 ]
 
 
@@ -101,6 +102,7 @@ def build_targets(game_path: str, chosen: Dict[str, object],
     (id -> parameter). Raises RuntimeError if an intent does not apply."""
     import dmm_parser
     by_table: Dict[str, List[dict]] = {}
+    dlc_by_table: Dict[str, List[dict]] = {}
     cache: Dict[str, Tuple[bytes, Optional[bytes], list]] = {}
     for p in PRESETS:
         if p["id"] not in chosen:
@@ -112,6 +114,10 @@ def build_targets(game_path: str, chosen: Dict[str, object],
             head = bytes(dmm_parser.extract_file(game_path, "0008", TABLE_DIR, f"{stem}.pabgh"))
             cache[stem] = (body, head, dmm_parser.parse_table(stem, body, head))
         by_table.setdefault(stem, []).extend(p["fn"](cache[stem][2], chosen[p["id"]]))
+        if p.get("dlc_too"):
+            dlc_by_table.setdefault(stem, []).extend(
+                _dlc_only_intents(game_path, stem, cache[stem][2], p["fn"], chosen[p["id"]],
+                                  progress))
     out = []
     for stem, intents in by_table.items():
         if not intents:
@@ -124,7 +130,40 @@ def build_targets(game_path: str, chosen: Dict[str, object],
             reason = bad[0].get("reason") or "unknown reason"
             raise RuntimeError(f"{stem}: {len(bad)} of {len(intents)} changes do not apply "
                                f"({reason}). Nothing was written.")
-        out.append((stem, intents, res))
+        # DLC-only records (already checked against the DLC table) ride in the
+        # same target, as Edit items does; Apply to Game writes the base table.
+        out.append((stem, intents + dlc_by_table.get(stem, []), res))
+    return out
+
+
+def _dlc_only_intents(game_path: str, stem: str, base_recs: list, fn, param,
+                      progress: Callable[[str], None]) -> List[dict]:
+    """The preset on the records only an installed DLC has, checked with
+    apply_intents on the DLC's own table. Empty without a DLC."""
+    import dmm_parser
+    from item_db import _dlc_tables
+    base_keys = {r.get("key") for r in base_recs}
+    out: List[dict] = []
+    for root, d, hname in _dlc_tables(dmm_parser, game_path, "0008", f"{stem}.",
+                                      ".staticinfoheader"):
+        bname = hname[:-len(".staticinfoheader")] + ".staticinfobody"
+        progress(f"Reading {hname[:-len('.staticinfoheader')]}...")
+        head = bytes(dmm_parser.extract_file(root, "0008", d, hname))
+        body = bytes(dmm_parser.extract_file(root, "0008", d, bname))
+        recs = [r for r in dmm_parser.parse_table(stem, body, head)
+                if r.get("key") not in base_keys]
+        intents = fn(recs, param)
+        if not intents:
+            continue
+        progress(f"Checking {len(intents)} changes to DLC items...")
+        res = dmm_parser.apply_intents(stem, body, head, intents)
+        bad = [o for o in res.get("outcomes") or [] if o.get("status") != "applied"]
+        if bad:
+            reason = bad[0].get("reason") or "unknown reason"
+            raise RuntimeError(f"{stem} (DLC): {len(bad)} of {len(intents)} changes do not "
+                               f"apply ({reason}). Nothing was written.")
+        out.extend(intents)
+        base_keys |= {r.get("key") for r in recs}
     return out
 
 
