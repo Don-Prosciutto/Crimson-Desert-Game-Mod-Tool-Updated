@@ -4325,5 +4325,8 @@
  "Gates you found yourself are locked too - visit them again in the game.\nGates you already activated in the game (stood on them, they lowered) stay active - that is the game's own state and cannot be locked here.": "自分で見つけたゲートも封鎖されます。ゲーム内で再び訪れてください。\nゲーム内で既に起動したゲート（上に乗って下がったもの）は有効なままです。これはゲーム独自の状態なので、ここでは封鎖できません。",
  "Only from chapter 2 on: in the prologue and chapter 1 the story teaches the abyss gates, and that quest gets stuck because the game thinks you know them already.\nThe DLC areas only with the DLC Charting the Unknown.": "第2章以降のみ：プロローグと第1章ではストーリーで アビスゲートを学びます。ゲームが既に知っていると判断するため、そのクエストが進まなくなります。\nDLCのエリアはDLC「Charting the Unknown」がある場合のみ。",
  "Opening the last save: {#}...": "前回のセーブデータを開いています：{#}...",
- "Go to": "移動"
+ "Go to": "移動",
+ "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "精錬はどの段階でも各素材1個だけで済みます。\nテーブル: multichangeinfo",
+ "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "NPCへの贈り物で得られる信頼が増えます。会話やクエストは変わりません。\nテーブル: characterinfo",
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "レアな装備ほど、どの精錬段階でも攻撃力と防御力が高くなり、レジェンダリー+10がコモン+10を上回ります。Normal：アンコモン+10 %、レア+20 %、エピック+35 %、レジェンダリー+50 %（Mild：半分、Strong：2倍）。コモンは変わりません。本編のアイテムのみ（DLC専用のものは除く）。\nテーブル: iteminfo"
 }

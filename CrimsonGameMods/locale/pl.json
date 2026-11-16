@@ -4387,5 +4387,8 @@
  "Gates you found yourself are locked too - visit them again in the game.\nGates you already activated in the game (stood on them, they lowered) stay active - that is the game's own state and cannot be locked here.": "Bramy znalezione samodzielnie też zostaną zablokowane – odwiedź je ponownie w grze.\nBramy już aktywowane w grze (stanąłeś na nich, opuściły się) pozostają aktywne – to osobny stan gry, którego nie da się tu zablokować.",
  "Only from chapter 2 on: in the prologue and chapter 1 the story teaches the abyss gates, and that quest gets stuck because the game thinks you know them already.\nThe DLC areas only with the DLC Charting the Unknown.": "Dopiero od rozdziału 2: w prologu i rozdziale 1 fabuła uczy obsługi Bram Otchłani, a to zadanie się zacina, bo gra uważa, że już je znasz.\nObszary DLC tylko z DLC Charting the Unknown.",
  "Opening the last save: {#}...": "Otwieranie ostatniego zapisu: {#}...",
- "Go to": "Przejdź do"
+ "Go to": "Przejdź do",
+ "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "Ulepszanie wymaga tylko 1 sztuki każdego materiału, na każdym poziomie.\nTabela: multichangeinfo",
+ "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "Prezenty dla NPC dają więcej zaufania. Rozmowy i zadania bez zmian.\nTabela: characterinfo",
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "Rzadszy ekwipunek ma więcej ataku i obrony na każdym poziomie ulepszenia, więc Legendarny +10 pokonuje Zwykły +10. Normal: Niezwykły +10 %, Rzadki +20 %, Epicki +35 %, Legendarny +50 % (Mild: połowa, Strong: podwójnie). Zwykły bez zmian. Przedmioty gry podstawowej (nie tylko z DLC).\nTabela: iteminfo"
 }

@@ -48,6 +48,34 @@ def _gift_trust(recs: list, factor) -> List[dict]:
     return out
 
 
+# Rarity Matters: item_tier 1 Common ... 5 Legendary -> factor on attack/defense
+RARITY_FACTORS = {
+    "Mild":   {2: 1.05, 3: 1.10, 4: 1.175, 5: 1.25},
+    "Normal": {2: 1.10, 3: 1.20, 4: 1.35, 5: 1.50},
+    "Strong": {2: 1.20, 3: 1.40, 4: 1.70, 5: 2.00},
+}
+RARITY_STATS = (1000002, 1000003)        # DDD attack, DPV defense (statusinfo)
+
+
+def _rarity_matters(recs: list, strength) -> List[dict]:
+    factors = RARITY_FACTORS.get(strength or "Normal", RARITY_FACTORS["Normal"])
+    out = []
+    for r in recs:
+        f = factors.get(r.get("item_tier") or 0)
+        if not f:
+            continue
+        for i, e in enumerate(r.get("enchant_data_list") or []):
+            statics = (e.get("enchant_stat_data") or {}).get("stat_list_static") or []
+            for j, s in enumerate(statics):
+                v = s.get("change_mb")
+                if s.get("stat") in RARITY_STATS and isinstance(v, int) and v > 0:
+                    out.append({"entry": r.get("string_key", ""), "key": r.get("key", 0),
+                                "field": f"enchant_data_list[{i}].enchant_stat_data."
+                                         f"stat_list_static[{j}].change_mb",
+                                "op": "set", "new": int(round(v * f))})
+    return out
+
+
 PRESETS = [
     {"id": "refine_cost_1", "table": "multichangeinfo", "fn": _refine_cost_1,
      "title": "Refinement Costs 1",
@@ -56,6 +84,13 @@ PRESETS = [
      "title": "More Trust from Gifts",
      "desc": "Gifts to NPCs give more trust. Talking and quests are not changed.",
      "choices": [2, 5, 10, 20], "default": 5, "choice_label": "x"},
+    {"id": "rarity_matters", "table": "iteminfo", "fn": _rarity_matters,
+     "title": "Rarity Matters",
+     "desc": "Rarer gear has more attack and defense at every refinement level, so a "
+             "Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, "
+             "Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. "
+             "Base game items (not the DLC-only ones).",
+     "choices": ["Mild", "Normal", "Strong"], "default": "Normal", "choice_label": ""},
 ]
 
 

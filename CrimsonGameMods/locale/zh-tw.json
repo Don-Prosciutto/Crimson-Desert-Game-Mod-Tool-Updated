@@ -4335,5 +4335,8 @@
  "Gates you found yourself are locked too - visit them again in the game.\nGates you already activated in the game (stood on them, they lowered) stay active - that is the game's own state and cannot be locked here.": "你自己找到的門也會被鎖定，請在遊戲中再次前往。\n已在遊戲中啟動的門（站上去後降下的）會保持啟動——這是遊戲本身的狀態，無法在此鎖定。",
  "Only from chapter 2 on: in the prologue and chapter 1 the story teaches the abyss gates, and that quest gets stuck because the game thinks you know them already.\nThe DLC areas only with the DLC Charting the Unknown.": "僅從第 2 章起：在序章和第 1 章中，劇情會講解 深淵之門；遊戲會認為你已經了解它們，導致該任務卡住。\nDLC 區域僅限擁有 DLC「Charting the Unknown」時。",
  "Opening the last save: {#}...": "正在開啟上次的存檔：{#}...",
- "Go to": "前往"
+ "Go to": "前往",
+ "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "精煉在每個等級都只需每種材料 1 個。\n資料表: multichangeinfo",
+ "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "送給 NPC 的禮物會帶來更多信任。對話和任務不變。\n資料表: characterinfo",
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "稀有度越高的裝備在每個精煉等級都有更高的攻擊和防禦，傳說 +10 會強於普通 +10。Normal：優秀 +10 %、稀有 +20 %、史詩 +35 %、傳說 +50 %（Mild：一半，Strong：兩倍）。普通不變。僅本體物品（不含 DLC 專屬物品）。\n資料表: iteminfo"
 }

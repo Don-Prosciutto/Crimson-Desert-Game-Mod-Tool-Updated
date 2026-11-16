@@ -4387,5 +4387,8 @@
  "Gates you found yourself are locked too - visit them again in the game.\nGates you already activated in the game (stood on them, they lowered) stay active - that is the game's own state and cannot be locked here.": "Portais que você mesmo encontrou também são bloqueados – visite-os de novo no jogo.\nPortais que você já ativou no jogo (subiu neles e eles baixaram) continuam ativos – é um estado do próprio jogo e não pode ser bloqueado aqui.",
  "Only from chapter 2 on: in the prologue and chapter 1 the story teaches the abyss gates, and that quest gets stuck because the game thinks you know them already.\nThe DLC areas only with the DLC Charting the Unknown.": "Só a partir do capítulo 2: no prólogo e no capítulo 1 a história ensina os Portais do Abismo, e essa missão trava porque o jogo acha que você já os conhece.\nAs áreas do DLC só com o DLC Charting the Unknown.",
  "Opening the last save: {#}...": "Abrindo o último save: {#}...",
- "Go to": "Ir para"
+ "Go to": "Ir para",
+ "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "Refinar equipamento precisa de só 1 de cada material, em todos os níveis.\nTabela: multichangeinfo",
+ "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "Presentes para NPCs dão mais confiança. Conversas e missões não mudam.\nTabela: characterinfo",
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "Equipamento mais raro tem mais ataque e defesa em todos os níveis de refino: um Lendário +10 vence um Comum +10. Normal: Incomum +10 %, Raro +20 %, Épico +35 %, Lendário +50 % (Mild: metade, Strong: o dobro). Comum não muda. Itens do jogo base (não os exclusivos do DLC).\nTabela: iteminfo"
 }

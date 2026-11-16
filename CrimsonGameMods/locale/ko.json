@@ -4387,5 +4387,8 @@
  "Gates you found yourself are locked too - visit them again in the game.\nGates you already activated in the game (stood on them, they lowered) stay active - that is the game's own state and cannot be locked here.": "직접 찾은 게이트도 잠깁니다. 게임에서 다시 방문하세요.\n게임에서 이미 작동시킨 게이트(위에 올라서서 내려간 것)는 계속 활성 상태입니다. 게임 자체의 상태라 여기서 잠글 수 없습니다.",
  "Only from chapter 2 on: in the prologue and chapter 1 the story teaches the abyss gates, and that quest gets stuck because the game thinks you know them already.\nThe DLC areas only with the DLC Charting the Unknown.": "2장부터만: 프롤로그와 1장에서는 스토리에서 어비스 게이트를 배웁니다. 게임이 이미 안다고 판단해 해당 퀘스트가 막힙니다.\nDLC 지역은 DLC 'Charting the Unknown'이 있을 때만.",
  "Opening the last save: {#}...": "마지막 세이브를 여는 중: {#}...",
- "Go to": "이동"
+ "Go to": "이동",
+ "Refining gear needs only 1 of each material, at every refinement level.\nTable: multichangeinfo": "재련에 모든 단계에서 각 재료가 1개만 필요합니다.\n테이블: multichangeinfo",
+ "Gifts to NPCs give more trust. Talking and quests are not changed.\nTable: characterinfo": "NPC에게 주는 선물로 더 많은 신뢰를 얻습니다. 대화와 퀘스트는 그대로입니다.\n테이블: characterinfo",
+ "Rarer gear has more attack and defense at every refinement level, so a Legendary +10 beats a Common +10. Normal: Uncommon +10 %, Rare +20 %, Epic +35 %, Legendary +50 % (Mild: half, Strong: double). Common stays. Base game items (not the DLC-only ones).\nTable: iteminfo": "희귀한 장비일수록 모든 재련 단계에서 공격력과 방어력이 높아져, 전설 +10이 일반 +10보다 강해집니다. Normal: 고급 +10 %, 희귀 +20 %, 영웅 +35 %, 전설 +50 % (Mild: 절반, Strong: 2배). 일반은 그대로입니다. 본편 아이템만 (DLC 전용 아이템 제외).\n테이블: iteminfo"
 }
