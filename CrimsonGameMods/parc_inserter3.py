@@ -1322,7 +1322,7 @@ def insert_quest_completed(
             po_off = boff + 8
             if po_off + 4 <= len(clone):
                 old_po = struct.unpack_from('<I', tmpl_raw, po_off)[0]
-                if old_po >= tmpl_start and old_po < tmpl_start + len(tmpl_raw) + 4096:
+                if old_po == tmpl_start + po_off + 4:  # exact payload pointer (2.5)
                     struct.pack_into('<I', clone, po_off, old_po + po_delta)
 
     growth = len(clone)
@@ -1345,7 +1345,7 @@ def insert_quest_completed(
             po_off = boff + 8
             if po_off + 4 <= len(new_block):
                 ov = struct.unpack_from('<I', new_block, po_off)[0]
-                if ov >= insert_abs and ov < insert_abs + 10000000:
+                if ov == block_start + boff - growth + 12:  # exact payload pointer (2.5)
                     struct.pack_into('<I', new_block, po_off, ov + growth)
 
     blob[block_start:block_end] = new_block
@@ -2478,7 +2478,7 @@ def _insert_knowledge_keys(
                 po_off = boff + 8
                 if po_off + 4 <= len(clone):
                     old_po = struct.unpack_from('<I', tmpl_raw, po_off)[0]
-                    if old_po >= tmpl_start and old_po < tmpl_start + len(tmpl_raw) + 4096:
+                    if old_po == tmpl_start + po_off + 4:  # exact payload pointer (2.5)
                         struct.pack_into('<I', clone, po_off, old_po + po_delta)
 
         all_new += clone
@@ -2507,7 +2507,7 @@ def _insert_knowledge_keys(
             po_off = boff + 8
             if po_off + 4 <= len(new_block):
                 ov = struct.unpack_from('<I', new_block, po_off)[0]
-                if ov >= insert_abs and ov < insert_abs + 10000000:
+                if ov == block_start + boff - total_growth + 12:  # exact payload pointer (2.5)
                     struct.pack_into('<I', new_block, po_off, ov + total_growth)
 
     blob[block_start:block_end] = new_block
@@ -2616,7 +2616,7 @@ def inject_knowledge_fast(
                 po_off = boff + 8
                 if po_off + 4 <= len(clone):
                     old_po = struct.unpack_from('<I', tmpl_raw, po_off)[0]
-                    if old_po >= tmpl_start and old_po < tmpl_start + len(tmpl_raw) + 4096:
+                    if old_po == tmpl_start + po_off + 4:  # exact payload pointer (2.5)
                         struct.pack_into('<I', clone, po_off, old_po + po_delta)
 
         all_new += clone
@@ -2646,7 +2646,7 @@ def inject_knowledge_fast(
             po_off = boff + 8
             if po_off + 4 <= len(new_block):
                 ov = struct.unpack_from('<I', new_block, po_off)[0]
-                if ov >= insert_abs and ov < insert_abs + 10000000:
+                if ov == block_start + boff - total_growth + 12:  # exact payload pointer (2.5)
                     struct.pack_into('<I', new_block, po_off, ov + total_growth)
 
     blob[block_start:block_end] = new_block
@@ -3005,7 +3005,7 @@ def insert_abyss_gates(
                 po_off = boff + 8
                 if po_off + 4 <= len(clone):
                     old_po = struct.unpack_from('<I', tmpl_raw, po_off)[0]
-                    if old_po >= tmpl_start and old_po < tmpl_start + len(tmpl_raw) + 4096:
+                    if old_po == tmpl_start + po_off + 4:  # exact payload pointer (2.5)
                         struct.pack_into('<I', clone, po_off, old_po + po_delta)
 
         all_new += clone
@@ -3033,7 +3033,7 @@ def insert_abyss_gates(
             po_off = boff + 8
             if po_off + 4 <= len(new_block):
                 ov = struct.unpack_from('<I', new_block, po_off)[0]
-                if ov >= insert_abs and ov < insert_abs + 10000000:
+                if ov == block_start + boff - total_growth + 12:  # exact payload pointer (2.5)
                     struct.pack_into('<I', new_block, po_off, ov + total_growth)
 
     blob[block_start:block_end] = new_block
