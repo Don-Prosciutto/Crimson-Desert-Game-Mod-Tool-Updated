@@ -330,7 +330,8 @@ def _wyvern_variant(p, base_nd, anim_idx, dur, proj_time, w_upper_event, mask_id
     return with_events(nd, out)
 
 
-def patch_fire_breath(p, key: str = KEYS[DEFAULT_KEY], interval: Optional[float] = None) -> dict:
+def patch_fire_breath(p, key: str = KEYS[DEFAULT_KEY], interval: Optional[float] = None,
+                      keyguide: bool = True) -> dict:
     recidx = {rec_hash(r): i for i, r in enumerate(p.records)}
     try:
         r_stt, r_ing, r_end = (recidx[h] for h in (REC_BREATH_STT, REC_BREATH_ING, REC_BREATH_END))
@@ -417,9 +418,14 @@ def patch_fire_breath(p, key: str = KEYS[DEFAULT_KEY], interval: Optional[float]
     for r in (r_stt, r_ing, r_end):
         rec = bytearray(p.records[r]); rec[238] = fly[0][238]; p.records[r] = bytes(rec)
 
-    # entry: key in condition A (with the tag), B empty
+    # entry: with keyguide the key is the input part B (the game then shows
+    # "Fire Breath <key>" bottom right, like the dragon); else key in A, B empty
+    # (the label always shows the dragon's breath key RT, so only for RT)
     i_enter = len(p.S5)
-    p.S5.append(s5_with(p.S5[enter_src], A=emit(p, AND(wyv, bkey)), B=(0, 0)))
+    if keyguide and same_key:
+        p.S5.append(s5_with(p.S5[enter_src], A=emit(p, wyv), B=emit(p, bkey)))
+    else:
+        p.S5.append(s5_with(p.S5[enter_src], A=emit(p, AND(wyv, bkey)), B=(0, 0)))
     enter_ref = s6b_ref(tmpl, i_enter)
     entries = 0
     for r, rec in enumerate(p.records):
@@ -457,7 +463,8 @@ def patch_fire_breath(p, key: str = KEYS[DEFAULT_KEY], interval: Optional[float]
 
 
 def build_upper(vanilla: bytes, fire_breath: bool = True, fireballs: bool = True,
-                key: str = KEYS[DEFAULT_KEY], interval: Optional[float] = None):
+                key: str = KEYS[DEFAULT_KEY], interval: Optional[float] = None,
+                keyguide: bool = True):
     p = parse(vanilla)
     if build(p) != vanilla:
         raise WyvernError("the action chart could not be read losslessly")
@@ -465,7 +472,7 @@ def build_upper(vanilla: bytes, fire_breath: bool = True, fireballs: bool = True
     if fireballs:
         info["fireballs"] = patch_fireballs(p)
     if fire_breath:
-        info.update(patch_fire_breath(p, key, interval))
+        info.update(patch_fire_breath(p, key, interval, keyguide))
     out = build(p)
     parse(out)
     return out, info
@@ -598,14 +605,14 @@ def read_game_files(game_path: str) -> Dict[str, bytes]:
 
 def build_mod(files: Dict[str, bytes], fire_breath=True, fireballs=True, passenger=True,
               key: str = KEYS[DEFAULT_KEY], interval: Optional[float] = None,
-              title: Optional[str] = None) -> dict:
+              title: Optional[str] = None, keyguide: bool = True) -> dict:
     """{'zip': bytes or None, 'field_json': dict or None, 'info': dict}"""
     if not (fire_breath or fireballs or passenger):
         raise WyvernError("nothing selected")
     loose: Dict[str, bytes] = {}
     info: dict = {}
     if fire_breath or fireballs:
-        up, info = build_upper(files["upper"], fire_breath, fireballs, key, interval)
+        up, info = build_upper(files["upper"], fire_breath, fireballs, key, interval, keyguide)
         loose[f"{UPPER_DIR}/{UPPER_NAME}"] = up
     if passenger:
         loose[f"{PAB_DIR}/{PAB_NAME}"] = build_pab(files["pab"])
