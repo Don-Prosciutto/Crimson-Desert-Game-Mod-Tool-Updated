@@ -298,7 +298,24 @@ def patch_fireballs(p) -> int:
             continue
         blob = bytearray(p.blob); blob[wo:wo + 4] = bh; p.blob = bytes(blob)
         changed += 1
+    if changed:
+        relabel_fireballs(p)
     return changed
+
+
+def relabel_fireballs(p) -> int:
+    """Key guide (S7, one entry per input id: u16 label = pool index, u16 key):
+    "fire wind ball" -> "fire fireball" (label only, no logic)."""
+    pool = p.lists[0]
+    if b"keyguide_wyvern_windball" not in pool or b"keyguide_fireball" not in pool:
+        return 0
+    wind, fire = pool.index(b"keyguide_wyvern_windball"), pool.index(b"keyguide_fireball")
+    n = 0
+    for i, e in enumerate(p.S7):
+        if _u16(e, 0) == wind:
+            p.S7[i] = struct.pack("<H", fire) + e[2:]
+            n += 1
+    return n
 
 
 def _insert_node(p, after, nd):
