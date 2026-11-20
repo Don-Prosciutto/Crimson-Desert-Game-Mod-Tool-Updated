@@ -145,6 +145,8 @@ class PageData(TypedDict):
     """KnowledgeKey (u32)."""
     right_page_related_knowledge_info: int
     """KnowledgeKey (u32)."""
+    ui_texture_rotation_type: int
+    """u8 (game 2.05.01)."""
 
 
 class InspectData(TypedDict):
@@ -436,6 +438,8 @@ class ItemInfo(TypedDict):
     """u8"""
     discardable: int
     """u8"""
+    discard_single_count: int
+    """u8 (game 2.05.01)."""
     is_dyeable: int
     """u8"""
     is_editable_grime: int

@@ -1,0 +1,51 @@
+--- a/src/item_info/item.rs
++++ b/src/item_info/item.rs
+@@ -82,6 +82,9 @@
+         pub is_editable_grime: u8,
+         pub is_dyeable: u8,
+         pub discardable: u8,
++        // 2.05.01: `_discardSingleCount`, one byte read between `_discardable` and
++        // `_useAveragePrice` (0/1, set on 133 of 7068 items).
++        pub discard_single_count: u8,
+         pub use_average_price: u8,
+         // Restored 2026-05-06 per IDA decomp of sub_101885C38 in
+         // CrimsonDesert_Steam: ItemInfo의 _isHousingOnly is read between
+--- a/src/item_info/structs.rs
++++ b/src/item_info/structs.rs
+@@ -403,6 +403,8 @@
+         pub right_page_texture_path: CString<'a>,
+         pub left_page_related_knowledge_info: KnowledgeKey,
+         pub right_page_related_knowledge_info: KnowledgeKey,
++        // 2.05.01: `_uiTextureRotationType`, one byte after the two knowledge keys.
++        pub ui_texture_rotation_type: u8,
+     }
+ }
+ 
+--- a/src/item_info/field_aliases_v3_1.rs
++++ b/src/item_info/field_aliases_v3_1.rs
+@@ -67,6 +67,7 @@
+     ("multi_change_info_list", "_multiChangeInfoList"),
+     ("is_editor_usable", "_isEditorUsable"),
+     ("discardable", "_discardable"),
++    ("discard_single_count", "_discardSingleCount"),
+     ("is_dyeable", "_isDyeable"),
+     ("is_editable_grime", "_isEditableGrime"),
+     ("quick_slot_index", "_quickSlotIndex"),
+--- a/python/dmm_parser/__init__.pyi
++++ b/python/dmm_parser/__init__.pyi
+@@ -144,6 +144,7 @@
+     left_page_related_knowledge_info: int
+     """KnowledgeKey (u32)."""
+     right_page_related_knowledge_info: int
++    ui_texture_rotation_type: int
+     """KnowledgeKey (u32)."""
+ 
+ 
+@@ -435,6 +436,7 @@
+     is_editor_usable: int
+     """u8"""
+     discardable: int
++    discard_single_count: int
+     """u8"""
+     is_dyeable: int
+     """u8"""
