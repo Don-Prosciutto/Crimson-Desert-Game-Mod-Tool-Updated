@@ -1,5 +1,5 @@
 {
-  "version": "2.5.0",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.5.0/CrimsonGameMods.exe",
-  "notes": "Game 2.05.01; new look with task-based navigation, 14 themes, UI scale and 13 languages; Rarity Matters; Wyvern fire breath, fireballs and passenger seat; longer elixir buffs; Lumen sword colour; Add Ships (DLC); Abyss gates by area; Businesses (DLC); faster start and loading"
+  "version": "2.5.1",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.5.1/CrimsonGameMods.exe",
+  "notes": "Fix: after 'Restart now' (UI scale, theme) the Save Editor could not load saves ('C++ save-safety backend is unavailable')"
 }
