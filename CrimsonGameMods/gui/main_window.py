@@ -2566,9 +2566,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
             return
         if not self.close():                     # unsaved changes: the user said Cancel
             return
-        from PySide6.QtCore import QProcess
-        args = sys.argv[1:] if getattr(sys, "frozen", False) else sys.argv
-        QProcess.startDetached(sys.executable, args)
+        _start_new_instance()
         QApplication.instance().quit()
 
     def _set_theme(self, mode: str) -> None:
@@ -4980,3 +4978,31 @@ QCheckBox {{
 
         # Shared state / overlay coordinator disabled — not used yet.
         # QTimer.singleShot(2000, self._run_startup_audit)
+
+
+def _start_new_instance() -> None:
+    """Start a fresh copy of the tool (used by "Restart now").
+
+    The one-file EXE unpacks itself into its own temporary _MEI folder, and
+    the bootloader tells a child process about that folder through
+    environment variables. A child started with those variables reuses the
+    parent's folder - which the parent deletes when it exits, so the new
+    window lost parc_parser.dll (Save Editor: "C++ save-safety backend is
+    unavailable") and the parent warned "Failed to remove temporary
+    directory". The child therefore gets an environment without them and
+    PYINSTALLER_RESET_ENVIRONMENT=1, so it unpacks into a folder of its own.
+    """
+    import subprocess
+    frozen = getattr(sys, "frozen", False)
+    args = [sys.executable] + (sys.argv[1:] if frozen else sys.argv)
+    env = dict(os.environ)
+    if frozen:
+        for k in list(env):
+            if k.startswith("_PYI_") or k.startswith("_MEIPASS"):
+                del env[k]
+        env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    flags = 0
+    if sys.platform == "win32":
+        flags = (getattr(subprocess, "DETACHED_PROCESS", 0x8)
+                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200))
+    subprocess.Popen(args, env=env, close_fds=True, creationflags=flags)
