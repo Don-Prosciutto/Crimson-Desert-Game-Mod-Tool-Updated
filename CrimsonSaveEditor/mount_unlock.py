@@ -130,6 +130,13 @@ SHIPS: List[Tuple[int, str, str]] = [
     (1004623, "Assault Ship of the East", "Legendary"),
     (1004624, "Flagship of the East", "Legendary"),
     (1004625, "Galley", "Legendary"),
+    # 21.11.2026: the two blueprint ships. Phantom Ship = Riding_ghost_Big_Ship_01
+    # (own ally group 2624122694, not the player's 3168700012 like the others;
+    # ..._NPC_01 1004923 is the crew version), The Drunken Catfish =
+    # Riding_Big_Monster_ship_02 (..._NPC_02 1004924 is the crew version).
+    # Both have a blueprint (itemicon_recipe_...) - TEST in game.
+    (1004566, "Phantom Ship", "Legendary"),
+    (1004550, "The Drunken Catfish", "Legendary"),
 ]
 SHIP_GROUPS = ("Small", "Medium", "Large", "Legendary")
 DLC_GROUPS = {"Aquatic", "Mechanical"}
