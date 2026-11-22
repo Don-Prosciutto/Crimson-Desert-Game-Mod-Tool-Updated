@@ -33646,6 +33646,35 @@ QCheckBox::indicator {{
         layout.setContentsMargins(14, 12, 14, 10)
         layout.setSpacing(10)
 
+        # 2.5.2: all saves at once (before trying a mod) - save_backup.py
+        all_card, av = self._ui_card()
+        arow = QHBoxLayout()
+        arow.addWidget(self._ui_title("All saves - before you try a mod"))
+        arow.addStretch(1)
+        all_now_btn = QPushButton("Back up all saves now")
+        all_now_btn.setObjectName("accentBtn")
+        all_now_btn.setToolTip("Zip every save slot and the auto saves (all accounts) in one go.\n"
+                               "No save needs to be loaded.")
+        all_now_btn.clicked.connect(lambda: self._backup_all_saves())
+        arow.addWidget(all_now_btn)
+        all_restore_btn = QPushButton("Restore selected")
+        all_restore_btn.setToolTip("Put the saves of the selected backup back.\n"
+                                   "Your current saves are zipped first, so this can be undone.")
+        all_restore_btn.clicked.connect(self._restore_all_saves)
+        arow.addWidget(all_restore_btn)
+        all_open_btn = QPushButton("Open folder")
+        all_open_btn.clicked.connect(self._open_all_saves_folder)
+        arow.addWidget(all_open_btn)
+        av.addLayout(arow)
+        av.addWidget(self._ui_dim(
+            "One click zips all your saves into the tool's backups\\all_saves folder - handy before "
+            "you load a new mod in DMM. The newest 20 backups are kept. Close the game before you restore."))
+        self._all_backup_list = QListWidget()
+        self._all_backup_list.setMaximumHeight(140)
+        av.addWidget(self._all_backup_list)
+        layout.addWidget(all_card)
+        self._refresh_all_backups()
+
         body = QHBoxLayout()
         body.setSpacing(12)
         list_card, lv = self._ui_card()
@@ -36314,6 +36343,120 @@ QCheckBox::indicator {{
             self._update_status("PRISTINE backup updated from current save.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to update PRISTINE:\n{e}")
+
+    # ── All saves at once (save_backup.py) ─────────────────────────────
+
+    def _refresh_all_backups(self) -> None:
+        lst = getattr(self, "_all_backup_list", None)
+        if lst is None:
+            return
+        import save_backup as sb
+        lst.clear()
+        try:
+            rows = sb.list_backups(self._app_dir())
+        except Exception as e:  # noqa: BLE001
+            log.warning("All-saves backups not listed: %s", e)
+            rows = []
+        if not rows:
+            it = QListWidgetItem(self._ui_tr("No backups of all saves yet."))
+            it.setFlags(Qt.NoItemFlags)
+            lst.addItem(it)
+            return
+        for r in rows:
+            when = datetime.datetime.fromtimestamp(r["time"]).strftime("%d.%m.%Y %H:%M:%S")
+            extra = []
+            if r.get("files") is not None:
+                extra.append(f"{r['files']} " + self._ui_tr("files"))
+            extra.append(sb.human_size(r["size"]))
+            if r.get("note"):
+                extra.append(self._ui_tr(r["note"]))
+            it = QListWidgetItem(f"{when}   ·   " + "  ·  ".join(extra))
+            it.setData(Qt.UserRole, r["path"])
+            it.setToolTip(r["path"])
+            lst.addItem(it)
+        lst.setCurrentRow(0)
+
+    def _backup_all_saves(self, quiet: bool = False) -> str:
+        """Zip all save folders. Returns the zip path ("" on failure)."""
+        import save_backup as sb
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            res = sb.backup_all(self._app_dir(), self._config, tool_version=APP_VERSION)
+        except FileNotFoundError:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.warning(self, self._ui_tr("Back up all saves"),
+                                self._ui_tr("No save folder found. Set it in the Save Browser settings."))
+            return ""
+        except Exception as e:  # noqa: BLE001
+            QApplication.restoreOverrideCursor()
+            log.exception("All-saves backup failed")
+            QMessageBox.critical(self, self._ui_tr("Back up all saves"), str(e))
+            return ""
+        QApplication.restoreOverrideCursor()
+        log.info("All saves backed up: %s (%d files, %d bytes)", res["path"], res["files"], res["bytes"])
+        self._refresh_all_backups()
+        try:
+            self._update_status(self._ui_tr("All saves backed up"))
+        except Exception:  # noqa: BLE001
+            pass
+        if not quiet:
+            QMessageBox.information(
+                self, self._ui_tr("Back up all saves"),
+                self._ui_tr("All saves backed up.") + "\n\n"
+                + f"{res['files']} " + self._ui_tr("files") + f", {sb.human_size(res['bytes'])}\n\n"
+                + res["path"])
+        return res["path"]
+
+    def _restore_all_saves(self) -> None:
+        import save_backup as sb
+        lst = getattr(self, "_all_backup_list", None)
+        it = lst.currentItem() if lst is not None else None
+        path = it.data(Qt.UserRole) if it is not None else None
+        title = self._ui_tr("Restore all saves")
+        if not path:
+            QMessageBox.information(self, title, self._ui_tr("Select a backup in the list first."))
+            return
+        if sb.game_running():
+            QMessageBox.warning(self, title, self._ui_tr(
+                "Crimson Desert is running. Close the game first, then restore."))
+            return
+        msg = (self._ui_tr("Put back the saves from this backup?") + "\n\n" + it.text() + "\n\n"
+               + self._ui_tr("Your current saves are zipped first (\"before restore\"), so you can go back.")
+               + "\n\n" + self._ui_tr(
+                   "If Steam Cloud asks at the next game start which saves to keep, choose the ones on this PC."))
+        if QMessageBox.question(self, title, msg,
+                                QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            res = sb.restore(path, self._app_dir(), self._config, tool_version=APP_VERSION)
+        except Exception as e:  # noqa: BLE001
+            QApplication.restoreOverrideCursor()
+            log.exception("All-saves restore failed")
+            QMessageBox.critical(self, title, str(e))
+            return
+        QApplication.restoreOverrideCursor()
+        log.info("All saves restored from %s: %d files (safety copy %s)", path, res["files"], res["safety"])
+        self._refresh_all_backups()
+        try:
+            self._refresh_sidebar()
+        except Exception:  # noqa: BLE001
+            pass
+        extra = ("\n\n" + self._ui_tr("A save is open in the editor - load it again to see the restored state.")
+                 if getattr(self, "_loaded_path", None) else "")
+        QMessageBox.information(self, title,
+                                self._ui_tr("Saves restored.") + f" ({res['files']} " + self._ui_tr("files") + ")"
+                                + extra)
+
+    def _open_all_saves_folder(self) -> None:
+        import save_backup as sb
+        d = sb.backup_folder(self._app_dir())
+        os.makedirs(d, exist_ok=True)
+        if sys.platform == "win32":
+            os.startfile(d)
+        else:
+            import subprocess
+            subprocess.Popen(["xdg-open", d])
 
     def _open_backup_folder(self) -> None:
         backup_dir = self._get_backup_dir()

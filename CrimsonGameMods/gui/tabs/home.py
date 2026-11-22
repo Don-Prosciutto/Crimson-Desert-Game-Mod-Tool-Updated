@@ -201,9 +201,11 @@ class HomePage(QWidget):
                  status: Callable[[], tuple], config: dict,
                  save_config: Optional[Callable[[], None]] = None,
                  support: Optional[Callable[[], None]] = None,
-                 check_mods: Optional[Callable[[], None]] = None, parent=None):
+                 check_mods: Optional[Callable[[], None]] = None,
+                 backup_all: Optional[Callable[[], None]] = None, parent=None):
         super().__init__(parent)
         self._support = support
+        self._backup_all = backup_all
         self._goto = goto
         self._status = status
         self._config = config
@@ -299,9 +301,11 @@ class HomePage(QWidget):
             b.setMinimumHeight(40)
             b.clicked.connect(lambda: check_mods())
             act_lay.addWidget(b)
-        b = QPushButton("Back up my saves")
+        b = QPushButton("Back up all saves now")
         b.setMinimumHeight(40)
-        b.clicked.connect(lambda: self._goto("Backup"))
+        b.setToolTip("Zip every save slot and the auto saves in one go - before you try a mod.\n"
+                     "Restore them on the Backups page.")
+        b.clicked.connect(lambda: self._backup_all() if self._backup_all else self._goto("Backup"))
         act_lay.addWidget(b)
         if support is not None:
             b = QPushButton("Create a support package")

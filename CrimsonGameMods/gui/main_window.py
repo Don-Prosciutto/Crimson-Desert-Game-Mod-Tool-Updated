@@ -974,7 +974,8 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._home_page = HomePage(_hv, goto=self._home_goto, status=self._home_status,
                                    config=self._config, save_config=self._save_config,
                                    support=self._create_support_package,
-                                   check_mods=self._check_mods_dialog)
+                                   check_mods=self._check_mods_dialog,
+                                   backup_all=self._home_backup_all)
         _real_tabs.insertTab(0, self._home_page, "Home")
         self._build_save_editor_area()
         self._build_nav_sidebar()
@@ -1043,6 +1044,15 @@ class MainWindow(SelfTestMixin, QMainWindow):
         # only the fallback when the window is created some other way.
         self._se_load_started = False
         QTimer.singleShot(250, self.finish_startup_loading)
+
+    def _home_backup_all(self) -> None:
+        """Home › "Back up all saves now": zip every save, then show the Backups page."""
+        se = getattr(self, "_se_window", None)
+        if se is not None and hasattr(se, "_backup_all_saves"):
+            if se._backup_all_saves():
+                self._home_goto("Backup")
+            return
+        self._home_goto("Backup")
 
     def start_deferred_autoload(self) -> None:
         """The Save Editor's last save, once the window is on screen (main.py)."""
