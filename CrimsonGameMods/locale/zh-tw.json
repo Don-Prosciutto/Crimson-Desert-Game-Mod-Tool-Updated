@@ -4434,5 +4434,10 @@
  "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "任務可能需要它們在背包中。如果任務無法繼續，請從箱子中取回。",
  "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "任務文件與鑰匙：任務可能需要它們在背包中。如果任務無法繼續，請從箱子中取回。神器、地圖、公理手環和船隻零件永遠不會被更改。",
  "Saves a .field.json for DMM.": "儲存一個供 DMM 使用的 .field.json。",
- "No key items in the chosen groups.": "所選分組中沒有重要物品。"
+ "No key items in the chosen groups.": "所選分組中沒有重要物品。",
+ "All characters": "所有角色",
+ "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "誰的裝備：克里夫的（背包、營地倉庫和穿戴中），或\n達米安娜 / 翁卡穿戴的。「所有角色」還會顯示坐騎和寵物。",
+ "Worn": "穿戴中",
+ "Camp storage": "營地倉庫",
+ "Mount / pet": "坐騎 / 寵物"
 }

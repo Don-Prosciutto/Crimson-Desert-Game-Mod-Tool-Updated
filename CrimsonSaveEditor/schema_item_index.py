@@ -163,6 +163,28 @@ def _read_records(blob) -> list:
         for field in block.fields:
             _collect_items(field, nodes)
 
+    # Who carries an item: items in MercenaryClanSaveData._mercenaryDataList[i]
+    # (its _equipItemList) belong to that entry's _characterKey - 4 Damiane,
+    # 6 Oongka, mounts and pets. Items elsewhere are Kliff's (key 1).
+    owner_of: Dict[int, int] = {}
+    for block in blocks:
+        for field in block.fields:
+            if field.name != "_mercenaryDataList":
+                continue
+            for el in (getattr(field, "list_elements", None) or []):
+                ck = None
+                for c in (el.child_fields or []):
+                    if c.name == "_characterKey":
+                        ck = _as_int(c.value_repr)
+                        break
+                if ck is None:
+                    continue
+                hits: list = []
+                for c in (el.child_fields or []):
+                    _collect_items(c, hits)
+                for h in hits:
+                    owner_of[id(h)] = ck
+
     records = []
     for node in nodes:
         fields: Dict[str, Field] = {}
@@ -180,6 +202,8 @@ def _read_records(blob) -> list:
             )
             if cf.name.endswith("List") or cf.name.endswith("Data"):
                 behind_list = True
+        if id(node) in owner_of:
+            fields[OWNER_FIELD] = Field(value=owner_of[id(node)], start=0, end=0, trusted=False)
         if fields.get("_itemKey") and fields.get("_itemNo"):
             records.append(fields)
 
@@ -309,6 +333,13 @@ def drop_false_hits(items, index) -> Tuple[list, list]:
 # Fields the write path can change. The size is listed because
 # `_require_parc_field_offset` checks it - a field whose schema entry has a
 # different size is not taken over.
+OWNER_FIELD = "__owner__"        # not a save field: the carrier's character key
+
+# Socket fields of records the PARC path never reached (a companion's worn
+# gear). They sit before the first list field, where both paths agree; the
+# list itself is used by its start offset, as the PARC path delivers it.
+SOCKET_FIELDS = {"_itemKey": 4, "_slotNo": 2, "_maxSocketCount": 1, "_validSocketCount": 1}
+
 WRITABLE_FIELDS = {
     "_stackCount": 8,
     "_itemNo": 8,
@@ -374,6 +405,13 @@ def fill_in_without_parc(items, by_anchor) -> Dict[str, int]:
             field = fields.get(name)
             if field and field.usable and field.end - field.start == size:
                 offsets[name] = field.start
+        for name, size in SOCKET_FIELDS.items():
+            field = fields.get(name)
+            if field and field.usable and field.end - field.start == size:
+                offsets[name] = field.start
+        sock = fields.get("_socketSaveDataList")
+        if sock and sock.usable and "_maxSocketCount" in offsets:
+            offsets["_socketSaveDataList"] = sock.start
         if offsets:
             ends = [f.end for f in fields.values() if f.usable]
             offsets["_record_end"] = max(ends) if ends else 0
@@ -390,3 +428,21 @@ def fill_in_without_parc(items, by_anchor) -> Dict[str, int]:
                  stats["filled"], stats["values_corrected"],
                  stats["now_editable"], stats["no_record"])
     return stats
+
+
+def assign_owners(items, by_anchor) -> int:
+    """Set `owner_key` on every item: the character that wears or carries it
+    (1 Kliff, 4 Damiane, 6 Oongka, or a mount/pet key). Items outside the
+    companion lists are Kliff's. Returns how many belong to someone else."""
+    others = 0
+    for it in items:
+        owner = 1
+        fields = by_anchor.get(it.offset) if by_anchor else None
+        if fields is not None:
+            f = fields.get(OWNER_FIELD)
+            if f is not None and f.value:
+                owner = f.value
+        setattr(it, "owner_key", owner)
+        if owner != 1:
+            others += 1
+    return others

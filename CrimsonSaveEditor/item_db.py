@@ -174,6 +174,9 @@ class ItemNameDB:
         info = self.items.get(key)
         if info and info.name:
             return info.name
+        mod = _MOD_ITEM_NAMES.get(key)
+        if mod:
+            return f"{mod} (mod {key})"
         return f"Unknown ({key})"
 
     def display_label(self, key: int, fallback: str = "") -> str:
@@ -462,3 +465,31 @@ def database_outdated(db, game_path: str):
     if inst and built[:len(inst)] == inst:
         return False, installed, built_from
     return (built_from != installed), installed, built_from
+
+
+# Items a mod adds (keys 999001+, e.g. a custom armour set) are not in the
+# game's tables. DMM writes their names to <game>/bin64/dmm/mod_items.json
+# ({"999011": "Venus Carmine Overhaul — Crop Top", ...}) when it mounts.
+_MOD_ITEM_NAMES: Dict[int, str] = {}
+
+
+def load_mod_item_names(game_path: str) -> int:
+    """Read DMM's names of mod-added items. Returns how many were read."""
+    import os
+    _MOD_ITEM_NAMES.clear()
+    if not game_path:
+        return 0
+    p = os.path.join(game_path, "bin64", "dmm", "mod_items.json")
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return 0
+    if isinstance(data, dict):
+        for k, v in data.items():
+            try:
+                if isinstance(v, str) and v.strip():
+                    _MOD_ITEM_NAMES[int(k)] = v.strip()
+            except (TypeError, ValueError):
+                continue
+    return len(_MOD_ITEM_NAMES)

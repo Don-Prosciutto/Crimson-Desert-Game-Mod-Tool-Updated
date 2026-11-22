@@ -1072,10 +1072,21 @@ def enrich_items_with_parc(
 
     bag_ranges = _extract_bag_ranges(data)
 
+    # The schema's own records by byte offset (cached, the fill-in below uses
+    # the same). An item whose offset is a record of its own there must not
+    # borrow another record through its itemNo: a companion's worn gear shares
+    # the itemNo with its copy in the bag (Spencer pistol in slot102), and the
+    # itemNo match handed it the bag copy's offsets.
+    try:
+        import schema_item_index as _sii
+        _, _own_records = _sii.build_indexes(data)
+    except Exception:  # noqa: BLE001
+        _own_records = {}
+
     enriched = 0
     for item in items:
         pi = parc_by_offset.get(item.offset)
-        if pi is None:
+        if pi is None and item.offset not in _own_records:
             pi = parc_by_no.get(item.item_no)
         if pi is not None and pi.field_offsets:
             item.field_offsets = pi.field_offsets
@@ -1107,6 +1118,7 @@ def enrich_items_with_parc(
         _, by_anchor = schema_item_index.build_indexes(data)
         stats = schema_item_index.fill_in_without_parc(items, by_anchor)
         filled = stats["filled"]
+        schema_item_index.assign_owners(items, by_anchor)
     except Exception as e:  # noqa: BLE001
         log.warning("Schema fill-in skipped: %s", e)
 

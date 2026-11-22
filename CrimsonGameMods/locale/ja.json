@@ -4424,5 +4424,10 @@
  "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "クエストでカバンに必要な場合があります。クエストが進まないときは宝箱から取り出してください。",
  "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "クエスト資料と鍵：クエストでカバンに必要な場合があります。クエストが進まないときは宝箱から取り出してください。アーティファクト、地図、アクシオムの腕輪、船のパーツは変更しません。",
  "Saves a .field.json for DMM.": "DMM用の .field.json を保存します。",
- "No key items in the chosen groups.": "選んだグループに重要アイテムはありません。"
+ "No key items in the chosen groups.": "選んだグループに重要アイテムはありません。",
+ "All characters": "全キャラクター",
+ "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "誰の装備か：クリフ（カバン、キャンプ倉庫、装備中）、または\nダミアーネ／ウンカが装備しているもの。「全キャラクター」は騎乗動物とペットも表示。",
+ "Worn": "装備中",
+ "Camp storage": "キャンプ倉庫",
+ "Mount / pet": "騎乗動物／ペット"
 }

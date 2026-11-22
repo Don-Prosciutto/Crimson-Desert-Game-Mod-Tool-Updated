@@ -3554,6 +3554,11 @@ class MainWindow(QMainWindow):
         self._paz_patches = []
         saved_gp = self._config.get("game_install_path", "")
         if saved_gp:
+            try:                         # names of items a mod adds (DMM's list)
+                from item_db import load_mod_item_names
+                load_mod_item_names(saved_gp)
+            except Exception:  # noqa: BLE001
+                pass
             self._paz_game_path.setText(saved_gp)
             self._paz_manager.game_path = saved_gp
             self._global_game_path.setText(saved_gp)
@@ -5887,11 +5892,17 @@ QCheckBox::indicator {{
         self._sock_search.setMinimumHeight(34)
         self._sock_search.textChanged.connect(self._sock_filter_list)
         top.addWidget(self._sock_search, 1)
-        self._sock_show_merc = QCheckBox("Show Companion/NPC")
-        self._sock_show_merc.setToolTip("Include Mercenary/companion equipment in the list")
-        self._sock_show_merc.setChecked(False)
-        self._sock_show_merc.stateChanged.connect(lambda: self._populate_socket_items())
-        top.addWidget(self._sock_show_merc)
+        # 2.5.2: whose gear - Kliff, Damiane, Oongka (owner_key from the save's
+        # companion lists, schema_item_index.assign_owners) instead of one list
+        # with a "Show Companion/NPC" tick.
+        self._sock_who = QComboBox()
+        for _label, _key in (("Kliff", 1), ("Damiane", 4), ("Oongka", 6),
+                             ("All characters", 0)):
+            self._sock_who.addItem(_label, _key)
+        self._sock_who.setToolTip("Whose gear: Kliff's (bag, camp storage and worn), or what\n"
+                                  "Damiane / Oongka wear. \"All characters\" adds mounts and pets.")
+        self._sock_who.currentIndexChanged.connect(lambda *_a: self._populate_socket_items())
+        top.addWidget(self._sock_who)
         self._sock_fit_only = QCheckBox("Only gems that fit")
         self._sock_fit_only.setToolTip(
             "List only the Abyss Gear the game allows on this kind of equipment\n"
@@ -6168,7 +6179,7 @@ QCheckBox::indicator {{
             self._sock_item_combo.blockSignals(False)
             return
 
-        show_merc = hasattr(self, '_sock_show_merc') and self._sock_show_merc.isChecked()
+        who = self._sock_who.currentData() if hasattr(self, '_sock_who') else 1
         filter_socketable = bool(self._socket_design_limits)
         # EquipmentSaveData contains display/cache snapshots of equipped gear.
         # The game applies socket effects from the corresponding inventory
@@ -6182,7 +6193,7 @@ QCheckBox::indicator {{
         equip = [
             i for i in self._items
             if i.has_enchant
-            and (show_merc or i.source not in ("Mercenary",))
+            and (not who or getattr(i, "owner_key", 1) == who)
             and not (
                 i.source == "Equipment"
                 and (i.item_key, i.enchant_level) in inventory_socket_identities
@@ -6229,7 +6240,12 @@ QCheckBox::indicator {{
         lw.clear()
         for name, enc, source, valid_s, max_s, it in rows:
             where = {"Inventory": "Bag", "Equipment-only": "Equipped",
-                     "Mercenary": "Companion"}.get(source, source)
+                     "Mercenary": "Worn"}.get(source, source)
+            if getattr(it, "bag", "") == "CampWarehouse":
+                where = "Camp storage"
+            _owner = getattr(it, "owner_key", 1)
+            if _owner != 1:
+                where = {4: "Damiane", 6: "Oongka"}.get(_owner, "Mount / pet") + " · " + self._ui_tr(where)
             li = QListWidgetItem(f"{name} {enc}".strip() + f"\n{self._ui_tr(where)} · {valid_s}/{max_s} "
                                  + self._ui_tr("sockets"))
             li.setToolTip(f"Key {it.item_key} · slot {it.slot_no} · no {it.item_no}")

@@ -4486,5 +4486,10 @@
  "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "Eine Quest braucht diese eventuell in deiner Tasche. Geht eine Quest nicht weiter, nimm sie wieder aus der Truhe.",
  "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "Quest-Dokumente und Schlüssel: Eine Quest braucht sie eventuell in deiner Tasche. Geht eine Quest nicht weiter, nimm sie wieder aus der Truhe. Artefakte, Karten, die Axiom-Armreife und Schiffsteile werden nie geändert.",
  "Saves a .field.json for DMM.": "Speichert eine .field.json für DMM.",
- "No key items in the chosen groups.": "Keine Schlüsselgegenstände in den gewählten Gruppen."
+ "No key items in the chosen groups.": "Keine Schlüsselgegenstände in den gewählten Gruppen.",
+ "All characters": "Alle Figuren",
+ "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "Wessen Ausrüstung: Kliffs (Tasche, Lager im Camp und angelegt) oder was\nDamiane / Oongka tragen. „Alle Figuren“ zeigt zusätzlich Reittiere und Haustiere.",
+ "Worn": "Angelegt",
+ "Camp storage": "Lager im Camp",
+ "Mount / pet": "Reittier / Haustier"
 }

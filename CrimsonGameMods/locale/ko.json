@@ -4486,5 +4486,10 @@
  "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "퀘스트에서 가방에 필요할 수 있습니다. 퀘스트가 진행되지 않으면 상자에서 다시 꺼내세요.",
  "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "퀘스트 문서와 열쇠: 퀘스트에서 가방에 필요할 수 있습니다. 퀘스트가 진행되지 않으면 상자에서 다시 꺼내세요. 유물, 지도, 액시엄 팔찌, 선박 부품은 절대 변경하지 않습니다.",
  "Saves a .field.json for DMM.": "DMM용 .field.json을 저장합니다.",
- "No key items in the chosen groups.": "선택한 그룹에 중요 아이템이 없습니다."
+ "No key items in the chosen groups.": "선택한 그룹에 중요 아이템이 없습니다.",
+ "All characters": "모든 캐릭터",
+ "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "누구의 장비: 클리프(가방, 캠프 창고, 착용 중) 또는\n다미아네 / 운카가 착용한 것. \"모든 캐릭터\"는 탈것과 펫도 표시합니다.",
+ "Worn": "착용 중",
+ "Camp storage": "캠프 창고",
+ "Mount / pet": "탈것 / 펫"
 }

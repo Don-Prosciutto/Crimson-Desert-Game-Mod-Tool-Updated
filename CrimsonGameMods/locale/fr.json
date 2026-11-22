@@ -4486,5 +4486,10 @@
  "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "Une quête peut en avoir besoin dans votre sac. Si une quête n'avance plus, reprenez-les du coffre.",
  "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "Documents de quête et clés : une quête peut en avoir besoin dans votre sac. Si une quête n'avance plus, reprenez-les du coffre. Les artefacts, cartes, bracelets Axiome et pièces de navire ne sont jamais modifiés.",
  "Saves a .field.json for DMM.": "Enregistre un .field.json pour DMM.",
- "No key items in the chosen groups.": "Aucun objet clé dans les groupes choisis."
+ "No key items in the chosen groups.": "Aucun objet clé dans les groupes choisis.",
+ "All characters": "Tous les personnages",
+ "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "Équipement de qui : celui de Kliff (sac, stockage du camp et porté) ou ce que\nportent Damiane / Oongka. « Tous les personnages » ajoute montures et animaux.",
+ "Worn": "Porté",
+ "Camp storage": "Stockage du camp",
+ "Mount / pet": "Monture / animal"
 }

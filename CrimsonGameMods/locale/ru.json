@@ -4485,5 +4485,10 @@
  "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "Заданию они могут понадобиться в сумке. Если задание не продвигается, заберите их из сундука.",
  "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "Документы заданий и ключи: заданию они могут понадобиться в сумке. Если задание не продвигается, заберите их из сундука. Артефакты, карты, браслеты Аксиомы и детали кораблей никогда не меняются.",
  "Saves a .field.json for DMM.": "Сохраняет .field.json для DMM.",
- "No key items in the chosen groups.": "В выбранных группах нет ключевых предметов."
+ "No key items in the chosen groups.": "В выбранных группах нет ключевых предметов.",
+ "All characters": "Все персонажи",
+ "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "Чьё снаряжение: Клиффа (сумка, склад лагеря и надетое) или то, что\nносят Дамиана / Унгка. «Все персонажи» добавляет ездовых животных и питомцев.",
+ "Worn": "Надето",
+ "Camp storage": "Склад лагеря",
+ "Mount / pet": "Ездовое / питомец"
 }

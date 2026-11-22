@@ -4485,5 +4485,10 @@
  "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "Bir görev bunlara çantanızda ihtiyaç duyabilir. Görev ilerlemezse sandıktan geri alın.",
  "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "Görev belgeleri ve anahtarlar: bir görev bunlara çantanızda ihtiyaç duyabilir. Görev ilerlemezse sandıktan geri alın. Eserler, haritalar, Aksiyom bilezikleri ve gemi parçaları asla değiştirilmez.",
  "Saves a .field.json for DMM.": "DMM için bir .field.json kaydeder.",
- "No key items in the chosen groups.": "Seçilen gruplarda önemli eşya yok."
+ "No key items in the chosen groups.": "Seçilen gruplarda önemli eşya yok.",
+ "All characters": "Tüm karakterler",
+ "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "Kimin teçhizatı: Kliff'inki (çanta, kamp deposu ve kuşanılan) ya da\nDamiane / Oongka'nın giydikleri. \"Tüm karakterler\" binek ve evcil hayvanları ekler.",
+ "Worn": "Kuşanılmış",
+ "Camp storage": "Kamp deposu",
+ "Mount / pet": "Binek / evcil"
 }
