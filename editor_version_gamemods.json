@@ -1,5 +1,5 @@
 {
-  "version": "2.5.1",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.5.1/CrimsonGameMods.exe",
-  "notes": "Fix: after 'Restart now' (UI scale, theme) the Save Editor could not load saves ('C++ save-safety backend is unavailable')"
+  "version": "2.6.0",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.0/CrimsonGameMods.exe",
+  "notes": "Back up all saves with one click; storable key items (books, notices, pre-order items); Sockets by character (Kliff, Damiane, Oongka) with companions' sockets; all DLC Abyss Gears; Phantom Ship and The Drunken Catfish; Swap 1 fix; restart fix"
 }

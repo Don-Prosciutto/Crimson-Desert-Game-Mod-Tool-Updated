@@ -1,3 +1,3 @@
 """Application version metadata with no update or network behavior."""
 
-APP_VERSION = "2.5.1"
+APP_VERSION = "2.6.0"
