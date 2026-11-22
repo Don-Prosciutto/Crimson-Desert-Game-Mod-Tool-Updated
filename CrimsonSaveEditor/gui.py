@@ -5534,6 +5534,7 @@ QCheckBox::indicator {{
         ],
         "Transference (Leech)": [
             (1003281, "Life Transference"), (1003290, "Spirit Transference"), (1003291, "Stamina Transference"),
+            (1004203, "Solar Transference"), (1004205, "Celestial Transference"),
         ],
         "Immunity": [
             (1002863, "Abyssal Assimilation"), (1002865, "Heart of the Serpent"), (1002866, "Heart of Stone"),
@@ -5553,10 +5554,25 @@ QCheckBox::indicator {{
             (1003714, "Howling of Chaos"), (1003715, "Judgment of the Soul"),
             (1003718, "Ancient Wrath"), (1002887, "Earthrending Strike"),
         ],
+        # Charting the Unknown (DLC). Only usable with the DLC installed.
+        "Skills - DLC": [
+            (1006108, "Eclipsed Thorn"), (1006109, "Writhebolt"),
+            (1006110, "Revelation's End"), (1006111, "Magnetic Burst"),
+            (1006112, "Judicator of Ruin"), (1006113, "Ashen Blitz"),
+            (1006114, "Radiant Flash"), (1006115, "Power Overload"),
+            (1006116, "Venomous Fangs"), (1006117, "Trial by Fire"),
+            (1006118, "Focus Fire"), (1006119, "Rushing Wind"),
+            (1006120, "Unfurled Feathers"), (1006121, "Guardian's Gaze"),
+            (1006122, "Mirage Cascade"), (1006123, "Ascended Incarnate"),
+            (1006124, "Earthen Wedge"), (1006125, "Storm's Echo"),
+        ],
         "Empty": [
             (0, "(Empty Socket)"),
         ],
     }
+    # Gems the installed game has but the list above does not (a later patch
+    # or DLC). Filled from the game tables by _gem_cats().
+    GEM_FROM_GAME = "New in game data"
 
     GEM_LOOKUP = {}
     for cat, gems in GEM_CATEGORIES.items():
@@ -6009,7 +6025,7 @@ QCheckBox::indicator {{
             row.addWidget(combo, 1)
 
             cat_filter = QComboBox()
-            cat_filter.addItems(["All"] + list(self.GEM_CATEGORIES.keys()))
+            cat_filter.addItems(["All"] + list(self._gem_cats().keys()))
             cat_filter.setFixedWidth(130)
             cat_filter.setToolTip("Show only gems of this kind")
             cat_filter.currentTextChanged.connect(lambda text, idx=i: self._filter_gem_combo(idx, text))
@@ -6091,8 +6107,20 @@ QCheckBox::indicator {{
         try:
             import crimson_rs
             d = "gamedata/binary__/client/bin"
-            items = crimson_rs.parse_iteminfo_from_bytes(
-                bytes(crimson_rs.extract_file(game_path, "0008", d, "iteminfo.pabgb")))
+            items = list(crimson_rs.parse_iteminfo_from_bytes(
+                bytes(crimson_rs.extract_file(game_path, "0008", d, "iteminfo.pabgb"))))
+            # DLC items (gems and gear) are in the DLC's own item table;
+            # without them every DLC gem was filtered out.
+            seen = {int(i["key"]) for i in items}
+            for root, ddir, fname in self._dlc_item_tables(crimson_rs, game_path):
+                try:
+                    extra = crimson_rs.parse_iteminfo_from_bytes(
+                        bytes(crimson_rs.extract_file(root, "0008", ddir, fname)))
+                except Exception as e:  # noqa: BLE001
+                    log.warning("DLC items of %s not readable: %s", root, e)
+                    continue
+                items += [i for i in extra if int(i["key"]) not in seen]
+                seen.update(int(i["key"]) for i in extra)
             types = crimson_rs.parse_table(
                 "equiptypeinfo",
                 bytes(crimson_rs.extract_file(game_path, "0008", d, "equiptypeinfo.pabgb")),
@@ -6102,6 +6130,10 @@ QCheckBox::indicator {{
                 "gem_hash": {int(i["key"]): int(i.get("equipable_hash") or 0) for i in items},
                 "allowed": {int(t["key"]): set(t.get("equip_able_hash_list") or []) for t in types},
                 "type_name": {int(t["key"]): t.get("string_key", "") for t in types},
+                # Abyss Gears: item type 74, category 2501 (all 209 of 2.05.01)
+                "gems": [int(i["key"]) for i in items
+                         if int(i.get("item_type") or 0) == 74
+                         and int(i.get("category_info") or 0) == 2501],
             }
             log.info("Gem rules read: %d items, %d equip types", len(items), len(types))
         except Exception as e:  # noqa: BLE001
@@ -6109,6 +6141,41 @@ QCheckBox::indicator {{
             rules = {}
         self._gem_rules_cache = (game_path, rules)
         return rules or None
+
+    @staticmethod
+    def _dlc_item_tables(parser, game_path: str) -> list:
+        """(dlc root, directory, file) of iteminfo.<dlc>.staticinfobody of every DLC."""
+        found = []
+        base = os.path.join(game_path or "", "dlc")
+        try:
+            names = sorted(os.listdir(base))
+        except OSError:
+            return found
+        for n in names:
+            root = os.path.join(base, n)
+            pamt = os.path.join(root, "0008", "0.pamt")
+            if not os.path.isfile(pamt):
+                continue
+            try:
+                info = parser.parse_pamt_file(pamt)
+            except Exception:  # noqa: BLE001
+                continue
+            for dd in info.get("directories", []):
+                for f in dd.get("files", []):
+                    fn = str(f.get("name", ""))
+                    if fn.startswith("iteminfo.") and fn.endswith(".staticinfobody"):
+                        found.append((root, dd.get("path", "").replace("\\", "/"), fn))
+        return found
+
+    def _gem_cats(self) -> dict:
+        """GEM_CATEGORIES plus the gems of the installed game that it lacks."""
+        cats = dict(self.GEM_CATEGORIES)
+        rules = self._gem_rules() if self._config.get("game_install_path") else None
+        extra = [k for k in (rules or {}).get("gems", []) if k not in self.GEM_LOOKUP]
+        if extra:
+            cats[self.GEM_FROM_GAME] = sorted(
+                ((k, self._name_db.get_name(k)) for k in extra), key=lambda g: g[1])
+        return cats
 
     def _gems_that_fit(self, item_key: int):
         """Set of gem keys allowed on this item, or None when unknown / filter off."""
@@ -6126,7 +6193,7 @@ QCheckBox::indicator {{
             return None
         etype = rules["item_type"].get(item_key, 0)
         allowed = rules["allowed"].get(etype)
-        all_gems = [k for gems in self.GEM_CATEGORIES.values() for k, _ in gems if k]
+        all_gems = [k for gems in self._gem_cats().values() for k, _ in gems if k]
         if not allowed:
             if note is not None:
                 note.setText("No equip-type rule found for this item - listing every gem.")
@@ -6165,7 +6232,7 @@ QCheckBox::indicator {{
             return fit is None or key in fit or (keep_key and key == keep_key)
 
         if category == "All":
-            for cat, gems in self.GEM_CATEGORIES.items():
+            for cat, gems in self._gem_cats().items():
                 for key, name in gems:
                     if not _ok(key):
                         continue
@@ -6173,7 +6240,7 @@ QCheckBox::indicator {{
                         continue
                     combo.addItem(f"{name}  [{cat}]", key)
         else:
-            gems = self.GEM_CATEGORIES.get(category, [])
+            gems = self._gem_cats().get(category, [])
             for key, name in gems:
                 if not _ok(key):
                     continue
