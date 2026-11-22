@@ -422,7 +422,9 @@ class PresetsTab(QWidget):
         QMessageBox.information(
             self, title,
             f"{n} key items, all checked with DMM's own apply.\n\nFile: {path}\n\n"
-            "Load it in DMM and mount. Use only one mod of this kind at a time.")
+            "Load it in DMM and mount. Use only one mod of this kind at a time.\n\n"
+            "Keep the mod active while the items are in a chest: without it the game puts "
+            "them back into your key items (purple) - nothing is lost.")
 
     # ── helpers ──
     def _chosen(self) -> Dict[str, object]:
