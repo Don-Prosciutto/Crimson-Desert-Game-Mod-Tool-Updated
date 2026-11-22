@@ -254,11 +254,41 @@ def clone_and_patch_entry(
     new_stack: int = 1,
     new_slot: int = -1,
     new_enchant: int = -1,
+    fields: Optional[dict] = None,
 ) -> bytes:
+    """Copy the template item and give it the new key, number, slot and stack.
+
+    `fields` = {field name: offset relative to the template} from the parse
+    tree. With it the fields are patched exactly where they are. The old
+    pattern search below (u32 1, itemNo, key) no longer matches the 2.05
+    layout: it found nothing, and the copy went in unchanged - a second
+    record of the template item with the same item number, while the wanted
+    item never came (Swap 1 to a DLC gear, 22.11.2026). If neither way finds
+    the fields, nothing is inserted (ValueError).
+    """
     entry = bytearray(raw[template_start:template_start + entry_size])
 
     patched = False
+    fields = fields or {}
+    if all(k in fields for k in ("_itemNo", "_itemKey", "_stackCount")):
+        old_key = struct.unpack_from('<I', entry, fields["_itemKey"])[0]
+        struct.pack_into('<q', entry, fields["_itemNo"], new_item_no)
+        struct.pack_into('<I', entry, fields["_itemKey"], new_item_key)
+        struct.pack_into('<q', entry, fields["_stackCount"], new_stack)
+        if new_slot >= 0 and "_slotNo" in fields:
+            struct.pack_into('<H', entry, fields["_slotNo"], new_slot)
+        if new_enchant >= 0 and "_enchantLevel" in fields:
+            struct.pack_into('<H', entry, fields["_enchantLevel"], new_enchant)
+        tk = fields.get("_transferredItemKey")
+        if tk is not None and struct.unpack_from('<I', entry, tk)[0] == old_key:
+            struct.pack_into('<I', entry, tk, new_item_key)
+        patched = True
+        log.info("Patched item by fields: key=%d->%d no=%d stack=%d",
+                 old_key, new_item_key, new_item_no, new_stack)
+
     for off in range(len(entry) - 16):
+        if patched:
+            break
         sv = struct.unpack_from('<I', entry, off)[0]
         if sv != 1:
             continue
@@ -293,6 +323,7 @@ def clone_and_patch_entry(
 
     if not patched:
         log.warning("Could not find ItemSaveData fields in template entry")
+        raise ValueError("the item fields of the template were not found - nothing was added")
 
 
     if len(entry) >= 18 and entry[6:14] == _SENTINEL:
@@ -927,10 +958,14 @@ def add_item_to_inventory(
         new_entry = None
 
     if new_entry is None:
+        tfields = {f.name: f.start_offset - template_start
+                   for f in (last_elem.child_fields or [])
+                   if getattr(f, "present", False)
+                   and template_start <= f.start_offset < template_end}
         new_entry = clone_and_patch_entry(
             raw, template_start, entry_size,
             new_item_key, new_item_no, insert_at, new_stack,
-            new_slot=new_slot,
+            new_slot=new_slot, fields=tfields,
         )
 
     list_count_pos = _find_list_count_from_tree(raw, item_list)
