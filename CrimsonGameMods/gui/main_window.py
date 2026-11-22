@@ -176,6 +176,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
     _parc_step = Signal(int)
     _parc_done = Signal(int, str)
     _parse_cache_ready = Signal()
+    _update_found = Signal(str, str, str)      # version, url, notes
 
     _CONFIG_FILE = "editor_config.json"
 
@@ -227,6 +228,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._parc_step.connect(self._on_parc_step)
         self._parc_done.connect(self._finish_parc_enrich)
         self._parse_cache_ready.connect(self._on_parse_cache_ready)
+        self._update_found.connect(self._on_update_found)
         self._undo_stack: List[UndoEntry] = []
         self._loaded_path: str = ""
         self._dirty: bool = False
@@ -262,6 +264,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._build_status_bar()
         self._selftest_build_status()
         QTimer.singleShot(1500, self._selftest_start)
+        QTimer.singleShot(4000, self._auto_update_check)
 
         # Re-apply after construction in case a lazy widget creation path
         # changed COLORS. No-op if already applied, safe either way.
@@ -2413,13 +2416,27 @@ class MainWindow(SelfTestMixin, QMainWindow):
         menu_bar.addAction(discord_top)
 
         update_menu = menu_bar.addMenu("Update")
+        self._update_menu = update_menu
+        # Shown at the right of the menu bar once a newer version is found.
+        self._update_badge = QPushButton("")
+        self._update_badge.setVisible(False)
+        self._update_badge.setCursor(Qt.PointingHandCursor)
+        self._update_badge.setToolTip("A new version is available – click to download and install it.")
+        self._update_badge.clicked.connect(self._update_badge_clicked)
+        menu_bar.setCornerWidget(self._update_badge, Qt.TopRightCorner)
         check_update_act = QAction(f"Check for Updates  (current: v{APP_VERSION})", self)
         check_update_act.triggered.connect(self._check_for_update)
         update_menu.addAction(check_update_act)
 
+        auto_update_act = QAction("Check for updates when the tool starts", self)
+        auto_update_act.setCheckable(True)
+        auto_update_act.setChecked(bool(self._config.get("check_updates_on_start", True)))
+        auto_update_act.toggled.connect(self._set_auto_update_check)
+        update_menu.addAction(auto_update_act)
+
         changelog_act = QAction("Changelog / Releases", self)
         changelog_act.triggered.connect(lambda: __import__('webbrowser').open(
-            "https://github.com/NattKh/CRIMSON-DESERT-SAVE-EDITOR-AND-GAME-MODS/releases"))
+            "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases"))
         update_menu.addAction(changelog_act)
 
         view_menu = menu_bar.addMenu("View")
@@ -3019,6 +3036,8 @@ QCheckBox {{
             self._update_status("Update check complete.")
             return
 
+        self._show_update_badge(remote_ver, url, "")
+
         if sys.platform != 'win32':
             from PySide6.QtGui import QDesktopServices
             from PySide6.QtCore import QUrl
@@ -3033,7 +3052,7 @@ QCheckBox {{
                 QMessageBox.Open,
             )
             if reply == QMessageBox.Open:
-                QDesktopServices.openUrl(QUrl("https://github.com/NattKh/CRIMSON-DESERT-SAVE-EDITOR/releases"))
+                QDesktopServices.openUrl(QUrl("https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/latest"))
             self._update_status("Update check complete.")
             return
 
@@ -3048,7 +3067,79 @@ QCheckBox {{
         )
         if reply != QMessageBox.Yes:
             return
+        self._download_and_install(remote_ver, url)
 
+    # ── update check at start ───────────────────────────────────────
+    def _set_auto_update_check(self, on: bool) -> None:
+        self._config["check_updates_on_start"] = bool(on)
+        self._save_config()
+
+    def _auto_update_check(self) -> None:
+        """Ask GitHub once, a few seconds after the start, in the background.
+        Offline or a slow connection never holds up the tool."""
+        if not self._config.get("check_updates_on_start", True):
+            return
+        import threading
+
+        def _worker() -> None:
+            from updater import fetch_update_info
+            info = fetch_update_info()
+            if info.get("available"):
+                self._update_found.emit(info["version"], info["url"], info.get("notes", ""))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _show_update_badge(self, version: str, url: str, notes: str) -> None:
+        """Like DMM: the menu bar says that an update is there, until it is installed."""
+        self._update_offer = (version, url, notes)
+        badge = getattr(self, "_update_badge", None)
+        if badge is not None:
+            badge.setText(f"  \u2b06  Update {version} available  ")
+            badge.setStyleSheet(
+                f"QPushButton {{ background: {COLORS['accent']}; color: #ffffff; border: none; "
+                f"border-radius: 10px; padding: 3px 12px; margin: 3px 8px; font-weight: bold; }}"
+                f"QPushButton:hover {{ background: {COLORS.get('accent_hover', COLORS['accent'])}; }}")
+            badge.setVisible(True)
+        menu = getattr(self, "_update_menu", None)
+        if menu is not None:
+            menu.setTitle(f"Update \u2b06 {version}")
+
+    def _update_badge_clicked(self) -> None:
+        offer = getattr(self, "_update_offer", None)
+        if offer:
+            self._on_update_found(*offer, from_badge=True)
+
+    def _on_update_found(self, version: str, url: str, notes: str, from_badge: bool = False) -> None:
+        self._show_update_badge(version, url, notes)
+        if not from_badge and version == self._config.get("skipped_update_version", ""):
+            return
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Information)
+        box.setWindowTitle("Update available")
+        text = f"Version {version} is available – you have {APP_VERSION}."
+        if notes:
+            text += f"\n\nWhat's new:\n{notes}"
+        if self._dirty or getattr(getattr(self, "_se_window", None), "_dirty", False):
+            text += "\n\nYou have unsaved changes – save them first, or choose Later."
+        box.setText(text)
+        b_now = box.addButton("Update now", QMessageBox.AcceptRole)
+        box.addButton("Later", QMessageBox.RejectRole)
+        b_skip = None if from_badge else box.addButton("Skip this version", QMessageBox.DestructiveRole)
+        box.setDefaultButton(b_now)
+        box.exec()
+        clicked = box.clickedButton()
+        if b_skip is not None and clicked is b_skip:
+            self._config["skipped_update_version"] = version
+            self._save_config()
+            self._update_status(f"Version {version}: no more pop-up – the button at the top right stays.")
+        elif clicked is b_now:
+            if sys.platform != "win32":
+                __import__("webbrowser").open(
+                    "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/latest")
+                return
+            self._download_and_install(version, url)
+
+    def _download_and_install(self, remote_ver: str, url: str) -> None:
         self._update_status(f"Downloading v{remote_ver}...")
         QApplication.processEvents()
 
@@ -3076,8 +3167,7 @@ QCheckBox {{
         QMessageBox.information(
             self, "Update Ready",
             f"v{remote_ver} downloaded successfully.\n\n"
-            "The editor will now close and update.\n\n"
-            "Please reopen CrimsonSaveEditor.exe after it closes.",
+            "The tool will now close, update itself and start again.",
         )
 
         apply_update_and_restart(update_path)

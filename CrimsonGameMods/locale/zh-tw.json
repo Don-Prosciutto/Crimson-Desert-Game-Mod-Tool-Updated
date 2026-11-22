@@ -4442,5 +4442,9 @@
  "Mount / pet": "坐騎 / 寵物",
  "Save edits as config (not a mod)": "將編輯儲存為設定（不是模組）",
  "Save edits as config (not a mod)...": "將編輯儲存為設定（不是模組）...",
- "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "儲存你的編輯，以便之後重新載入本工具。這不是模組：DMM 無法載入它。要製作模組，請使用「匯出為 Field JSON (v3)」。"
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "儲存你的編輯，以便之後重新載入本工具。這不是模組：DMM 無法載入它。要製作模組，請使用「匯出為 Field JSON (v3)」。",
+ "Check for updates when the tool starts": "啟動時檢查更新",
+ "Update available": "有可用更新",
+ "Update now": "立即更新",
+ "Skip this version": "略過此版本"
 }

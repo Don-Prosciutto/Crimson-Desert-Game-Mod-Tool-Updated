@@ -4494,5 +4494,9 @@
  "Mount / pet": "Cavalcatura / animale",
  "Save edits as config (not a mod)": "Salva modifiche come configurazione (non è una mod)",
  "Save edits as config (not a mod)...": "Salva modifiche come configurazione (non è una mod)...",
- "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Salva le modifiche per ricaricarle più tardi in questo strumento. Non è una mod: DMM non può caricarla. Per creare una mod usa Esporta come Field JSON (v3)."
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Salva le modifiche per ricaricarle più tardi in questo strumento. Non è una mod: DMM non può caricarla. Per creare una mod usa Esporta come Field JSON (v3).",
+ "Check for updates when the tool starts": "Cerca aggiornamenti all'avvio",
+ "Update available": "Aggiornamento disponibile",
+ "Update now": "Aggiorna ora",
+ "Skip this version": "Salta questa versione"
 }

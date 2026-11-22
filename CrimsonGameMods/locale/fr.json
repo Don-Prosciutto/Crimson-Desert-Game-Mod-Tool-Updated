@@ -4494,5 +4494,9 @@
  "Mount / pet": "Monture / animal",
  "Save edits as config (not a mod)": "Enregistrer les modifications comme configuration (pas un mod)",
  "Save edits as config (not a mod)...": "Enregistrer les modifications comme configuration (pas un mod)...",
- "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Enregistre tes modifications pour les recharger plus tard dans cet outil. Ce n'est pas un mod : DMM ne peut pas le charger. Pour créer un mod, utilise Exporter en Field JSON (v3)."
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Enregistre tes modifications pour les recharger plus tard dans cet outil. Ce n'est pas un mod : DMM ne peut pas le charger. Pour créer un mod, utilise Exporter en Field JSON (v3).",
+ "Check for updates when the tool starts": "Rechercher les mises à jour au démarrage",
+ "Update available": "Mise à jour disponible",
+ "Update now": "Mettre à jour",
+ "Skip this version": "Ignorer cette version"
 }

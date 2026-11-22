@@ -4494,5 +4494,9 @@
  "Mount / pet": "Wierzchowiec / zwierzę",
  "Save edits as config (not a mod)": "Zapisz zmiany jako konfigurację (to nie mod)",
  "Save edits as config (not a mod)...": "Zapisz zmiany jako konfigurację (to nie mod)...",
- "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Zapisuje zmiany, aby można je było później wczytać do tego narzędzia. To nie jest mod: DMM go nie wczyta. Aby utworzyć mod, użyj Eksportuj jako Field JSON (v3)."
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Zapisuje zmiany, aby można je było później wczytać do tego narzędzia. To nie jest mod: DMM go nie wczyta. Aby utworzyć mod, użyj Eksportuj jako Field JSON (v3).",
+ "Check for updates when the tool starts": "Sprawdzaj aktualizacje przy starcie",
+ "Update available": "Dostępna aktualizacja",
+ "Update now": "Aktualizuj teraz",
+ "Skip this version": "Pomiń tę wersję"
 }

@@ -70,6 +70,22 @@ def check_for_update() -> Tuple[bool, str, str]:
         return False, "", ""
 
 
+def fetch_update_info(timeout: int = 8) -> dict:
+    """{"available", "version", "url", "notes"} of the update manifest, or {}
+    when it cannot be read. Used by the check at start (in a thread)."""
+    try:
+        req = Request(VERSION_URL, headers={"User-Agent": "CrimsonSaveEditor"})
+        with urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        ver = str(data.get("version", "") or "")
+        url = str(data.get("url", "") or "")
+        return {"available": bool(url) and _version_tuple(ver) > _version_tuple(APP_VERSION),
+                "version": ver, "url": url, "notes": str(data.get("notes", "") or "")}
+    except Exception as e:  # noqa: BLE001 - offline is normal
+        log.info("Update check at start not possible: %s", e)
+        return {}
+
+
 def download_update(url: str, progress_callback=None) -> Optional[str]:
     try:
         if getattr(sys, "frozen", False):
@@ -193,7 +209,9 @@ if errorlevel 1 (
 
 echo Renamed update exe successfully >> "{log_path}"
 
-echo Done. Please reopen CrimsonSaveEditor.exe >> "{log_path}"
+:: Start the new version (with an environment of its own, see below)
+start "" "{current_full}"
+echo Started the new version >> "{log_path}"
 goto :cleanup
 
 :fail
@@ -208,9 +226,16 @@ echo Update failed, see log >> "{log_path}"
     log.info("Launching update script: %s", bat_path)
 
     import subprocess
+    # The script starts the new EXE. It must not inherit the one-file
+    # bootloader's variables, or the new EXE would reuse the old one's temp
+    # folder, which is deleted when this process exits (same as "Restart now").
+    env = {k: v for k, v in os.environ.items()
+           if not (k.startswith("_PYI_") or k.startswith("_MEIPASS"))}
+    env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
     subprocess.Popen(
         ["cmd", "/c", bat_path],
         cwd=exe_dir,
+        env=env,
         creationflags=subprocess.DETACHED_PROCESS,
     )
     sys.exit(0)

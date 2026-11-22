@@ -4493,5 +4493,9 @@
  "Mount / pet": "Ездовое / питомец",
  "Save edits as config (not a mod)": "Сохранить изменения как конфигурацию (не мод)",
  "Save edits as config (not a mod)...": "Сохранить изменения как конфигурацию (не мод)...",
- "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Сохраняет изменения, чтобы позже снова загрузить их в этот инструмент. Это не мод: DMM не сможет его загрузить. Чтобы создать мод, используйте «Экспорт как Field JSON (v3)»."
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Сохраняет изменения, чтобы позже снова загрузить их в этот инструмент. Это не мод: DMM не сможет его загрузить. Чтобы создать мод, используйте «Экспорт как Field JSON (v3)».",
+ "Check for updates when the tool starts": "Проверять обновления при запуске",
+ "Update available": "Доступно обновление",
+ "Update now": "Обновить сейчас",
+ "Skip this version": "Пропустить эту версию"
 }
