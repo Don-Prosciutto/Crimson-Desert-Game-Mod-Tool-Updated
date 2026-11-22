@@ -736,11 +736,11 @@ class MainWindow(SelfTestMixin, QMainWindow):
 
         self._mods_tabs = QTabWidget()
         self._mods_tabs.setTabPosition(QTabWidget.South)
-        self._tabs.addTab(self._mods_tabs, tr("tab.game_mods"))
+        self._tabs.addTab(self._mods_tabs, "Game Mods")
 
         self._items_tabs = QTabWidget()
         self._items_tabs.setTabPosition(QTabWidget.South)
-        self._tabs.addTab(self._items_tabs, tr("tab.items"))
+        self._tabs.addTab(self._items_tabs, "Items")
 
         self._save_tabs = QTabWidget()
         self._world_tabs = QTabWidget()
@@ -764,9 +764,9 @@ class MainWindow(SelfTestMixin, QMainWindow):
             except Exception:
                 pass
         # 2.4.6: FieldEdit is split into "Mounts" and "Characters" (same data).
-        self._mods_tabs.addTab(self._field_edit_tab_obj, tr("Mounts"))
-        self._mods_tabs.addTab(self._field_edit_tab_obj.characters_page, tr("Characters"))
-        self._mods_tabs.addTab(self._field_edit_tab_obj.mesh_swap_page, tr("Mesh Swap"))
+        self._mods_tabs.addTab(self._field_edit_tab_obj, "Mounts")
+        self._mods_tabs.addTab(self._field_edit_tab_obj.characters_page, "Characters")
+        self._mods_tabs.addTab(self._field_edit_tab_obj.mesh_swap_page, "Mesh Swap")
 
         self._iteminfo_cache = ItemInfoCache()
         self._iteminfo_cache.set_game_path(self._config.get("game_install_path", ""))
@@ -801,7 +801,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
                 self._buffs_tab.set_game_path(_saved_gp_for_buffs)
             except Exception:
                 pass
-        self._mods_tabs.addTab(self._buffs_tab, tr("tab.itembuffs"))
+        self._mods_tabs.addTab(self._buffs_tab, "ItemBuffs")
 
         # Stacker Tool — multi-mod iteminfo.pabgb merger. Single sink for
         # all mod changes targeting iteminfo: external mods (folder PAZ,
@@ -839,7 +839,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
                 self._store_tab.set_game_path(_saved_gp)
             except Exception:
                 pass
-        self._mods_tabs.addTab(self._store_tab, tr("tab.stores"))
+        self._mods_tabs.addTab(self._store_tab, "Stores")
 
         # Businesses (DLC): tag bonuses of restaurant, sawmill, smithy ... (2.5)
         from gui.tabs.business import BusinessTab
@@ -941,7 +941,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._game_browser_tab.game_path_changed.connect(self._set_game_path)
         self._game_browser_tab.config_save_requested.connect(self._save_config)
         # if self._config.get('browser'):
-        self._mods_tabs.addTab(self._game_browser_tab, tr("Game Browser"))
+        self._mods_tabs.addTab(self._game_browser_tab, "Game Browser")
 
 
         self._tabs = _real_tabs
@@ -961,7 +961,7 @@ class MainWindow(SelfTestMixin, QMainWindow):
         self._database_tab.toggle_icons_requested.connect(self._toggle_icons)
         self._database_tab.status_message.connect(self._update_status)
         self._database_tab.items_changed.connect(self._scan_and_populate)
-        self._items_tabs.addTab(self._database_tab, tr("tab.database"))
+        self._items_tabs.addTab(self._database_tab, "Item Database")
         self._db_tab_widget = self._database_tab
 
         self._tabs = _real_tabs

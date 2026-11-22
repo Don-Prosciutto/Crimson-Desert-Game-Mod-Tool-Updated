@@ -3717,18 +3717,18 @@ class MainWindow(QMainWindow):
 
         self._save_tabs = QTabWidget()
         self._save_tabs.setTabPosition(QTabWidget.South)
-        self._tabs.addTab(self._save_tabs, tr("tab.save_editor"))
+        self._tabs.addTab(self._save_tabs, "Save Editor")
 
         self._mods_tabs = QTabWidget()
         self._mods_tabs.setTabPosition(QTabWidget.South)
 
         self._items_tabs = QTabWidget()
         self._items_tabs.setTabPosition(QTabWidget.South)
-        self._tabs.addTab(self._items_tabs, tr("tab.items"))
+        self._tabs.addTab(self._items_tabs, "Items")
 
         self._world_tabs = QTabWidget()
         self._world_tabs.setTabPosition(QTabWidget.South)
-        self._tabs.addTab(self._world_tabs, tr("tab.world"))
+        self._tabs.addTab(self._world_tabs, "World")
 
         _real_tabs = self._tabs
 
@@ -4954,14 +4954,14 @@ QCheckBox::indicator {{
         if False:
             pass
         for attr, label_key in [
-            ('_pabgb_browser_tab_widget', 'tab.pabgb_browser'),
+            ('_pabgb_browser_tab_widget', 'PABGB Browser'),
         ]:
             widget = getattr(self, attr, None)
             if widget is not None:
                 idx = self._tabs.indexOf(widget)
                 if self._experimental_mode:
                     if idx < 0:
-                        self._tabs.addTab(widget, tr(label_key))
+                        self._tabs.addTab(widget, label_key)
                 else:
                     if idx >= 0:
                         self._tabs.removeTab(idx)
@@ -5202,7 +5202,7 @@ QCheckBox::indicator {{
         swap_warn.setVisible(False)
         self._inv_swap_warn = swap_warn
 
-        self._tabs.addTab(tab, tr("tab.inventory"))
+        self._tabs.addTab(tab, "Inventory")
 
 
     def _inv_update_detail(self) -> None:
@@ -5422,7 +5422,7 @@ QCheckBox::indicator {{
         self._equipment_howto_label = QLabel("")
         self._equipment_howto_label.setVisible(False)
 
-        self._tabs.addTab(tab, tr("tab.equipment"))
+        self._tabs.addTab(tab, "Equipment")
 
 
     GEM_CATEGORIES = {
@@ -6084,7 +6084,7 @@ QCheckBox::indicator {{
         sv.addLayout(btn_row)
         body.addWidget(sock_card, 5)
         layout.addLayout(body, 1)
-        self._tabs.addTab(tab, tr("tab.sockets"))
+        self._tabs.addTab(tab, "Sockets")
         self._sock_current_item: Optional[SaveItem] = None
 
     def _gem_rules(self):
@@ -6979,7 +6979,7 @@ QCheckBox::indicator {{
         layout.addLayout(body, 1)
 
         self._swap_tab_widget = tab
-        self._tabs.addTab(tab, tr("tab.item_swap"))
+        self._tabs.addTab(tab, "Item Swap")
 
         self._populate_swap_list()
 
@@ -7051,7 +7051,7 @@ QCheckBox::indicator {{
         body.addWidget(card)
         layout.addLayout(body, 1)
 
-        self._tabs.addTab(tab, tr("tab.packs"))
+        self._tabs.addTab(tab, "Item Packs")
         self._refresh_local_packs()
 
 
@@ -7778,7 +7778,7 @@ QCheckBox::indicator {{
         layout.addWidget(self._db_info_label)
 
         self._db_tab_widget = tab
-        self._tabs.addTab(tab, tr("tab.database"))
+        self._tabs.addTab(tab, "Item Database")
 
         self._populate_database()
 
@@ -7871,7 +7871,7 @@ QCheckBox::indicator {{
         bottom.addWidget(self._repurch_count)
         layout.addLayout(bottom)
 
-        self._tabs.addTab(tab, tr("tab.repurchase"))
+        self._tabs.addTab(tab, "Repurchase")
         self._repurch_items: List[SaveItem] = []
 
 
@@ -8988,7 +8988,7 @@ QCheckBox::indicator {{
 
         # The credits (Benreuveni, Tooltip) are in the Rename companions tab.
 
-        self._tabs.addTab(tab, tr("tab.mercenary"))
+        self._tabs.addTab(tab, "Mercenary/Pets")
         self._merc_entries = []
 
     # ── Add Mounts / Add Pets (mount_unlock.py) ─────────────────────────────
@@ -12001,7 +12001,7 @@ QCheckBox::indicator {{
         tab.installEventFilter(self._qe_show_filter)
 
         self._quest_editor_tab = tab
-        self._tabs.addTab(tab, tr("tab.quest_editor"))
+        self._tabs.addTab(tab, "Quest Editor")
         self._qe_window = None
         self._qe_entries = []
         self._qe_deep_data = None
@@ -14766,7 +14766,7 @@ QCheckBox::indicator {{
         pack_row.addStretch()
         layout.addLayout(pack_row)
 
-        self._tabs.addTab(tab, tr("tab.quest_db"))
+        self._tabs.addTab(tab, "Quest Database")
 
         self._qdb_entries = []
         try:
@@ -16092,7 +16092,7 @@ QCheckBox::indicator {{
         layout.addLayout(btn_row)
 
         self._knowledge_tab = tab
-        self._tabs.addTab(tab, tr("tab.knowledge"))
+        self._tabs.addTab(tab, "Knowledge")
         self._know_all_entries = []
         self._know_learned_keys = set()
 
@@ -18312,7 +18312,7 @@ QCheckBox::indicator {{
 
         self._game_patches_tab_widget = tab
         if self._experimental_mode:
-            self._tabs.addTab(tab, tr("tab.gpatch"))
+            self._tabs.addTab(tab, "GPatch")
 
         self._paz_patches = []
         self._paz_manager = PazPatchManager()
@@ -22603,7 +22603,7 @@ QCheckBox::indicator {{
 
         self._item_buffs_tab_widget = tab
         self._itembuffs_tab_widget = tab
-        self._tabs.addTab(tab, tr("tab.itembuffs"))
+        self._tabs.addTab(tab, "ItemBuffs")
 
         self._buff_patcher: Optional[ItemBuffPatcher] = None
         self._buff_rust_items: Optional[list] = None
@@ -29655,7 +29655,7 @@ QCheckBox::indicator {{
         splitter.setSizes([300, 500])
         layout.addWidget(splitter, 1)
 
-        self._tabs.addTab(tab, tr("tab.stores"))
+        self._tabs.addTab(tab, "Stores")
         self._store_parser = None
         self._store_modified = False
         self._store_change_count = 0
@@ -33250,7 +33250,7 @@ QCheckBox::indicator {{
 
         self._pabgb_browser_tab_widget = tab
         if self._experimental_mode:
-            self._tabs.addTab(tab, tr("tab.pabgb_browser"))
+            self._tabs.addTab(tab, "PABGB Browser")
 
         self._pabgb_raw_data: Optional[bytes] = None
         self._pabgb_records: list = []
@@ -33835,7 +33835,7 @@ QCheckBox::indicator {{
         body.addWidget(card)
         layout.addLayout(body, 1)
 
-        self._backup_tab_index = self._tabs.addTab(tab, tr("tab.backup"))
+        self._backup_tab_index = self._tabs.addTab(tab, "Backup/Restore")
         self._backup_tab_widget = tab
 
 
