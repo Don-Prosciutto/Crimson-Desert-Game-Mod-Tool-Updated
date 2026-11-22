@@ -94,6 +94,7 @@ class PresetsTab(QWidget):
             cl.addWidget(card)
         cl.addWidget(self._build_lumen_card())
         cl.addWidget(self._build_wyvern_card())
+        cl.addWidget(self._build_keyitems_card())
         cl.addStretch(1)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -319,6 +320,109 @@ class PresetsTab(QWidget):
             self, "Save as mod",
             "Saved:\n" + "\n".join(saved) + "\n\nLoad the file(s) in DMM, activate and mount. "
             "Do not use together with other wyvern mods.")
+
+    # ── Storable key items (presets_engine.key_item_group) ──
+    _KEYITEM_OPTIONS = (
+        ("gear", "Key gear (start equipment, companion and story weapons)", True),
+        ("bonus", "Pre-order and bonus items (base game and DLC)", True),
+        ("books", "Books", True),
+        ("notices", "Notices, posters and letters", True),
+        ("quest_docs", "Quest documents", False),
+        ("keys", "Keys", False),
+    )
+
+    def _build_keyitems_card(self) -> QFrame:
+        card = QFrame()
+        card.setStyleSheet(f"QFrame {{ border: 1px solid {COLORS['border']}; "
+                           f"border-radius: 6px; background: {COLORS['panel']}; }}")
+        h = QHBoxLayout(card)
+        h.setContentsMargins(10, 8, 10, 8)
+        v = QVBoxLayout()
+        t = QLabel("Storable key items")
+        t.setStyleSheet("font-weight: bold; border: none;")
+        v.addWidget(t)
+        d = QLabel("Purple key items (start equipment, pre-order items, books ...) cannot be put "
+                   "into a chest. This makes them normal items, so you can store them. While you "
+                   "carry them they use bag space; they stay unsellable.")
+        d.setStyleSheet(f"color: {COLORS['text_dim']}; border: none;")
+        d.setWordWrap(True)
+        v.addWidget(d)
+        self._keyitem_boxes = {}
+        grid = QHBoxLayout()
+        col1, col2 = QVBoxLayout(), QVBoxLayout()
+        for i, (gid, label, on) in enumerate(self._KEYITEM_OPTIONS):
+            cb = QCheckBox(label)
+            cb.setChecked(on)
+            cb.setStyleSheet("QCheckBox { border: none; }")
+            if gid in ("quest_docs", "keys"):
+                cb.setToolTip("A quest may need these in your bag. If a quest does not go on, "
+                              "take them out of the chest again.")
+            self._keyitem_boxes[gid] = cb
+            (col1 if i < 3 else col2).addWidget(cb)
+        grid.addLayout(col1)
+        grid.addLayout(col2)
+        grid.addStretch(1)
+        v.addLayout(grid)
+        warn = QLabel("Quest documents and keys: a quest may need them in your bag. If a quest "
+                      "does not go on, take them out of the chest again. Artifacts, maps, the "
+                      "Axiom bands and ship parts are never changed.")
+        warn.setStyleSheet(f"color: {COLORS.get('warning', '#e0a040')}; border: none; font-size: 11px;")
+        warn.setWordWrap(True)
+        v.addWidget(warn)
+        h.addLayout(v, 1)
+        save = QPushButton("Save as mod")
+        save.setStyleSheet("QPushButton { " + button_css("primary") + " font-weight: bold; "
+                           "padding: 6px 14px; }")
+        save.setToolTip("Saves a .field.json for DMM.")
+        save.clicked.connect(self._keyitems_save)
+        h.addWidget(save)
+        return card
+
+    def _keyitems_save(self) -> None:
+        title = "Storable key items"
+        gp = self._game_path or self._config.get("game_install_path", "")
+        if not gp or not os.path.isfile(os.path.join(gp, "meta", "0.papgt")):
+            QMessageBox.warning(self, title, "Set the game folder first.")
+            return
+        groups = [g for g, cb in self._keyitem_boxes.items() if cb.isChecked()]
+        if not groups:
+            QMessageBox.warning(self, title, "Tick at least one option.")
+            return
+        try:
+            targets = build_targets(gp, {"storable_key_items": groups}, self._progress)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Storable key items failed: %s", e)
+            self._status.setText(f"Failed: {e}")
+            QMessageBox.critical(self, title, str(e))
+            return
+        n = sum(len(i) for _s, i, _r in targets)
+        if not n:
+            QMessageBox.information(self, title, "No key items in the chosen groups.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save as mod", "Storable_Key_Items.field.json",
+            "Field JSON (*.field.json *.json);;All Files (*)")
+        if not path:
+            self._status.setText("")
+            return
+        names = {g: lbl for g, lbl, _on in self._KEYITEM_OPTIONS}
+        doc = {
+            "modinfo": {"title": "Storable key items", "version": "1.0",
+                        "author": "CrimsonGameMods",
+                        "description": "Key items as normal items, so they can be stored in "
+                                       "chests: " + ", ".join(names[g] for g in groups),
+                        "note": "Format 3 - field names, survives game updates"},
+            "format": 3, "format_minor": 1,
+            "targets": [{"file": f"{stem}.pabgb", "intents": intents}
+                        for stem, intents, _r in targets],
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=1, ensure_ascii=False)
+        self._status.setText(f"Storable key items: {n} items -> {os.path.basename(path)}")
+        QMessageBox.information(
+            self, title,
+            f"{n} key items, all checked with DMM's own apply.\n\nFile: {path}\n\n"
+            "Load it in DMM and mount. Use only one mod of this kind at a time.")
 
     # ── helpers ──
     def _chosen(self) -> Dict[str, object]:

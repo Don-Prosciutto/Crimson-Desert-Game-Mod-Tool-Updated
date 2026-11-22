@@ -4473,5 +4473,17 @@
  "If Steam Cloud asks at the next game start which saves to keep, choose the ones on this PC.": "Если Steam Cloud при следующем запуске спросит, какие сохранения оставить, выберите сохранения на этом ПК.",
  "A save is open in the editor - load it again to see the restored state.": "В редакторе открыто сохранение — загрузите его снова, чтобы увидеть восстановленное состояние.",
  "Saves restored.": "Сохранения восстановлены.",
- "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "Упаковывает все слоты и автосохранения разом — перед тем как пробовать мод.\nВосстановление на странице Backups."
+ "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "Упаковывает все слоты и автосохранения разом — перед тем как пробовать мод.\nВосстановление на странице Backups.",
+ "Storable key items": "Ключевые предметы в хранилище",
+ "Key gear (start equipment, companion and story weapons)": "Ключевое снаряжение (стартовое, оружие спутников и сюжетное)",
+ "Pre-order and bonus items (base game and DLC)": "Предметы за предзаказ и бонусы (основная игра и DLC)",
+ "Books": "Книги",
+ "Notices, posters and letters": "Объявления, плакаты и письма",
+ "Quest documents": "Документы заданий",
+ "Keys": "Ключи",
+ "Purple key items (start equipment, pre-order items, books ...) cannot be put into a chest. This makes them normal items, so you can store them. While you carry them they use bag space; they stay unsellable.": "Фиолетовые ключевые предметы (стартовое снаряжение, предметы за предзаказ, книги …) нельзя положить в сундук. Это делает их обычными предметами, чтобы их можно было хранить. Пока вы их носите, они занимают место в сумке; продать их по-прежнему нельзя.",
+ "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "Заданию они могут понадобиться в сумке. Если задание не продвигается, заберите их из сундука.",
+ "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "Документы заданий и ключи: заданию они могут понадобиться в сумке. Если задание не продвигается, заберите их из сундука. Артефакты, карты, браслеты Аксиомы и детали кораблей никогда не меняются.",
+ "Saves a .field.json for DMM.": "Сохраняет .field.json для DMM.",
+ "No key items in the chosen groups.": "В выбранных группах нет ключевых предметов."
 }

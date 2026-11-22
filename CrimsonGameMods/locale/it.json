@@ -4474,5 +4474,17 @@
  "If Steam Cloud asks at the next game start which saves to keep, choose the ones on this PC.": "Se Steam Cloud chiede al prossimo avvio quali salvataggi tenere, scegli quelli di questo PC.",
  "A save is open in the editor - load it again to see the restored state.": "Un salvataggio è aperto nell'editor – ricaricalo per vedere lo stato ripristinato.",
  "Saves restored.": "Salvataggi ripristinati.",
- "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "Archivia tutti gli slot e i salvataggi automatici in una volta – prima di provare una mod.\nRipristino nella pagina Backups."
+ "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "Archivia tutti gli slot e i salvataggi automatici in una volta – prima di provare una mod.\nRipristino nella pagina Backups.",
+ "Storable key items": "Oggetti chiave depositabili",
+ "Key gear (start equipment, companion and story weapons)": "Equipaggiamento chiave (iniziale, armi dei compagni e della storia)",
+ "Pre-order and bonus items (base game and DLC)": "Oggetti preordine e bonus (gioco base e DLC)",
+ "Books": "Libri",
+ "Notices, posters and letters": "Avvisi, manifesti e lettere",
+ "Quest documents": "Documenti delle missioni",
+ "Keys": "Chiavi",
+ "Purple key items (start equipment, pre-order items, books ...) cannot be put into a chest. This makes them normal items, so you can store them. While you carry them they use bag space; they stay unsellable.": "Gli oggetti chiave viola (equipaggiamento iniziale, oggetti preordine, libri …) non si possono mettere in un baule. Così diventano oggetti normali e puoi depositarli. Mentre li porti occupano spazio nella borsa; restano invendibili.",
+ "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "Una missione potrebbe averne bisogno nella borsa. Se una missione non prosegue, riprendili dal baule.",
+ "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "Documenti delle missioni e chiavi: una missione potrebbe averne bisogno nella borsa. Se una missione non prosegue, riprendili dal baule. Artefatti, mappe, bracciali Assioma e parti di nave non vengono mai modificati.",
+ "Saves a .field.json for DMM.": "Salva un .field.json per DMM.",
+ "No key items in the chosen groups.": "Nessun oggetto chiave nei gruppi scelti."
 }

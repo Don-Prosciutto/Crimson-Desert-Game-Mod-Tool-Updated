@@ -4474,5 +4474,17 @@
  "If Steam Cloud asks at the next game start which saves to keep, choose the ones on this PC.": "Si Steam Cloud demande au prochain lancement quelles sauvegardes garder, choisissez celles de ce PC.",
  "A save is open in the editor - load it again to see the restored state.": "Une sauvegarde est ouverte dans l'éditeur – rechargez-la pour voir l'état restauré.",
  "Saves restored.": "Sauvegardes restaurées.",
- "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "Archive tous les emplacements et sauvegardes auto en une fois – avant d'essayer un mod.\nRestauration sur la page Backups."
+ "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "Archive tous les emplacements et sauvegardes auto en une fois – avant d'essayer un mod.\nRestauration sur la page Backups.",
+ "Storable key items": "Objets clés stockables",
+ "Key gear (start equipment, companion and story weapons)": "Équipement clé (équipement de départ, armes des compagnons et de l'histoire)",
+ "Pre-order and bonus items (base game and DLC)": "Objets de précommande et bonus (jeu de base et DLC)",
+ "Books": "Livres",
+ "Notices, posters and letters": "Avis, affiches et lettres",
+ "Quest documents": "Documents de quête",
+ "Keys": "Clés",
+ "Purple key items (start equipment, pre-order items, books ...) cannot be put into a chest. This makes them normal items, so you can store them. While you carry them they use bag space; they stay unsellable.": "Les objets clés violets (équipement de départ, objets de précommande, livres …) ne peuvent pas être mis dans un coffre. Ceci en fait des objets normaux pour pouvoir les stocker. Portés, ils occupent de la place dans le sac ; ils restent invendables.",
+ "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "Une quête peut en avoir besoin dans votre sac. Si une quête n'avance plus, reprenez-les du coffre.",
+ "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "Documents de quête et clés : une quête peut en avoir besoin dans votre sac. Si une quête n'avance plus, reprenez-les du coffre. Les artefacts, cartes, bracelets Axiome et pièces de navire ne sont jamais modifiés.",
+ "Saves a .field.json for DMM.": "Enregistre un .field.json pour DMM.",
+ "No key items in the chosen groups.": "Aucun objet clé dans les groupes choisis."
 }

@@ -4473,5 +4473,17 @@
  "If Steam Cloud asks at the next game start which saves to keep, choose the ones on this PC.": "Steam Cloud bir sonraki açılışta hangi kayıtların tutulacağını sorarsa bu bilgisayardakileri seçin.",
  "A save is open in the editor - load it again to see the restored state.": "Düzenleyicide bir kayıt açık – geri yüklenen durumu görmek için yeniden yükleyin.",
  "Saves restored.": "Kayıtlar geri yüklendi.",
- "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "Tüm yuvaları ve otomatik kayıtları tek seferde zip'ler – bir modu denemeden önce.\nGeri yükleme Backups sayfasında."
+ "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "Tüm yuvaları ve otomatik kayıtları tek seferde zip'ler – bir modu denemeden önce.\nGeri yükleme Backups sayfasında.",
+ "Storable key items": "Depolanabilir önemli eşyalar",
+ "Key gear (start equipment, companion and story weapons)": "Önemli teçhizat (başlangıç, yoldaş ve hikâye silahları)",
+ "Pre-order and bonus items (base game and DLC)": "Ön sipariş ve bonus eşyaları (ana oyun ve DLC)",
+ "Books": "Kitaplar",
+ "Notices, posters and letters": "Duyurular, afişler ve mektuplar",
+ "Quest documents": "Görev belgeleri",
+ "Keys": "Anahtarlar",
+ "Purple key items (start equipment, pre-order items, books ...) cannot be put into a chest. This makes them normal items, so you can store them. While you carry them they use bag space; they stay unsellable.": "Mor önemli eşyalar (başlangıç teçhizatı, ön sipariş eşyaları, kitaplar …) sandığa konulamaz. Bu onları normal eşya yapar, böylece depolayabilirsiniz. Taşırken çantada yer kaplarlar; satılamaz olarak kalırlar.",
+ "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "Bir görev bunlara çantanızda ihtiyaç duyabilir. Görev ilerlemezse sandıktan geri alın.",
+ "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "Görev belgeleri ve anahtarlar: bir görev bunlara çantanızda ihtiyaç duyabilir. Görev ilerlemezse sandıktan geri alın. Eserler, haritalar, Aksiyom bilezikleri ve gemi parçaları asla değiştirilmez.",
+ "Saves a .field.json for DMM.": "DMM için bir .field.json kaydeder.",
+ "No key items in the chosen groups.": "Seçilen gruplarda önemli eşya yok."
 }

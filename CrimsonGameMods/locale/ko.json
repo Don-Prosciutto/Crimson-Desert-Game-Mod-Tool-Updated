@@ -4474,5 +4474,17 @@
  "If Steam Cloud asks at the next game start which saves to keep, choose the ones on this PC.": "다음 실행 시 Steam 클라우드가 어떤 세이브를 유지할지 물으면 이 PC의 세이브를 선택하세요.",
  "A save is open in the editor - load it again to see the restored state.": "편집기에 세이브가 열려 있습니다. 복원된 상태를 보려면 다시 불러오세요.",
  "Saves restored.": "세이브를 복원했습니다.",
- "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "모든 슬롯과 자동 저장을 한 번에 zip으로 묶습니다(모드를 시험하기 전에).\n복원은 Backups 페이지에서."
+ "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "모든 슬롯과 자동 저장을 한 번에 zip으로 묶습니다(모드를 시험하기 전에).\n복원은 Backups 페이지에서.",
+ "Storable key items": "보관 가능한 중요 아이템",
+ "Key gear (start equipment, companion and story weapons)": "중요 장비(초기 장비, 동료·스토리 무기)",
+ "Pre-order and bonus items (base game and DLC)": "사전 예약·보너스 아이템(본편과 DLC)",
+ "Books": "책",
+ "Notices, posters and letters": "공고문, 포스터, 편지",
+ "Quest documents": "퀘스트 문서",
+ "Keys": "열쇠",
+ "Purple key items (start equipment, pre-order items, books ...) cannot be put into a chest. This makes them normal items, so you can store them. While you carry them they use bag space; they stay unsellable.": "보라색 중요 아이템(초기 장비, 사전 예약 아이템, 책 등)은 상자에 넣을 수 없습니다. 이것으로 일반 아이템이 되어 보관할 수 있습니다. 들고 있는 동안에는 가방 공간을 차지하며, 판매 불가는 그대로입니다.",
+ "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "퀘스트에서 가방에 필요할 수 있습니다. 퀘스트가 진행되지 않으면 상자에서 다시 꺼내세요.",
+ "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "퀘스트 문서와 열쇠: 퀘스트에서 가방에 필요할 수 있습니다. 퀘스트가 진행되지 않으면 상자에서 다시 꺼내세요. 유물, 지도, 액시엄 팔찌, 선박 부품은 절대 변경하지 않습니다.",
+ "Saves a .field.json for DMM.": "DMM용 .field.json을 저장합니다.",
+ "No key items in the chosen groups.": "선택한 그룹에 중요 아이템이 없습니다."
 }

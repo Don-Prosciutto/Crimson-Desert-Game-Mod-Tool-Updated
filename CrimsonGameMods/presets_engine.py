@@ -164,6 +164,45 @@ def _longer_item_buffs(recs: list, param) -> List[dict]:
     return out
 
 
+# Storable key items: items of the key item inventory ("Quest", inventory 5;
+# purple, own count, no bag space) cannot be put into chests - the chest only
+# lists the normal inventory. push_inventory_type_0_116 = 2 puts them into the
+# normal inventory: they can be stored, and use bag space while carried. They
+# stay unsellable. Tested 22.11.2026 with the Grey Wolf sword, shield and bow.
+# (Making inventory 5 movable instead does not help: the chest never lists it.)
+KEY_ITEM_GROUPS = ("gear", "bonus", "books", "notices", "quest_docs", "keys")
+_KEY_INV, _NORMAL_INV = 5, 2
+_KEY_GEAR_SKIP_TYPES = {58}               # merchant tools (notepad, pen, scale, abacus)
+_KEY_SKIP_NAMES = ("item_ship_", "Daeil_Band", "Marni_Devotee_PlateArmor_Helm", "VisionPro")
+_KEY_TYPE_GROUP = {43: "books", 42: "notices", 45: "notices", 46: "notices",
+                   31: "quest_docs", 44: "keys"}
+
+
+def key_item_group(r: dict) -> Optional[str]:
+    """The group of a key item, or None (not a key item, or never offered:
+    artifacts, maps, companion bands, ship parts, Visione, tools)."""
+    if r.get("push_inventory_type_0_116") != _KEY_INV:
+        return None
+    sk = r.get("string_key") or ""
+    if any(n in sk for n in _KEY_SKIP_NAMES):      # ship parts, companion bands, Visione
+        return None
+    t = r.get("item_type")
+    if t in _KEY_GEAR_SKIP_TYPES:
+        return None
+    if r.get("is_preorder_item"):
+        return "bonus"
+    if r.get("equip_type_info"):
+        return "gear"
+    return _KEY_TYPE_GROUP.get(t)
+
+
+def _storable_key_items(recs: list, groups) -> List[dict]:
+    want = set(groups or ())
+    return [{"entry": r.get("string_key", ""), "key": r.get("key", 0),
+             "field": "push_inventory_type_0_116", "op": "set", "new": _NORMAL_INV}
+            for r in recs if key_item_group(r) in want]
+
+
 PRESETS = [
     {"id": "refine_cost_1", "table": "multichangeinfo", "fn": _refine_cost_1,
      "title": "Refinement Costs 1",
@@ -195,6 +234,10 @@ PRESETS = [
      "choices": RARITY_LEVELS, "default": 5,
      "choice_names": [f"Level {n} - up to +{n * RARITY_STEP} % over vanilla" for n in RARITY_LEVELS],
      "dlc_too": True, "hidden": True},          # has its own page (gui/tabs/rarity.py)
+    {"id": "storable_key_items", "table": "iteminfo", "fn": _storable_key_items,
+     "title": "Storable key items",
+     "desc": "Key items you can put into chests (they use bag space while carried).",
+     "dlc_too": True, "hidden": True},          # own card on the Quick presets page
 ]
 
 

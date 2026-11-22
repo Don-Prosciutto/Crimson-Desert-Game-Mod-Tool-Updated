@@ -4412,5 +4412,17 @@
  "If Steam Cloud asks at the next game start which saves to keep, choose the ones on this PC.": "次回の起動時に Steam クラウドがどのセーブを残すか尋ねたら、このPCのものを選んでください。",
  "A save is open in the editor - load it again to see the restored state.": "エディターでセーブが開いています。復元後の状態を見るには読み込み直してください。",
  "Saves restored.": "セーブを復元しました。",
- "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "すべてのスロットとオートセーブを一度にzip化します（MODを試す前に）。\n復元は Backups ページで。"
+ "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "すべてのスロットとオートセーブを一度にzip化します（MODを試す前に）。\n復元は Backups ページで。",
+ "Storable key items": "保管できる重要アイテム",
+ "Key gear (start equipment, companion and story weapons)": "重要装備（初期装備、仲間・ストーリーの武器）",
+ "Pre-order and bonus items (base game and DLC)": "予約特典・ボーナスアイテム（本編とDLC）",
+ "Books": "本",
+ "Notices, posters and letters": "告知・ポスター・手紙",
+ "Quest documents": "クエスト資料",
+ "Keys": "鍵",
+ "Purple key items (start equipment, pre-order items, books ...) cannot be put into a chest. This makes them normal items, so you can store them. While you carry them they use bag space; they stay unsellable.": "紫色の重要アイテム（初期装備、予約特典、本など）は宝箱に入れられません。これで通常アイテムになり、保管できるようになります。持っている間はカバンの枠を使います。売却不可のままです。",
+ "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "クエストでカバンに必要な場合があります。クエストが進まないときは宝箱から取り出してください。",
+ "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "クエスト資料と鍵：クエストでカバンに必要な場合があります。クエストが進まないときは宝箱から取り出してください。アーティファクト、地図、アクシオムの腕輪、船のパーツは変更しません。",
+ "Saves a .field.json for DMM.": "DMM用の .field.json を保存します。",
+ "No key items in the chosen groups.": "選んだグループに重要アイテムはありません。"
 }

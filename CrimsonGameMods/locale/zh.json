@@ -4473,5 +4473,17 @@
  "If Steam Cloud asks at the next game start which saves to keep, choose the ones on this PC.": "如果下次启动时 Steam 云询问保留哪份存档，请选择本机上的。",
  "A save is open in the editor - load it again to see the restored state.": "编辑器中已打开一个存档——请重新加载以查看恢复后的状态。",
  "Saves restored.": "存档已恢复。",
- "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "一次性打包所有栏位和自动存档——在试用模组之前。\n在 Backups 页面恢复。"
+ "Zip every save slot and the auto saves in one go - before you try a mod.\nRestore them on the Backups page.": "一次性打包所有栏位和自动存档——在试用模组之前。\n在 Backups 页面恢复。",
+ "Storable key items": "可存放的重要物品",
+ "Key gear (start equipment, companion and story weapons)": "重要装备（初始装备、同伴与剧情武器）",
+ "Pre-order and bonus items (base game and DLC)": "预购与奖励物品（本体与 DLC）",
+ "Books": "书籍",
+ "Notices, posters and letters": "告示、海报与信件",
+ "Quest documents": "任务文件",
+ "Keys": "钥匙",
+ "Purple key items (start equipment, pre-order items, books ...) cannot be put into a chest. This makes them normal items, so you can store them. While you carry them they use bag space; they stay unsellable.": "紫色的重要物品（初始装备、预购物品、书籍等）无法放入箱子。此功能将其变为普通物品，以便存放。随身携带时会占用背包空间；仍不可出售。",
+ "A quest may need these in your bag. If a quest does not go on, take them out of the chest again.": "任务可能需要它们在背包中。如果任务无法继续，请从箱子中取回。",
+ "Quest documents and keys: a quest may need them in your bag. If a quest does not go on, take them out of the chest again. Artifacts, maps, the Axiom bands and ship parts are never changed.": "任务文件与钥匙：任务可能需要它们在背包中。如果任务无法继续，请从箱子中取回。神器、地图、公理手环和船只部件永远不会被更改。",
+ "Saves a .field.json for DMM.": "保存一个供 DMM 使用的 .field.json。",
+ "No key items in the chosen groups.": "所选分组中没有重要物品。"
 }
