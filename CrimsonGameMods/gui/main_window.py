@@ -978,7 +978,8 @@ class MainWindow(SelfTestMixin, QMainWindow):
                                    config=self._config, save_config=self._save_config,
                                    support=self._create_support_package,
                                    check_mods=self._check_mods_dialog,
-                                   backup_all=self._home_backup_all)
+                                   backup_all=self._home_backup_all,
+                                   current_save=lambda: self._home_status_save())
         _real_tabs.insertTab(0, self._home_page, "Home")
         self._build_save_editor_area()
         self._build_nav_sidebar()
@@ -4924,6 +4925,11 @@ QCheckBox {{
             rt.setCurrentWidget(holder)
             holder.setCurrentWidget(widget)
         return True
+
+    def _home_status_save(self) -> str:
+        se = getattr(self, "_se_window", None)
+        return (getattr(se, "_loaded_path", "") if se is not None else "") \
+            or getattr(self, "_loaded_path", "") or ""
 
     def _home_status(self) -> tuple:
         game = (self._config.get("game_install_path") or "").strip()

@@ -9,9 +9,10 @@ so this file stays free of main-window internals.
 from __future__ import annotations
 
 import os
+import re
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton, QScrollArea,
     QSizePolicy, QVBoxLayout, QWidget,
@@ -23,11 +24,21 @@ RELEASES_URL = "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-U
 
 # Shown under "New in this version". Keep it to a few lines.
 WHATS_NEW = [
-    "Save Editor: add pets - 84 kinds, 101 more looks, full trust",
-    "Map Colors: 25 world map colour schemes or your own",
-    "Stores: DLC items in every shop, DLC Vendor with clean prices",
-    "From 2.4.8: game 2.05.00, add any of the 57 mounts",
+    "Back up all saves with one click - and restore them (Backups)",
+    "Storable key items: start gear, pre-order items, books into a chest",
+    "Sockets for Damiane and Oongka, all DLC Abyss Gears",
+    "The tool now tells you about updates and installs them itself",
 ]
+
+
+def save_label(path: str) -> str:
+    """'Save Slot 3' for .../slot102/save.save, 'Auto Save 2' for slot1."""
+    folder = os.path.basename(os.path.dirname(path)) if path else ""
+    m = re.fullmatch(r"slot(\d+)", folder or "")
+    if m:
+        n = int(m.group(1))
+        return f"Save Slot {n - 99}" if n >= 100 else f"Auto Save {n + 1}"
+    return folder or os.path.basename(path)
 
 # (page label as in the navigation, short description). The label is matched
 # against the start of the page's name, so "MercPets" finds
@@ -202,8 +213,10 @@ class HomePage(QWidget):
                  save_config: Optional[Callable[[], None]] = None,
                  support: Optional[Callable[[], None]] = None,
                  check_mods: Optional[Callable[[], None]] = None,
-                 backup_all: Optional[Callable[[], None]] = None, parent=None):
+                 backup_all: Optional[Callable[[], None]] = None,
+                 current_save: Optional[Callable[[], str]] = None, parent=None):
         super().__init__(parent)
+        self._current_save = current_save
         self._support = support
         self._backup_all = backup_all
         self._goto = goto
@@ -400,9 +413,10 @@ class HomePage(QWidget):
         else:
             self._t_game.set("Not found", "Set the game folder (File menu)", warn)
             self._t_dlc.set("–", "needs the game folder", dim)
+        self._save_shown = save
         if save:
-            name = os.path.basename(os.path.dirname(save)) or os.path.basename(save)
-            self._t_save.set(name, "Loaded", info)
+            folder = os.path.basename(os.path.dirname(save))
+            self._t_save.set(save_label(save), f"Loaded ({folder})", info)
         else:
             self._t_save.set("None", "Open one in the Save Browser", warn)
         self._t_tool.set(f"v{self._version}", "Game Mod Tool + Save Editor", dim)
@@ -410,3 +424,25 @@ class HomePage(QWidget):
     def showEvent(self, event):  # noqa: N802
         self.refresh()
         super().showEvent(event)
+        # The last save opens after the window is shown, and a save can be
+        # loaded from the Save Browser while Home stays open: watch for it.
+        if getattr(self, "_save_watch", None) is None:
+            self._save_watch = QTimer(self)
+            self._save_watch.setInterval(1500)
+            self._save_watch.timeout.connect(self._check_save_changed)
+        self._save_watch.start()
+
+    def hideEvent(self, event):  # noqa: N802
+        if getattr(self, "_save_watch", None) is not None:
+            self._save_watch.stop()
+        super().hideEvent(event)
+
+    def _check_save_changed(self) -> None:
+        if self._current_save is None:
+            return
+        try:
+            now = self._current_save() or ""
+        except Exception:  # noqa: BLE001
+            return
+        if now != getattr(self, "_save_shown", None):
+            self.refresh()
