@@ -35437,12 +35437,11 @@ QCheckBox::indicator {{
         all_patches = []
 
         if consume_one:
-            old_stack = apply_stack_edit(self._save_data.decompressed_blob, item, 1)
-            stack_off = item.field_offsets["_stackCount"]
-            all_patches.append((
-                stack_off, old_stack,
-                self._save_data.decompressed_blob[stack_off:stack_off + 8]
-            ))
+            # 2.5.2: the stack keeps the rest (count - 1) under its old key and ONE
+            # new item is added. Before, the stack was set to 1 and then swapped,
+            # so the rest of the stack was gone.
+            self._swap_one_from_stack(item, new_key, old_name, new_name)
+            return
 
         patches = smart_item_swap(self._save_data.decompressed_blob, item, new_key)
         all_patches.extend(patches)
@@ -35459,6 +35458,37 @@ QCheckBox::indicator {{
         mode = "PARC" if item.parc_parsed else "legacy"
         extra = f", consumed 1 from stack of {item.stack_count}" if consume_one else ""
         self._update_status(f"Swapped {old_name} -> {new_name} ({len(all_patches)} patches, {mode} mode{extra})")
+
+    def _swap_one_from_stack(self, item, new_key: int, old_name: str, new_name: str) -> None:
+        """Swap 1 of a stack: stack - 1 stays, one new item (new_key) is added."""
+        old_count = item.stack_count
+        before = bytes(self._save_data.decompressed_blob)
+        try:
+            from parc_inserter2 import add_item_to_inventory
+            work = bytearray(self._save_data.decompressed_blob)
+            apply_stack_edit(work, item, old_count - 1)
+            max_no = max((it.item_no for it in self._items), default=100)
+            new_blob = add_item_to_inventory(bytes(work), new_item_key=new_key,
+                                             new_item_no=max_no + 100, new_stack=1)
+            if not new_blob:
+                raise RuntimeError("the new item could not be added")
+        except Exception as e:  # noqa: BLE001
+            item.stack_count = old_count
+            log.warning("Swap 1 from stack failed: %s", e, exc_info=True)
+            QMessageBox.warning(
+                self, "Swap 1",
+                f"Could not add a single '{new_name}': {e}\n\n"
+                "Nothing was changed. 'Swap all' still works.")
+            return
+        self._save_data.decompressed_blob = bytearray(new_blob)
+        self._undo_stack.append(UndoEntry(
+            description=f"Swap 1 {old_name} -> {new_name} ({old_count - 1} {old_name} kept)",
+            snapshot=before))             # the save got longer: undo restores the copy
+        self._dirty = True
+        self._rescan_now()
+        self._struct_stamp = None         # new blob: start the size watch again
+        self._check_save_structure()
+        self._update_status(f"Swapped 1 {old_name} -> {new_name}; {old_count - 1} {old_name} kept")
 
     def _perform_swap_all(self) -> None:
         if not self._save_data:
