@@ -4490,5 +4490,8 @@
  "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "谁的装备：克里夫的（背包、营地仓库和穿戴中），或\n达米安娜 / 翁卡穿戴的。“所有角色”还会显示坐骑和宠物。",
  "Worn": "穿戴中",
  "Camp storage": "营地仓库",
- "Mount / pet": "坐骑 / 宠物"
+ "Mount / pet": "坐骑 / 宠物",
+ "Save edits as config (not a mod)": "将编辑保存为配置（不是模组）",
+ "Save edits as config (not a mod)...": "将编辑保存为配置（不是模组）...",
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "保存你的编辑，以便以后重新载入本工具。这不是模组：DMM 无法加载它。要制作模组，请使用“导出为 Field JSON (v3)”。"
 }

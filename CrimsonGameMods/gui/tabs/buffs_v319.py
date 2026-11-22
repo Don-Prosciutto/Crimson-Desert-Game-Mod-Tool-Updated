@@ -859,20 +859,21 @@ class ItemBuffsTab(QWidget):
             
             # START Export Menu
             # Export buttons are dev-gated (normal users never see them).
-            act_export_config = export_mod_menu.addAction("Export ItemBuffs Config")
-            act_export_config.setToolTip(
-                "Save your current edits as a reusable config file.")
-            act_export_config.triggered.connect(self._buff_save_config)
-            
-            export_mod_menu.addSeparator()
-
+            # The mod comes first. The config is the tool's own file and
+            # DMM cannot read it ("expected u32" for its "format") - users
+            # took it for the mod when it was the first entry.
             act_export_field = export_mod_menu.addAction("Export as Field JSON (v3)")
             act_export_field.setToolTip(
                 "Export all edits as a Format 3 field-name JSON.\n"
                 "Uses field names instead of byte offsets — survives game updates.\n"
                 "Compatible with Stacker Tool and future mod loaders.")
             act_export_field.triggered.connect(self._buff_export_field_json_v3)
-            export_mod_menu.addAction(act_export_field)
+
+            export_mod_menu.addSeparator()
+
+            act_export_config = export_mod_menu.addAction("Save edits as config (not a mod)")
+            act_export_config.setToolTip("Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).")
+            act_export_config.triggered.connect(self._buff_save_config)
             
             # END Export Menu
             
@@ -1208,9 +1209,8 @@ class ItemBuffsTab(QWidget):
 
             more_menu.addSeparator()
 
-            act_save = more_menu.addAction("Save Config...")
-            act_save.setToolTip(
-                "Save your current edits as a reusable config file.")
+            act_save = more_menu.addAction("Save edits as config (not a mod)...")
+            act_save.setToolTip("Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).")
             act_save.triggered.connect(self._buff_save_config)
 
             act_load = more_menu.addAction("Load Config...")
@@ -10517,7 +10517,7 @@ class ItemBuffsTab(QWidget):
         config["name"] = name.strip()
 
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Config", f"{name.strip()}.json",
+            self, "Save Config", f"{name.strip()}.itembuffs-config.json",
             "Config Files (*.json)")
         if not path:
             return
@@ -10555,7 +10555,9 @@ class ItemBuffsTab(QWidget):
         QMessageBox.information(self, "Config Saved",
             f"Saved to:\n{path}\n\n"
             f"Changes ({len(summary_parts)} items):\n{shown}\n\n"
-            f"Share this file or load it later to tweak and re-export.")
+            f"Share this file or load it later to tweak and re-export.\n\n"
+            f"This is NOT a mod - DMM cannot load it. To make a mod, use "
+            f"Export \u203a Export as Field JSON (v3).")
 
 
     def _buff_load_config(self) -> None:

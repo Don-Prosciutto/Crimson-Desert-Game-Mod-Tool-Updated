@@ -2172,5 +2172,8 @@
   "→ out": "→ 밖으로",
   "⚠  Buff and stat names may be inaccurate — they are community-mapped, not from official game data. Some buffs share numeric keys across different systems (stats/buffs/passives are 3 separate ID namespaces). If a name looks wrong, trust the in-game tooltip after applying.": "⚠ 버프 및 통계 이름은 inaccurate가 될 수 있습니다. 그들은 공식 게임 데이터에서 커뮤니티 맵핑되지 않습니다. 몇몇 버프는 다른 체계 (stats/buffs/passives는 3개의 분리되는 ID namespaces입니다)의 맞은편에 숫자 열쇠를 공유합니다. 이름이 잘못되면, 적용 후 게임 툴팁을 신뢰합니다.",
   "⚠ EXPERIMENTAL — Animation swaps can t-pose items or crash the game if source and target aren't rig-compatible. Only 67 vanilla items have animation data (mostly recipe books). Test each swap in a throwaway save.": "⚠ EXPERIMENTAL - 애니메이션 스왑은 소스 및 대상이 아닌 경우 t-pose 아이템 또는 충돌 할 수 있습니다. 67 vanilla 항목에는 애니메이션 데이터가 있습니다 (대부분의 레시피 책). 각 스왑을 던져서 저장합니다.",
-  "⚠ EXPERIMENTAL — Changes where an item attaches on your character. Only items with existing dock data can be edited here (261 of 6024). Unknown socket names render the item invisible — stick to the whitelist.": "⚠ EXPERIMENTAL - 아이템이 캐릭터에 붙어있는 변경. 기존 도크 데이터만 편집할 수 있습니다(261 의 6024). 알 수없는 소켓 이름은 보이지 않는 아이템을 렌더링합니다. - 화이트리스트에 스틱."
+  "⚠ EXPERIMENTAL — Changes where an item attaches on your character. Only items with existing dock data can be edited here (261 of 6024). Unknown socket names render the item invisible — stick to the whitelist.": "⚠ EXPERIMENTAL - 아이템이 캐릭터에 붙어있는 변경. 기존 도크 데이터만 편집할 수 있습니다(261 의 6024). 알 수없는 소켓 이름은 보이지 않는 아이템을 렌더링합니다. - 화이트리스트에 스틱.",
+  "Save edits as config (not a mod)": "편집 내용을 설정으로 저장 (모드 아님)",
+  "Save edits as config (not a mod)...": "편집 내용을 설정으로 저장 (모드 아님)...",
+  "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "편집 내용을 저장해 나중에 이 도구에서 다시 불러올 수 있습니다. 모드가 아니므로 DMM에서 불러올 수 없습니다. 모드를 만들려면 Field JSON (v3)으로 내보내기를 사용하세요."
 }

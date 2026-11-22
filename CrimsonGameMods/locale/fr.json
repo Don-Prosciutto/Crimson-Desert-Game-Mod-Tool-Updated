@@ -4491,5 +4491,8 @@
  "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "Équipement de qui : celui de Kliff (sac, stockage du camp et porté) ou ce que\nportent Damiane / Oongka. « Tous les personnages » ajoute montures et animaux.",
  "Worn": "Porté",
  "Camp storage": "Stockage du camp",
- "Mount / pet": "Monture / animal"
+ "Mount / pet": "Monture / animal",
+ "Save edits as config (not a mod)": "Enregistrer les modifications comme configuration (pas un mod)",
+ "Save edits as config (not a mod)...": "Enregistrer les modifications comme configuration (pas un mod)...",
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Enregistre tes modifications pour les recharger plus tard dans cet outil. Ce n'est pas un mod : DMM ne peut pas le charger. Pour créer un mod, utilise Exporter en Field JSON (v3)."
 }

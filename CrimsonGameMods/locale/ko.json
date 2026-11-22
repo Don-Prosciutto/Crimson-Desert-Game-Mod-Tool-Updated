@@ -4491,5 +4491,8 @@
  "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "누구의 장비: 클리프(가방, 캠프 창고, 착용 중) 또는\n다미아네 / 운카가 착용한 것. \"모든 캐릭터\"는 탈것과 펫도 표시합니다.",
  "Worn": "착용 중",
  "Camp storage": "캠프 창고",
- "Mount / pet": "탈것 / 펫"
+ "Mount / pet": "탈것 / 펫",
+ "Save edits as config (not a mod)": "편집 내용을 설정으로 저장 (모드 아님)",
+ "Save edits as config (not a mod)...": "편집 내용을 설정으로 저장 (모드 아님)...",
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "편집 내용을 저장해 나중에 이 도구에서 다시 불러올 수 있습니다. 모드가 아니므로 DMM에서 불러올 수 없습니다. 모드를 만들려면 Field JSON (v3)으로 내보내기를 사용하세요."
 }

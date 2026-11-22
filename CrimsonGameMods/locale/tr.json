@@ -4490,5 +4490,8 @@
  "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "Kimin teçhizatı: Kliff'inki (çanta, kamp deposu ve kuşanılan) ya da\nDamiane / Oongka'nın giydikleri. \"Tüm karakterler\" binek ve evcil hayvanları ekler.",
  "Worn": "Kuşanılmış",
  "Camp storage": "Kamp deposu",
- "Mount / pet": "Binek / evcil"
+ "Mount / pet": "Binek / evcil",
+ "Save edits as config (not a mod)": "Düzenlemeleri yapılandırma olarak kaydet (mod değil)",
+ "Save edits as config (not a mod)...": "Düzenlemeleri yapılandırma olarak kaydet (mod değil)...",
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Düzenlemelerini daha sonra bu araca tekrar yüklemek için kaydeder. Bu bir mod değildir: DMM bunu yükleyemez. Mod oluşturmak için Field JSON (v3) olarak dışa aktar'ı kullan."
 }

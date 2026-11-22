@@ -2172,5 +2172,8 @@
   "→ out": "出来",
   "⚠  Buff and stat names may be inaccurate — they are community-mapped, not from official game data. Some buffs share numeric keys across different systems (stats/buffs/passives are 3 separate ID namespaces). If a name looks wrong, trust the in-game tooltip after applying.": "QQ Buff 和 stat 名字可能不准确——它们都是社区化的,而不是官方的游戏数据. 一些buffs在不同系统中共享数字键(stats/buffs/assives是3个独立的ID命名空间). 如果名称看起来错误, 在应用后信任游戏中的工具提示 。",
   "⚠ EXPERIMENTAL — Animation swaps can t-pose items or crash the game if source and target aren't rig-compatible. Only 67 vanilla items have animation data (mostly recipe books). Test each swap in a throwaway save.": "警告——动画互换如果源与目标不兼容,可以t-pose项目或崩溃游戏. 只有67个香草物品有动画数据(大多是食谱书). 测试每个交换 在一个丢弃的储蓄。",
-  "⚠ EXPERIMENTAL — Changes where an item attaches on your character. Only items with existing dock data can be edited here (261 of 6024). Unknown socket names render the item invisible — stick to the whitelist.": "警告 - 项目附加于您的字符的更改 。 只有具备现有码头数据的项目才可以在此编辑(6024年为261个). 未知的套接字名称使项目变得隐形——坚持在白名单中."
+  "⚠ EXPERIMENTAL — Changes where an item attaches on your character. Only items with existing dock data can be edited here (261 of 6024). Unknown socket names render the item invisible — stick to the whitelist.": "警告 - 项目附加于您的字符的更改 。 只有具备现有码头数据的项目才可以在此编辑(6024年为261个). 未知的套接字名称使项目变得隐形——坚持在白名单中.",
+  "Save edits as config (not a mod)": "将编辑保存为配置（不是模组）",
+  "Save edits as config (not a mod)...": "将编辑保存为配置（不是模组）...",
+  "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "保存你的编辑，以便以后重新载入本工具。这不是模组：DMM 无法加载它。要制作模组，请使用“导出为 Field JSON (v3)”。"
 }

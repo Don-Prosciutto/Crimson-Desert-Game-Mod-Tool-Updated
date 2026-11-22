@@ -4490,5 +4490,8 @@
  "Whose gear: Kliff's (bag, camp storage and worn), or what\nDamiane / Oongka wear. \"All characters\" adds mounts and pets.": "Чьё снаряжение: Клиффа (сумка, склад лагеря и надетое) или то, что\nносят Дамиана / Унгка. «Все персонажи» добавляет ездовых животных и питомцев.",
  "Worn": "Надето",
  "Camp storage": "Склад лагеря",
- "Mount / pet": "Ездовое / питомец"
+ "Mount / pet": "Ездовое / питомец",
+ "Save edits as config (not a mod)": "Сохранить изменения как конфигурацию (не мод)",
+ "Save edits as config (not a mod)...": "Сохранить изменения как конфигурацию (не мод)...",
+ "Saves your edits to load them into this tool again later. This is not a mod: DMM cannot load it. To make a mod, use Export as Field JSON (v3).": "Сохраняет изменения, чтобы позже снова загрузить их в этот инструмент. Это не мод: DMM не сможет его загрузить. Чтобы создать мод, используйте «Экспорт как Field JSON (v3)»."
 }
