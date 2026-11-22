@@ -1,5 +1,5 @@
 {
-  "version": "2.6.0",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.0/CrimsonGameMods.exe",
-  "notes": "Back up all saves with one click; storable key items (books, notices, pre-order items); Sockets by character (Kliff, Damiane, Oongka); all DLC Abyss Gears; Phantom Ship and The Drunken Catfish; fixes: pages missing in other languages, Swap 1, Restart now"
+  "version": "2.6.1",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.1/CrimsonGameMods.exe",
+  "notes": "Fix: Swap 1 and Add item could add a copy of another item instead of the chosen one (e.g. DLC Abyss Gears); equipment buffs shown per refinement level; Export menu: the mod comes first, the config is marked 'not a mod'"
 }
