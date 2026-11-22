@@ -4705,8 +4705,8 @@ class ItemBuffsTab(QWidget):
                     table.setItem(row, 1, c2)
                     row += 1
 
+            display_level = 0
             if edl:
-                display_level = 0
                 if hasattr(self, '_eb_level_target'):
                     sel = self._eb_level_target.currentData()
                     if sel is not None and sel >= 0 and sel < len(edl):
@@ -4732,7 +4732,7 @@ class ItemBuffsTab(QWidget):
                     ('max_stat_list', '#CE93D8', 'Max Stats'),
                 ]:
                     stats = sd.get(list_name, [])
-                    sep = QTableWidgetItem(f"--- {label} ({len(stats)}) [level 0/{len(edl)-1}] ---")
+                    sep = QTableWidgetItem(f"--- {label} ({len(stats)}) [level {display_level}/{len(edl)-1}] ---")
                     sep.setForeground(QBrush(QColor(color)))
                     sep.setFont(QFont("Consolas", 9, QFont.Bold))
                     sep.setFlags(sep.flags() & ~Qt.ItemIsSelectable)
@@ -4763,9 +4763,11 @@ class ItemBuffsTab(QWidget):
                             table.setItem(row, 1, c2)
                             row += 1
 
+            # Equipment buffs can differ per enchant level, like the stats:
+            # show the ones of the level picked above (was always level 0).
             all_buffs = []
             if edl:
-                all_buffs = edl[0].get('equip_buffs', [])
+                all_buffs = edl[display_level].get('equip_buffs', []) or []
             eb_sep = QTableWidgetItem(f"--- Equipment Buffs ({len(all_buffs)}) ---")
             eb_sep.setForeground(QBrush(QColor("#AB47BC")))
             eb_sep.setFont(QFont("Consolas", 9, QFont.Bold))
@@ -6328,7 +6330,11 @@ class ItemBuffsTab(QWidget):
                 self._paste_from_copy_buffer(rust_info)
             elif action == act_remove:
                 removed_levels = 0
-                for ed in edl:
+                _tl = self._eb_level_target.currentData() \
+                    if hasattr(self, '_eb_level_target') else -1
+                for _i, ed in enumerate(edl):
+                    if _tl is not None and _tl != -1 and _i != _tl:
+                        continue
                     old = ed.get('equip_buffs', []) or []
                     new = [b for b in old if b['buff'] != buff_id]
                     if len(new) < len(old):
@@ -9646,12 +9652,18 @@ class ItemBuffsTab(QWidget):
         buff_name = self._EQUIP_BUFF_NAMES.get(buff_key, f"Buff {buff_key}")
 
         removed = 0
-        for ed in edl:
-            existing = ed.get('equip_buffs', [])
+        target_level = self._eb_level_target.currentData() \
+            if hasattr(self, '_eb_level_target') else -1
+        if target_level is None:
+            target_level = -1
+        for idx, ed in enumerate(edl):
+            if target_level != -1 and idx != target_level:
+                continue
+            existing = ed.get('equip_buffs', []) or []
             new_list = [b for b in existing if b['buff'] != buff_key]
             if len(new_list) < len(existing):
                 removed += 1
-            ed['equip_buffs'] = new_list
+                ed['equip_buffs'] = new_list
 
         if removed == 0:
             QMessageBox.information(self, "Remove Buff",
