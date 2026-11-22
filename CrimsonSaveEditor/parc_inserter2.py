@@ -68,7 +68,30 @@ def build_blank_item(insert_at: int, item_key: int, item_no: int,
     return bytes(entry)
 
 
+# Pointers of fields whose position could not be found in the last
+# parse_and_collect(). Inserting with any of them left would move the data
+# behind them without moving the pointer: the save no longer loads.
+LAST_UNLOCATED: list = []
+
+_SENTINEL8 = b"\xFF" * 8
+
+
 def _compute_payload_offset_pos(f, raw: bytes) -> int:
+    pos = _compute_payload_offset_pos_fixed(f, raw)
+    if pos >= 0 or f.child_payload_offset <= 0 or f.start_offset <= 0:
+        return pos
+    # Fallback: the pointer always follows eight FF bytes in the field header,
+    # but the header can be longer than the formulas above expect - a
+    # companion's _customizationSaveData (meta kind 5) has it 2 bytes further
+    # on. Look for "FF x8 + the expected value" in the header.
+    expected = f.child_payload_offset
+    for pos in range(f.start_offset + 8, min(f.start_offset + 48, len(raw) - 4)):
+        if raw[pos - 8:pos] == _SENTINEL8 and _u32(raw, pos) == expected:
+            return pos
+    return -1
+
+
+def _compute_payload_offset_pos_fixed(f, raw: bytes) -> int:
     if f.child_payload_offset <= 0 or f.start_offset <= 0:
         return -1
     if f.child_mask_byte_count <= 0:
@@ -117,6 +140,7 @@ def _collect_from_fields(fields, raw: bytes, offset_positions, trailing_sizes):
             if pos >= 0:
                 offset_positions.append((pos, f.child_payload_offset))
             else:
+                LAST_UNLOCATED.append((f.name, f.start_offset, f.child_payload_offset))
                 log.debug(
                     "Could not compute pos for payload_offset=0x%X at start=0x%X mk=%d note=%s",
                     f.child_payload_offset, f.start_offset, f.meta_kind, getattr(f, 'note', ''),
@@ -133,6 +157,7 @@ def _collect_from_fields(fields, raw: bytes, offset_positions, trailing_sizes):
 
 
 def collect_all_positions(result, raw: bytes):
+    del LAST_UNLOCATED[:]
     offset_positions = []
     trailing_sizes = []
 
@@ -835,6 +860,11 @@ def add_item_to_inventory(
     log.info("Item key: %d, no: %d, stack: %d", new_item_key, new_item_no, new_stack)
 
     result, offset_positions, trailing_sizes = parse_and_collect(raw)
+    if LAST_UNLOCATED:
+        # Never write a save in which a pointer behind the insert stays old.
+        names = ", ".join(sorted({n for n, _s, _p in LAST_UNLOCATED}))
+        log.error("Add item refused: %d pointer(s) not located (%s)", len(LAST_UNLOCATED), names)
+        raise ValueError(f"this save has data the tool cannot move safely ({names}) - nothing was added")
 
     toc_entries = result['toc']['entries']
     schema_end = result['raw']['schema_end']
