@@ -1,5 +1,5 @@
 {
-  "version": "2.6.1",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.1/CrimsonGameMods.exe",
-  "notes": "Fix: Swap 1 and Add item could add a copy of another item instead of the chosen one (e.g. DLC Abyss Gears); equipment buffs shown per refinement level; Export menu: the mod comes first, the config is marked 'not a mod'"
+  "version": "2.6.2",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.2/CrimsonGameMods.exe",
+  "notes": "Important fix: after Swap 1 or Add item the game could crash while loading the main menu (saves with Damiane or Oongka). If that happened to you, restore a backup from before (My save > Backups)."
 }
