@@ -780,6 +780,15 @@ QListWidget, QListView {{
 }}
 QListWidget::item {{
     border-radius: 6px;
+    border: 1px solid transparent;
+}}
+QListWidget::item:hover:!selected {{
+    background-color: {c['header']};
+}}
+QListWidget::item:selected, QListWidget::item:selected:!active {{
+    background-color: {c['selected']};
+    color: {strong};
+    border: 1px solid {c['accent']};
 }}
 QTextEdit, QTextBrowser {{
     background-color: {c['panel']};

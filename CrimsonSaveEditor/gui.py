@@ -799,6 +799,18 @@ QListWidget, QListView, QTreeWidget, QTreeView {{
     selection-background-color: {COLORS['selected']};
     selection-color: {COLORS.get('selection_text', COLORS['text'])};
 }}
+QListWidget::item {{
+    border: 1px solid transparent;
+    border-radius: 6px;
+}}
+QListWidget::item:hover:!selected {{
+    background-color: {COLORS['header']};
+}}
+QListWidget::item:selected, QListWidget::item:selected:!active {{
+    background-color: {COLORS['selected']};
+    color: {COLORS.get('text_strong', COLORS['text'])};
+    border: 1px solid {COLORS['accent']};
+}}
 QTextEdit, QTextBrowser {{
     background-color: {COLORS['panel']};
     color: {COLORS['text']};
@@ -4746,6 +4758,18 @@ QListWidget, QListView, QTreeWidget, QTreeView {{
     border: 1px solid {COLORS['border']};
     selection-background-color: {COLORS['selected']};
     selection-color: {COLORS.get('selection_text', COLORS['text'])};
+}}
+QListWidget::item {{
+    border: 1px solid transparent;
+    border-radius: 6px;
+}}
+QListWidget::item:hover:!selected {{
+    background-color: {COLORS['header']};
+}}
+QListWidget::item:selected, QListWidget::item:selected:!active {{
+    background-color: {COLORS['selected']};
+    color: {COLORS.get('text_strong', COLORS['text'])};
+    border: 1px solid {COLORS['accent']};
 }}
 QTextEdit, QTextBrowser {{
     background-color: {COLORS['panel']};
