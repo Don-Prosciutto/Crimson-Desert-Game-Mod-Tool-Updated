@@ -35004,7 +35004,7 @@
  {
   "key": 1004915,
   "name": "Graymane_KliffHouse_LivingTogether",
-  "display": "[DLC] [DLC] [DLC] Graymane_KliffHouse_LivingTogether",
+  "display": "[DLC] Graymane_KliffHouse_LivingTogether",
   "dlc": true
  },
  {
@@ -35490,7 +35490,7 @@
  {
   "key": 1004978,
   "name": "Mission_OceanStory_CitizenStory_Start",
-  "display": "[DLC] [DLC] [DLC] Mission_OceanStory_CitizenStory_Start",
+  "display": "[DLC] Mission_OceanStory_CitizenStory_Start",
   "dlc": true
  },
  {

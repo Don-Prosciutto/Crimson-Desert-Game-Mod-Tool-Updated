@@ -48,6 +48,14 @@ BIN = "gamedata/binarystaticinfo__/bin"
 LOC = "gamedata/stringtable/binary__/eng"
 DLC_TAG = "[DLC] "
 
+
+def _untag(text: str) -> str:
+    """Name without "[DLC] " in front. A name taken over from the old file
+    already has it; adding it again made "[DLC] [DLC] [DLC] ..." over the runs."""
+    while text.startswith(DLC_TAG):
+        text = text[len(DLC_TAG):]
+    return text
+
 sys.path.insert(0, GMT_DIR)        # the Game Mod Tool's dmm_parser / item_db
 
 _ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII",
@@ -117,7 +125,7 @@ def _quests(rows, loc, old_disp, dlc_keys):
     out = []
     for r in rows:
         key = r["key"]
-        disp = loc.get(_idx(r.get("name"))) or old_disp.get(key) or r.get("string_key", "")
+        disp = _untag(loc.get(_idx(r.get("name"))) or old_disp.get(key) or r.get("string_key", ""))
         e = {"key": key, "name": r.get("string_key", ""),
              "display": (DLC_TAG + disp) if key in dlc_keys else disp,
              "category": r.get("quest_category", 0),
@@ -242,7 +250,7 @@ def main(argv) -> int:
     old_m = {e["key"]: e for e in _load(MISSIONS_PATH, [])}
     missions = []
     for k, r in m_rows.items():
-        disp = loc.get(_idx(r.get("label_a"))) or (old_m.get(k) or {}).get("display") or r.get("string_key", "")
+        disp = _untag(loc.get(_idx(r.get("label_a"))) or (old_m.get(k) or {}).get("display") or r.get("string_key", ""))
         e = {"key": k, "name": r.get("string_key", ""), "display": (DLC_TAG + disp) if k in dlc_m else disp}
         if k in dlc_m:
             e["dlc"] = True

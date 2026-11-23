@@ -1,3 +1,4 @@
-9778425d672b6dc747b9e80016f812ba6ae0b3c4 Fri Nov 13 01:17:46 2026 -0700
-+ local patch for game 2.05.01 (20.11.2026): ItemInfo.discard_single_count, PageData.ui_texture_rotation_type
-  source changes: dmm_parser_patches/game-2.05.01.patch
+9d9747c158b173a1323d1524513159f877f4854e  2026-11-21  "Merge AerowynX into main: game 2.05.01 table decodes, rebuilt .pyd"
+Official upstream build: dmm_parser.pyd is the one shipped in the dmm-parser repository (unchanged).
+dmm_parser.abi3.so (Linux, development only) is built from the same commit without changes.
+The local 2.05.01 patch (dmm_parser_patches/) is no longer used - upstream decodes the same fields plus MissionResultData.level_gimmick_scene_object_info.
