@@ -235,6 +235,12 @@ def summary(result: Optional[dict]) -> str:
     total = len(result.get("results", {}))
     ver = result.get("game_version", "?")
     if not bad:
+        partial = {t: r["partial"] for t, r in result.get("results", {}).items() if r.get("partial")}
+        if partial:
+            # Reads and writes fine, but not every record is understood - the
+            # parser misses a field of this game version (missioninfo, 20.11.2026).
+            return (f"Game {ver}: all {total} tables checked - OK, but "
+                    f"{sum(partial.values())} records in {', '.join(sorted(partial))} not decoded")
         return f"Game {ver}: all {total} tables checked - OK"
     pages = blocked_pages(result)
     return (f"Game {ver}: {len(bad)} of {total} tables do not fit - "
