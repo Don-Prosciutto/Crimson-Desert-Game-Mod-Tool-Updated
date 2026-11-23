@@ -1,5 +1,5 @@
 {
-  "version": "2.6.2",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.2/CrimsonGameMods.exe",
-  "notes": "Important fix: after Swap 1 or Add item the game could crash while loading the main menu (saves with Damiane or Oongka). If that happened to you, restore a backup from before (My save > Backups)."
+  "version": "2.6.3",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.3/CrimsonGameMods.exe",
+  "notes": "Uses the official parser for game 2.05.01 now (reads all mission data); Home shows the loaded save; quest list without doubled [DLC] tags."
 }
