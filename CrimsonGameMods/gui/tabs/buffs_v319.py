@@ -11651,10 +11651,20 @@ class ItemBuffsTab(QWidget):
             log.warning("buff_names_readable not available: %s", e)
             self._buff_readable = {}
             return
-        self._buff_readable = bnr.BUFFS
+        # Names and descriptions in the tool's language (locale/*.json; the
+        # game itself has no player-facing names for these buffs). The group
+        # stays English as the sort key; it is translated where it is shown.
+        try:
+            from gui_i18n import tr as _t
+        except Exception:  # noqa: BLE001
+            def _t(text):
+                return text
+        self._buff_tr = _t
+        self._buff_readable = {k: (_t(n), g, _t(d) if d else d)
+                               for k, (n, g, d) in bnr.BUFFS.items()}
         self._buff_group_order = bnr.GROUP_ORDER
         self._buff_group_hint = bnr.GROUP_HINT
-        for key, (name, _grp, _desc) in bnr.BUFFS.items():
+        for key, (name, _grp, _desc) in self._buff_readable.items():
             self._EQUIP_BUFF_NAMES[key] = name
 
     def _buff_fill_buff_combo(self) -> None:
@@ -11669,10 +11679,12 @@ class ItemBuffsTab(QWidget):
         entries.sort()
         combo = self._eb_buff_combo
         model = combo.model()
+        _t = getattr(self, "_buff_tr", None) or (lambda text: text)
         for _o, grp, _n, bk, name, desc in entries:
-            label = f"[{grp}]  {name}" + (f"  \u2014  {desc}" if desc else "") + f"  ({bk})"
+            shown = _t(grp)
+            label = f"[{shown}]  {name}" + (f"  \u2014  {desc}" if desc else "") + f"  ({bk})"
             combo.addItem(label, bk)
-            tip = f"{name}\n{desc}\nGroup: {grp}" + (f"\n{hints[grp]}" if grp in hints else "") \
+            tip = f"{name}\n{desc}\n{_t('Group')}: {shown}" + (f"\n{_t(hints[grp])}" if grp in hints else "") \
                 + f"\nBuff key: {bk}"
             combo.setItemData(combo.count() - 1, tip, Qt.ToolTipRole)
             if grp in ("Debuff", "Internal"):
