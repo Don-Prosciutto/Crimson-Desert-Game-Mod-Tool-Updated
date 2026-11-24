@@ -1,5 +1,5 @@
 {
-  "version": "2.6.3",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.3/CrimsonGameMods.exe",
-  "notes": "Uses the official parser for game 2.05.01 now (reads all mission data); Home shows the loaded save; quest list without doubled [DLC] tags."
+  "version": "2.6.4",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.4/CrimsonGameMods.exe",
+  "notes": "The buff list in Edit items is now in your language (all 13 languages, official Abyss Gear names); the game check says when game data is only partly read."
 }
