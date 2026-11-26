@@ -219,13 +219,11 @@ def append_items_to_iteminfo(
         (new_body, new_head) ready for overlay deployment.
     """
     # Parse existing pabgh
-    count = struct.unpack_from("<H", vanilla_head, 0)[0]
-    entries: list[tuple[int, int]] = []
-    for i in range(count):
-        base = 2 + i * 8
-        k = struct.unpack_from("<I", vanilla_head, base)[0]
-        o = struct.unpack_from("<I", vanilla_head, base + 4)[0]
-        entries.append((k, o))
+    # The appended records carry their name in the body - the layout up to
+    # game 2.05. A 2.06 table (name in the index) stops here.
+    from table_index import legacy_index
+    entries: list[tuple[int, int]] = [(e.key, e.offset)
+                                      for e in legacy_index(vanilla_head).entries]
 
     existing_keys = {k for k, _ in entries}
 

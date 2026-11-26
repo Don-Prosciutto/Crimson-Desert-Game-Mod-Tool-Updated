@@ -98,13 +98,9 @@ class StoreInfoParser:
         else:
             self._body_data = bytearray(raw)
 
-        count = struct.unpack_from('<H', self._header_data, 0)[0]
-        self._header_entries = []
-        for i in range(count):
-            base = 2 + i * 6
-            key = struct.unpack_from('<H', self._header_data, base)[0]
-            off = struct.unpack_from('<I', self._header_data, base + 2)[0]
-            self._header_entries.append((key, off))
+        from table_index import legacy_index
+        self._header_entries = [(e.key, e.offset)
+                                for e in legacy_index(self._header_data).entries]
 
         self.load_names()
         self._parse_stores()

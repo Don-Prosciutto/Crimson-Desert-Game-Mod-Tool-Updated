@@ -644,13 +644,9 @@ def _serialize_body(f):
 
 def parse_skill_pabgh(pabgh_bytes):
     """Parse skill.pabgh index. Returns [(key, offset), ...] sorted by offset."""
-    count = struct.unpack_from("<H", pabgh_bytes, 0)[0]
-    entries = []
-    for i in range(count):
-        pos = 2 + i * 8
-        key, offset = struct.unpack_from("<II", pabgh_bytes, pos)
-        entries.append((key, offset))
-    return sorted(entries, key=lambda x: x[1])
+    from table_index import legacy_index
+    return sorted(((e.key, e.offset) for e in legacy_index(pabgh_bytes).entries),
+                  key=lambda x: x[1])
 
 
 # ---------------------------------------------------------------------------

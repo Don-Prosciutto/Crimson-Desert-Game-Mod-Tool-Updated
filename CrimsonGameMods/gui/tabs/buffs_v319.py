@@ -46,7 +46,6 @@ def _without_dlc(items):
 def _dlc_item_records(game_path: str, known_keys: set) -> tuple:
     """Raw iteminfo records of every installed DLC whose key the main table
     does not have. Returns (bytes of the records back to back, set of keys)."""
-    import struct as _st
     try:
         import dmm_parser
         from item_db import _dlc_tables
@@ -63,13 +62,16 @@ def _dlc_item_records(game_path: str, known_keys: set) -> tuple:
         except Exception as e:
             log.warning("DLC iteminfo %s not readable: %s", root, e)
             continue
-        count = _st.unpack_from('<H', h, 0)[0] if len(h) >= 2 else 0
-        if not count or len(h) < 2 + count * 8:
+        from table_index import read_index
+        try:
+            _idx = read_index(h)
+        except ValueError:
             continue
-        ents = sorted((_st.unpack_from('<I', h, 2 + i * 8 + 4)[0],
-                       _st.unpack_from('<I', h, 2 + i * 8)[0]) for i in range(count))
-        for i, (off, key) in enumerate(ents):
-            end = ents[i + 1][0] if i + 1 < len(ents) else len(b)
+        count = len(_idx.entries)
+        if not count:
+            continue
+        for _e, off, end in sorted(_idx.spans(len(b)), key=lambda t: t[1]):
+            key = _e.key
             if key in known_keys or key in keys or off >= end:
                 continue
             out.extend(b[off:end])

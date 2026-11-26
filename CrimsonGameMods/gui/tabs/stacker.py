@@ -4611,8 +4611,7 @@ class StackerTab(QWidget):
         """Serialize merged items back into a pabgb blob matching vanilla layout."""
         try:
             import crimson_rs
-            van_count = struct.unpack_from('<H', van_pabgh, 0)[0]
-            van_rs = (len(van_pabgh) - 2) // van_count if van_count else 8
+            from table_index import read_index
             merged_by_key = {it['key']: it for it in merged_items}
             unparsed = getattr(self, '_stacker_unparsed_raw', []) or []
             unparsed_map = {}
@@ -4620,19 +4619,8 @@ class StackerTab(QWidget):
                 uk = struct.unpack_from('<I', raw, 0)[0]
                 unparsed_map[uk] = raw
 
-            order = []
-            for pi in range(van_count):
-                prec = 2 + pi * van_rs
-                if prec + van_rs > len(van_pabgh):
-                    break
-                psoff = struct.unpack_from('<I', van_pabgh, prec + (van_rs - 4))[0]
-                pnxt = len(vanilla_bytes)
-                if pi + 1 < van_count:
-                    nrec = 2 + (pi + 1) * van_rs
-                    if nrec + van_rs <= len(van_pabgh):
-                        pnxt = struct.unpack_from('<I', van_pabgh, nrec + (van_rs - 4))[0]
-                pk = struct.unpack_from('<I', vanilla_bytes, psoff)[0]
-                order.append((pk, psoff, pnxt - psoff))
+            order = [(e.key, a, z - a)
+                     for e, a, z in read_index(van_pabgh).spans(len(vanilla_bytes))]
 
             final = bytearray()
             for pk, psoff, psize in order:

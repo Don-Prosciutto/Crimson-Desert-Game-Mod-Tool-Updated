@@ -25,17 +25,12 @@ class StringResolver:
 
     def load_from_pabgb(self, pabgb: bytes, pabgh: bytes) -> int:
         h2s: dict[int, str] = {}
-        cnt = struct.unpack_from('<H', pabgh, 0)[0]
-        idx_start, ksz = 2, 8
-        if 2 + cnt * 8 != len(pabgh):
-            cnt = struct.unpack_from('<I', pabgh, 0)[0]
-            idx_start = 4
-        for i in range(cnt):
-            p = idx_start + i * ksz
-            if p + ksz > len(pabgh):
-                break
-            k = struct.unpack_from('<I', pabgh, p)[0]
-            o = struct.unpack_from('<I', pabgh, p + 4)[0]
+        # Both layouts put the string length 9 bytes into the record:
+        # up to 2.05 [u32 0 (empty name)][u32 hash][u8], since 2.06
+        # [u32 hash][u32 row number][u8].
+        from table_index import read_index
+        for _e in read_index(pabgh).entries:
+            k, o = _e.key, _e.offset
             if o + 13 > len(pabgb):
                 continue
             slen = struct.unpack_from('<I', pabgb, o + 9)[0]

@@ -34,12 +34,10 @@ def main(argv) -> int:
     shutil.copyfile(SQLITE_PATH, work)
     c = sqlite3.connect(work)
     have = {r[0] for r in c.execute("SELECT character_key FROM characters")}
-    # keys of the base game (from the table header: count, then key + offset)
-    import struct  # noqa: PLC0415
+    # keys of the base game (from the table index, either layout)
+    from table_index import read_index  # noqa: PLC0415
     h = bytes(dmm.extract_file(game, "0008", "gamedata/binarystaticinfo__/bin", "characterinfo.staticinfoheader"))
-    n16 = struct.unpack_from("<H", h, 0)[0]
-    start, n = (2, n16) if 2 + n16 * 8 == len(h) else (4, struct.unpack_from("<I", h, 0)[0])
-    base_keys = {struct.unpack_from("<I", h, start + i * 8)[0] for i in range(n) if start + i * 8 + 8 <= len(h)}
+    base_keys = set(read_index(h).keys())
     print(f"base game characters: {len(base_keys)}")
     rows_new = []
     sources = [(game, "gamedata/binarystaticinfo__/bin", "characterinfo.staticinfobody")]

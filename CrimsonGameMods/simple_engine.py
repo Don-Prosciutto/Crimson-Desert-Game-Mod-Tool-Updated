@@ -411,17 +411,14 @@ def _serialize(dmm, stem: str, recs: list, head: Optional[bytes]) -> Tuple[bytes
     if stem == "iteminfo":
         # iteminfo is not pabgh-bounded for the serializer: build the index
         # (u16 count, then key u32 + offset u32 per record, in index order).
+        from table_index import read_index
         body = bytearray()
-        offs = {}
+        spans = {}
         for it in recs:
-            offs[int(it["key"])] = len(body)
+            start = len(body)
             body += bytes(dmm.serialize_table("iteminfo", [it]))
-        count = struct.unpack_from("<H", head, 0)[0]
-        keys = [struct.unpack_from("<I", head, 2 + i * 8)[0] for i in range(count)]
-        new_head = bytearray(struct.pack("<H", count))
-        for k in keys:
-            new_head += struct.pack("<II", k, offs[k])
-        return bytes(body), bytes(new_head)
+            spans[int(it["key"])] = (start, len(body) - start)
+        return bytes(body), read_index(head).with_spans(spans)
     name = _SERIALIZE_NAME.get(stem, stem)
     try:
         out = dmm.serialize_table(name, recs, None, head)
