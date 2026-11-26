@@ -76,6 +76,30 @@ LAST_UNLOCATED: list = []
 _SENTINEL8 = b"\xFF" * 8
 
 
+def _fitting_template(template, result):
+    """The stored item template, or None when it was recorded under another
+    ItemSaveData layout than this save's. The templates come from older
+    saves: their field mask has 3 bytes (up to 24 fields), current saves
+    have 26 fields and a 4-byte mask. Inserting such a template leaves an
+    item the save's own reader can no longer walk; copying an item of the
+    save itself (the fallback) always matches."""
+    if not template:
+        return None
+    try:
+        mbc = struct.unpack_from('<H', bytes.fromhex(template['hex'][:4]), 0)[0]
+    except Exception:  # noqa: BLE001
+        return None
+    for t in result['schema']['types']:
+        if t.name == 'ItemSaveData':
+            need = (len(t.fields) + 7) // 8
+            if mbc != need:
+                log.info("Stored template has a %d-byte field mask, this save needs %d - "
+                         "copying an item of the save instead", mbc, need)
+                return None
+            return template
+    return None
+
+
 def _compute_payload_offset_pos(f, raw: bytes) -> int:
     pos = _compute_payload_offset_pos_fixed(f, raw)
     if pos >= 0 or f.child_payload_offset <= 0 or f.start_offset <= 0:
@@ -643,7 +667,7 @@ def add_item_to_store(
 
     try:
         from item_template_db import get_template, build_item_from_template
-        template = get_template(new_item_key)
+        template = _fitting_template(get_template(new_item_key), result)
         if template:
             log.info("Using template from DB for key %d (mask=%s, %dB)",
                      new_item_key, template['mask'], template['size'])
@@ -922,7 +946,7 @@ def add_item_to_inventory(
     new_entry = None
     try:
         from item_template_db import get_template
-        template = get_template(new_item_key)
+        template = _fitting_template(get_template(new_item_key), result)
         if template:
             log.info("Using template from DB for key %d (mask=%s, %dB)",
                      new_item_key, template['mask'], template['size'])
