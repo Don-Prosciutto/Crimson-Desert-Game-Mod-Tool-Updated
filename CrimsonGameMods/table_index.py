@@ -203,6 +203,14 @@ def legacy_index(pabgh: bytes) -> TableIndex:
     if idx.layout == NEW:
         raise NewLayoutError("table uses the game 2.06 layout; this reader only "
                              "knows the layout up to 2.05")
+    try:
+        from table_compat import is_verified  # noqa: PLC0415
+    except ImportError:
+        return idx
+    if not is_verified(pabgh):
+        # Converted from 2.06, but its records also gained or lost fields.
+        raise NewLayoutError("this table changed in game 2.06; this reader does "
+                             "not know the new fields yet")
     return idx
 
 

@@ -44,9 +44,19 @@ except NameError:
     _NativePackGroupBuilder = None
 
 
+# Game 2.06 tables in the old layout for this parser, and back when writing
+# (CrimsonGameMods: table_compat.py; off once the parser reads 2.06 itself).
+try:
+    import table_compat as _table_compat
+except ImportError:
+    _table_compat = None
+
 if _native_extract_file is not None:
     def extract_file(game_dir, group_name, dir_path, file_name):  # type: ignore[no-redef]
         mapped_dir, mapped_name = _map_static_entry(dir_path, file_name)
+        if _table_compat is not None:
+            return _table_compat.extract(_native_extract_file, game_dir, group_name,
+                                         mapped_dir, mapped_name)
         return _native_extract_file(game_dir, group_name, mapped_dir, mapped_name)
 
 if _native_extract_file_from_paz is not None:
@@ -65,16 +75,25 @@ if _NativePackGroupBuilder is not None:
 
         def __init__(self, *args, **kwargs):
             self._inner = _NativePackGroupBuilder(*args, **kwargs)
+            self._writer = (_table_compat.PackWriter(self._inner.add_file)
+                            if _table_compat is not None else None)
 
         def add_file(self, dir_path, file_name, data):
             mapped_dir, mapped_name = _map_static_entry(dir_path, file_name)
+            if self._writer is not None:
+                return self._writer.add(mapped_dir, mapped_name, data)
             return self._inner.add_file(mapped_dir, mapped_name, data)
 
         def add_file_from_path(self, dir_path, file_name, file_path):
             mapped_dir, mapped_name = _map_static_entry(dir_path, file_name)
+            if self._writer is not None and _table_compat._split(mapped_name)[0] is not None:
+                with open(file_path, "rb") as f:
+                    return self._writer.add(mapped_dir, mapped_name, f.read())
             return self._inner.add_file_from_path(mapped_dir, mapped_name, file_path)
 
         def finish(self):
+            if self._writer is not None:
+                self._writer.finish()
             return self._inner.finish()
 
         def __getattr__(self, name):
