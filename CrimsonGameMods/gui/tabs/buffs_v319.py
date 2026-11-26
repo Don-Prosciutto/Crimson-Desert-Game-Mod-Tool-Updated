@@ -1289,11 +1289,22 @@ class ItemBuffsTab(QWidget):
         _action_row = build_action_row()
         _actions_holder.setLayout(_action_row)
         _actions_holder.setVisible(False)
+        # Found by their English labels: text() is the translation on screen
+        # (in Italian every button below was missing, 26.11.2026).
+        try:
+            from gui_i18n import english_text as _en, tr as _tr
+        except Exception:  # noqa: BLE001
+            def _en(w):
+                return w.text()
+
+            def _tr(t):
+                return t
         _by_text = {}
         for _i in range(_action_row.count()):
             _w = _action_row.itemAt(_i).widget()
             if _w is not None and hasattr(_w, "text"):
-                _by_text[_w.text()] = _w
+                _by_text[_en(_w)] = _w
+                _by_text.setdefault(_w.text(), _w)
 
         def _take(text):
             w = _by_text.get(text)
@@ -1343,7 +1354,8 @@ class ItemBuffsTab(QWidget):
             _m.insertAction(_first, _van)
             _m.insertSeparator(_first)
             for _act in list(_m.actions()):
-                if _act.text().startswith("Restore Original"):
+                if _en(_act).startswith("Restore Original") or \
+                        _act.text().startswith(_tr("Restore Original")):
                     _act.setVisible(False)       # wrote into the game folder (blocked since 2.04)
             toolbar.addWidget(_more)
         _info = QLabel("ⓘ")
@@ -1352,7 +1364,7 @@ class ItemBuffsTab(QWidget):
         _info.setCursor(Qt.WhatsThisCursor)
         toolbar.addWidget(_info)
         for _w in list(_by_text.values()):
-            if _w.text() == "?":
+            if _en(_w) == "?":
                 _w.setParent(None)
                 toolbar.addWidget(_w)
                 break
@@ -1390,7 +1402,7 @@ class ItemBuffsTab(QWidget):
         for _i in range(search_row_layout.count()):
             _w = search_row_layout.itemAt(_i).widget()
             if _w is not None:
-                _sw[_w.text() if hasattr(_w, "text") and not isinstance(_w, QLineEdit) else id(_w)] = _w
+                _sw[_en(_w) if hasattr(_w, "text") and not isinstance(_w, QLineEdit) else id(_w)] = _w
         _items_body = QWidget()
         _iv = QVBoxLayout(_items_body)
         _iv.setContentsMargins(0, 0, 0, 0)
@@ -2181,7 +2193,12 @@ class ItemBuffsTab(QWidget):
             god_mode_btn.setText("Normal Mode")
 
         def toggle_mode_list():
-            if god_mode_btn.text() == "Adv Mode":
+            try:
+                from gui_i18n import english_text as _en_t
+            except Exception:  # noqa: BLE001
+                def _en_t(w):
+                    return w.text()
+            if _en_t(god_mode_btn) == "Adv Mode":
                 enable_advance_mode_list()
             else:
                 enable_normal_mode_list()

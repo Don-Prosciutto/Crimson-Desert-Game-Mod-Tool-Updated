@@ -12485,8 +12485,13 @@ QCheckBox::indicator {{
 
     def _qg_set_chip(self, label: str) -> None:
         self._qg_chip_filter = label
+        try:
+            from gui_i18n import english_text as _en
+        except Exception:  # noqa: BLE001
+            def _en(w):
+                return w.text()
         for b in getattr(self, "_qg_chips", ()):
-            b.setChecked(b.text() == label)
+            b.setChecked(_en(b) == label)
         self._qg_refresh()
 
     def _qg_view_changed(self, i: int) -> None:

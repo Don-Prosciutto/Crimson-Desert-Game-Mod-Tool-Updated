@@ -419,6 +419,28 @@ def bypass(text: str) -> str:
     return _BYPASS + text
 
 
+_EN_PROP = "i18n_en"
+
+
+def english_text(obj) -> str:
+    """The English text a button/label/action was given in the code.
+
+    text() returns the translation on screen. Code that finds widgets by
+    their label (e.g. the Edit items toolbar) must compare with the English
+    text, or nothing is found in other languages and the widgets disappear
+    (Italian, 26.11.2026)."""
+    try:
+        v = obj.property(_EN_PROP)
+        if isinstance(v, str) and v:
+            return v
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return obj.text()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _patch_method(cls, name: str, arg_indices=(0,)) -> bool:
     global _patched_count
     try:
@@ -427,15 +449,27 @@ def _patch_method(cls, name: str, arg_indices=(0,)) -> bool:
         return False
     if getattr(orig, "__gui_i18n_patched__", False):
         return False
+    # Only QObjects can hold the English text (not QTableWidgetItem - thousands of them).
+    keep_english = name in ("setText", "__init__") and hasattr(cls, "setProperty")
 
     def wrapper(self, *args, **kw):
+        english = None
         if args:
             new_args = list(args)
             for i in arg_indices:
                 if i < len(new_args) and isinstance(new_args[i], str):
+                    if english is None:
+                        english = new_args[i][len(_BYPASS):] if new_args[i].startswith(_BYPASS) \
+                            else new_args[i]
                     new_args[i] = tr(new_args[i])
             args = tuple(new_args)
-        return orig(self, *args, **kw)
+        res = orig(self, *args, **kw)
+        if keep_english and english is not None:
+            try:
+                self.setProperty(_EN_PROP, english)
+            except Exception:  # noqa: BLE001 - not every class has properties
+                pass
+        return res
 
     wrapper.__gui_i18n_patched__ = True
     wrapper.__name__ = name
