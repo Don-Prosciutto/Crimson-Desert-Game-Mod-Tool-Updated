@@ -27,15 +27,8 @@ def serialize_all_dmm(items: list) -> bytes | None:
 
 
 def parse_pabgh_index(pabgh_data):
-    count = struct.unpack_from('<H', pabgh_data, 0)[0]
-    entries = {}
-    pos = 2
-    for _ in range(count):
-        key = struct.unpack_from('<I', pabgh_data, pos)[0]
-        offset = struct.unpack_from('<I', pabgh_data, pos + 4)[0]
-        entries[key] = offset
-        pos += 8
-    return entries
+    from table_index import legacy_index
+    return legacy_index(pabgh_data).offsets()
 
 
 def _read_cstring(data, p):

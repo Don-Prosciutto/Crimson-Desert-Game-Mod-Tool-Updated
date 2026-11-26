@@ -16,15 +16,9 @@ def parse_inventory_entries(pabgb: bytes, pabgh: bytes) -> list[dict]:
       _default_slot_offset, _max_slot_offset, _entry_offset, _entry_size
     """
     # Parse pabgh index
-    count = struct.unpack_from('<H', pabgh, 0)[0]
-    ks = (len(pabgh) - 2) // count
-    entries = []
-    for i in range(count):
-        pos = 2 + i * ks
-        key = struct.unpack_from('<H', pabgh, pos)[0]
-        off = struct.unpack_from('<I', pabgh, pos + 2)[0]
-        entries.append((key, off))
-    entries.sort(key=lambda x: x[1])
+    from table_index import legacy_index
+    entries = sorted(((e.key, e.offset) for e in legacy_index(pabgh).entries),
+                     key=lambda x: x[1])
 
     results = []
     for i, (key, off) in enumerate(entries):

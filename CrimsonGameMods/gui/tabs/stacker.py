@@ -184,21 +184,12 @@ def _parse_with_fallback(crimson_rs, game_path: str,
         pass
     pabgh = bytes(crimson_rs.extract_file(
         game_path, '0008', INTERNAL_DIR, ITEMINFO_PABGH))
-    count = struct.unpack_from('<H', pabgh, 0)[0]
-    rs = (len(pabgh) - 2) // count if count else 8
-    entries = []
-    for i in range(count):
-        rec = 2 + i * rs
-        if rec + rs > len(pabgh):
-            break
-        soff = struct.unpack_from('<I', pabgh, rec + (rs - 4))[0]
-        if soff + 8 <= len(raw):
-            entries.append(soff)
-    entries.sort()
+    from table_index import read_index
+    spans = sorted((a, b) for _e, a, b in read_index(pabgh).spans(len(raw))
+                   if a + 8 <= len(raw))
     items = []
     unparsed = []
-    for idx, soff in enumerate(entries):
-        nxt = entries[idx + 1] if idx + 1 < len(entries) else len(raw)
+    for soff, nxt in spans:
         try:
             parsed = crimson_rs.parse_iteminfo_from_bytes(raw[soff:nxt])
             if parsed:
@@ -890,27 +881,16 @@ def _diff_blob_table_to_intents(vanilla_pabgh: bytes, vanilla_pabgb: bytes,
         # determine record sizes.
         if len(pabgh) < 2:
             return {}
-        count = struct.unpack_from('<H', pabgh, 0)[0]
-        # Detect 8-byte vs 6-byte entry layout (small minority of tables use u16 keys).
-        if 2 + count * 8 == len(pabgh):
-            entry_size, key_size, key_fmt = 8, 4, '<I'
-        elif 2 + count * 6 == len(pabgh):
-            entry_size, key_size, key_fmt = 6, 2, '<H'
-        else:
-            # Unknown layout. Bail to caller, who'll surface it.
-            raise ValueError(f"unknown pabgh layout: count={count}, file={len(pabgh)}B")
-
-        offsets = []
-        for i in range(count):
-            base = 2 + i * entry_size
-            key = struct.unpack_from(key_fmt, pabgh, base)[0]
-            off = struct.unpack_from('<I', pabgh, base + key_size)[0]
-            offsets.append((key, off))
-        offsets.sort(key=lambda kv: kv[1])
+        from table_index import read_index, NEW
+        _idx = read_index(pabgh)  # ValueError on an unknown layout
+        if _idx.layout == NEW:
+            # Since game 2.06 the name sits in the index, not in the record;
+            # this blob walk only knows the old record layout.
+            raise ValueError("table uses the game 2.06 layout; not supported here yet")
 
         records = {}
-        for i, (key, off) in enumerate(offsets):
-            end = offsets[i + 1][1] if i + 1 < len(offsets) else len(pabgb)
+        for _e, off, end in sorted(_idx.spans(len(pabgb)), key=lambda t: t[1]):
+            key = _e.key
             # [key u32][string_key cstring][is_blocked u8][blob ...]
             p = off
             _k = struct.unpack_from('<I', pabgb, p)[0]; p += 4
@@ -2896,25 +2876,10 @@ class StackerTab(QWidget):
         try:
             van_pabgh = bytes(crimson_rs.extract_file(
                 game, '0008', INTERNAL_DIR, ITEMINFO_PABGH))
-            van_count = struct.unpack_from('<H', van_pabgh, 0)[0]
-            van_rs = (len(van_pabgh) - 2) // van_count if van_count else 8
-
-            order = []
-            for _pi in range(van_count):
-                _prec = 2 + _pi * van_rs
-                if _prec + van_rs > len(van_pabgh):
-                    break
-                _psoff = struct.unpack_from('<I', van_pabgh,
-                                           _prec + (van_rs - 4))[0]
-                if _psoff + 4 <= len(vanilla_bytes):
-                    _pk = struct.unpack_from('<I', vanilla_bytes, _psoff)[0]
-                    _pnxt = len(vanilla_bytes)
-                    if _pi + 1 < van_count:
-                        _nrec = 2 + (_pi + 1) * van_rs
-                        if _nrec + van_rs <= len(van_pabgh):
-                            _pnxt = struct.unpack_from(
-                                '<I', van_pabgh, _nrec + (van_rs - 4))[0]
-                    order.append((_pk, _psoff, _pnxt - _psoff))
+            from table_index import read_index
+            van_idx = read_index(van_pabgh)
+            order = [(e.key, a, b - a)
+                     for e, a, b in van_idx.spans(len(vanilla_bytes))]
 
             for it in merged_items:
                 dcd = it.get('docking_child_data')
@@ -2933,7 +2898,7 @@ class StackerTab(QWidget):
             final = bytearray()
             new_entries = []
             for pk, psoff, psize in order:
-                new_entries.append((pk, len(final)))
+                _start = len(final)
                 if pk in merged_by_key:
                     final.extend(crimson_rs.serialize_iteminfo(
                         [merged_by_key[pk]]))
@@ -2941,11 +2906,9 @@ class StackerTab(QWidget):
                     final.extend(unparsed_map[pk])
                 else:
                     final.extend(vanilla_bytes[psoff:psoff + psize])
+                new_entries.append((_start, len(final) - _start))
 
-            rebuilt_pabgh = struct.pack('<H', len(new_entries))
-            for pk, poff in new_entries:
-                rebuilt_pabgh += struct.pack('<II', pk, poff)
-            self._rebuilt_pabgh = rebuilt_pabgh
+            self._rebuilt_pabgh = van_idx.with_span_list(new_entries)
             merged_bytes = bytes(final)
         except Exception as e:
             self._log_line(f"✘ serialize failed: {e}")
@@ -4567,20 +4530,9 @@ class StackerTab(QWidget):
                 "Serialization failed.")
             return
 
-        van_count = struct.unpack_from('<H', van_pabgh, 0)[0]
-        van_rs = (len(van_pabgh) - 2) // van_count if van_count else 8
-
+        from table_index import read_index
         changes = []
-        for pi in range(van_count):
-            prec = 2 + pi * van_rs
-            if prec + van_rs > len(van_pabgh):
-                break
-            off = struct.unpack_from('<I', van_pabgh, prec + (van_rs - 4))[0]
-            nxt = len(vanilla_bytes)
-            if pi + 1 < van_count:
-                nrec = 2 + (pi + 1) * van_rs
-                if nrec + van_rs <= len(van_pabgh):
-                    nxt = struct.unpack_from('<I', van_pabgh, nrec + (van_rs - 4))[0]
+        for _e, off, nxt in read_index(van_pabgh).spans(len(vanilla_bytes)):
             size = nxt - off
             if off + size > len(vanilla_bytes) or off + size > len(merged_full):
                 continue
@@ -4590,10 +4542,12 @@ class StackerTab(QWidget):
             if van_chunk == mod_chunk:
                 continue
 
-            pk = struct.unpack_from('<I', vanilla_bytes, off)[0]
-            nl = struct.unpack_from('<I', vanilla_bytes, off + 4)[0]
-            entry_name = vanilla_bytes[off + 8:off + 8 + min(nl, 200)].decode(
-                'ascii', errors='replace')
+            if _e.name is not None:          # game 2.06+: name is in the index
+                entry_name = _e.name
+            else:
+                nl = struct.unpack_from('<I', vanilla_bytes, off + 4)[0]
+                entry_name = vanilla_bytes[off + 8:off + 8 + min(nl, 200)].decode(
+                    'ascii', errors='replace')
 
             j = 0
             while j < len(van_chunk):

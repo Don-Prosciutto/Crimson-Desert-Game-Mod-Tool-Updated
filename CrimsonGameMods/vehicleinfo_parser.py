@@ -23,16 +23,8 @@ def serialize_all_dmm(items: list) -> bytes | None:
 
 
 def parse_pabgh_index_u16(G):
-    count = struct.unpack_from('<H', G, 0)[0]
-    idx = {}
-    for i in range(count):
-        pos = 2 + i * 6
-        if pos + 6 > len(G):
-            break
-        k = struct.unpack_from('<H', G, pos)[0]
-        o = struct.unpack_from('<I', G, pos + 2)[0]
-        idx[k] = o
-    return idx
+    from table_index import legacy_index
+    return legacy_index(G).offsets()
 
 
 def parse_entry(D, eoff, end):

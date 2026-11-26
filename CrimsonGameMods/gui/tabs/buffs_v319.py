@@ -453,25 +453,16 @@ class ItemBuffsTab(QWidget):
             return {int(it['key']): it for it in items}
         except Exception:
             pass
-        import struct as _st
         game_path = getattr(self._buff_patcher, 'game_path', None) if hasattr(self, '_buff_patcher') else None
         if not game_path:
             raise RuntimeError("Cannot parse: no game path for pabgh extraction")
         pabgh = bytes(crimson_rs.extract_file(
             game_path, '0008', 'gamedata/binarystaticinfo__/bin', 'iteminfo.pabgh'))
-        countA = _st.unpack_from('<H', pabgh, 0)[0]
-        rs = (len(pabgh) - 2) // countA if countA else 8
-        entries = []
-        for _i in range(countA):
-            rec = 2 + _i * rs
-            if rec + rs > len(pabgh): break
-            _soff = _st.unpack_from('<I', pabgh, rec + (rs - 4))[0]
-            if _soff + 8 <= len(raw_bytes):
-                entries.append(_soff)
-        entries.sort()
+        from table_index import read_index
+        spans = sorted((a, b) for _e, a, b in read_index(pabgh).spans(len(raw_bytes))
+                       if a + 8 <= len(raw_bytes))
         result = {}
-        for _idx, _soff in enumerate(entries):
-            _nxt = entries[_idx + 1] if _idx + 1 < len(entries) else len(raw_bytes)
+        for _soff, _nxt in spans:
             try:
                 _parsed = _iteminfo_parse(raw_bytes[_soff:_nxt])
                 if _parsed:
@@ -496,24 +487,9 @@ class ItemBuffsTab(QWidget):
             game_path, '0008', 'gamedata/binarystaticinfo__/bin', 'iteminfo.pabgb'))
         _pabgh = bytes(crimson_rs.extract_file(
             game_path, '0008', 'gamedata/binarystaticinfo__/bin', 'iteminfo.pabgh'))
-        _pcount = struct.unpack_from('<H', _pabgh, 0)[0]
-        _prs = (len(_pabgh) - 2) // _pcount if _pcount else 8
-
-        _order = []
-        for _pi in range(_pcount):
-            _prec = 2 + _pi * _prs
-            if _prec + _prs > len(_pabgh):
-                break
-            _psoff = struct.unpack_from('<I', _pabgh, _prec + (_prs - 4))[0]
-            if _psoff + 4 <= len(_van_raw):
-                _pk = struct.unpack_from('<I', _van_raw, _psoff)[0]
-                _pnxt_idx = _pi + 1
-                _pnxt = len(_van_raw)
-                if _pnxt_idx < _pcount:
-                    _pnxt_rec = 2 + _pnxt_idx * _prs
-                    if _pnxt_rec + _prs <= len(_pabgh):
-                        _pnxt = struct.unpack_from('<I', _pabgh, _pnxt_rec + (_prs - 4))[0]
-                _order.append((_pk, _psoff, _pnxt - _psoff))
+        from table_index import read_index
+        _pidx = read_index(_pabgh)
+        _order = [(_e.key, _a, _b - _a) for _e, _a, _b in _pidx.spans(len(_van_raw))]
 
         _patch_docking_108(self._buff_rust_items)
         _parsed_ser = {}
@@ -528,18 +504,16 @@ class ItemBuffsTab(QWidget):
         final = bytearray()
         _new_entries = []
         for _pk, _psoff, _psize in _order:
-            _new_entries.append((_pk, len(final)))
+            _start = len(final)
             if _pk in _parsed_ser:
                 final.extend(_parsed_ser[_pk])
             elif _pk in _unparsed_map:
                 final.extend(_unparsed_map[_pk])
             else:
                 final.extend(_van_raw[_psoff:_psoff + _psize])
+            _new_entries.append((_start, len(final) - _start))
 
-        _new_pabgh = bytearray(struct.pack('<H', len(_new_entries)))
-        for _pk, _poff in _new_entries:
-            _new_pabgh.extend(struct.pack('<II', _pk, _poff))
-        self._buff_rebuilt_pabgh = bytes(_new_pabgh)
+        self._buff_rebuilt_pabgh = _pidx.with_span_list(_new_entries)
         return final
 
     def set_experimental_mode(self, enabled: bool) -> None:
@@ -3806,7 +3780,6 @@ class ItemBuffsTab(QWidget):
                     rust_items = _iteminfo_parse(bytes(raw))
                 self._buff_unparsed_raw = []
             except Exception:
-                import struct as _pst
                 game_path = self._buff_patcher.game_path
                 # Use the MATCHING pabgh for this pabgb — overlay if extracting
                 # from overlay, vanilla otherwise.
@@ -3828,22 +3801,12 @@ class ItemBuffsTab(QWidget):
                     except Exception:
                         pabgh = None
                 if pabgh:
-                    countA = _pst.unpack_from('<H', pabgh, 0)[0]
-                    _rec_size = (len(pabgh) - 2) // countA if countA else 8
-                    entries = []
-                    for _i in range(countA):
-                        _rec = 2 + _i * _rec_size
-                        if _rec + _rec_size > len(pabgh):
-                            break
-                        _soff = _pst.unpack_from('<I', pabgh, _rec + (_rec_size - 4))[0]
-                        if _soff + 8 > len(raw):
-                            continue
-                        entries.append(_soff)
-                    entries.sort()
+                    from table_index import read_index
+                    _spans = sorted((a, b) for _e, a, b in read_index(pabgh).spans(len(raw))
+                                    if a + 8 <= len(raw))
                     rust_items = []
                     _unparsed_raw = []
-                    for _idx, _soff in enumerate(entries):
-                        _nxt = entries[_idx + 1] if _idx + 1 < len(entries) else len(raw)
+                    for _soff, _nxt in _spans:
                         try:
                             _parsed = _iteminfo_parse(
                                 bytes(raw[_soff:_nxt]))
@@ -3864,21 +3827,11 @@ class ItemBuffsTab(QWidget):
                             _van_gh = bytes(crimson_rs.extract_file(
                                 game_path, '0008', 'gamedata/binarystaticinfo__/bin',
                                 'iteminfo.pabgh'))
-                            _van_countA = _pst.unpack_from('<H', _van_gh, 0)[0]
-                            _van_rs = (len(_van_gh) - 2) // _van_countA if _van_countA else 8
-                            _van_entries = []
-                            for _vi in range(_van_countA):
-                                _vrec = 2 + _vi * _van_rs
-                                if _vrec + _van_rs > len(_van_gh): break
-                                _vsoff = _pst.unpack_from('<I', _van_gh, _vrec + (_van_rs - 4))[0]
-                                if _vsoff + 8 <= len(_van_raw):
-                                    _van_entries.append(_vsoff)
-                            _van_entries.sort()
                             _parsed_keys = {int(it['key']) for it in rust_items}
-                            for _vi, _vsoff in enumerate(_van_entries):
-                                _vnxt = _van_entries[_vi+1] if _vi+1 < len(_van_entries) else len(_van_raw)
-                                _vkey = _pst.unpack_from('<I', _van_raw, _vsoff)[0]
-                                if _vkey not in _parsed_keys:
+                            for _ve_, _vsoff, _vnxt in read_index(_van_gh).spans(len(_van_raw)):
+                                if _vsoff + 8 > len(_van_raw):
+                                    continue
+                                if _ve_.key not in _parsed_keys:
                                     _unparsed_raw.append(bytes(_van_raw[_vsoff:_vnxt]))
                             if _unparsed_raw:
                                 log.info("Recovered %d unparsed items from vanilla", len(_unparsed_raw))
@@ -3886,7 +3839,7 @@ class ItemBuffsTab(QWidget):
                             log.warning("Could not recover unparsed items from vanilla: %s", _ve)
                     self._buff_unparsed_raw = _unparsed_raw
                     log.info("Per-entry parse: %d/%d items (%d kept as raw)",
-                             len(rust_items), len(entries), len(_unparsed_raw))
+                             len(rust_items), len(_spans), len(_unparsed_raw))
                 else:
                     rust_items = []
             t1 = time.perf_counter()

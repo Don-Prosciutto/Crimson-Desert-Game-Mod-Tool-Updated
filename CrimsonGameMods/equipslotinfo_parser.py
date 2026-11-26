@@ -39,21 +39,8 @@ log = logging.getLogger(__name__)
 
 
 def parse_pabgh(pabgh: bytes) -> list[tuple[int, int]]:
-    count = struct.unpack_from('<H', pabgh, 0)[0]
-    entries = []
-    p = 2
-    key_size = (len(pabgh) - 2) // count
-    if key_size == 8:
-        for _ in range(count):
-            k = struct.unpack_from('<I', pabgh, p)[0]; p += 4
-            o = struct.unpack_from('<I', pabgh, p)[0]; p += 4
-            entries.append((k, o))
-    else:
-        for _ in range(count):
-            k = struct.unpack_from('<H', pabgh, p)[0]; p += 2
-            o = struct.unpack_from('<I', pabgh, p)[0]; p += 4
-            entries.append((k, o))
-    return entries
+    from table_index import legacy_index
+    return [(e.key, e.offset) for e in legacy_index(pabgh).entries]
 
 
 def serialize_pabgh(entries: list[tuple[int, int]], key_u32: bool = True) -> bytes:

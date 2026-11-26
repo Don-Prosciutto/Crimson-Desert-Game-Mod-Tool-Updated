@@ -339,20 +339,8 @@ def get_imbue_plan(skill_id: int, target_item: dict) -> dict:
 
 
 def parse_skill_pabgh(pabgh_blob: bytes, pabgb_size: int) -> list[tuple[int, int, int]]:
-    count = struct.unpack_from("<H", pabgh_blob, 0)[0]
-    entries: list[tuple[int, int]] = []
-    pos = 2
-    for _ in range(count):
-        key = struct.unpack_from("<I", pabgh_blob, pos)[0]; pos += 4
-        off = struct.unpack_from("<I", pabgh_blob, pos)[0]; pos += 4
-        entries.append((key, off))
-
-    spatial = sorted(entries, key=lambda e: e[1])
-    end_for: dict[tuple[int, int], int] = {}
-    for i, (k, o) in enumerate(spatial):
-        end_for[(k, o)] = spatial[i + 1][1] if i + 1 < len(spatial) else pabgb_size
-
-    return [(k, o, end_for[(k, o)] - o) for (k, o) in entries]
+    from table_index import read_index
+    return [(e.key, a, b - a) for e, a, b in read_index(pabgh_blob).spans(pabgb_size)]
 
 
 _CLASS_LIST_MAX = 256

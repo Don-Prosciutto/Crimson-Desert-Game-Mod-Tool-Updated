@@ -48,19 +48,8 @@ def _skip_cstring(D, p):
 
 
 def parse_pabgh_index(G):
-    c16 = struct.unpack_from('<H', G, 0)[0]
-    if 2 + c16 * 8 == len(G):
-        idx_start, count = 2, c16
-    else:
-        count = struct.unpack_from('<I', G, 0)[0]
-        idx_start = 4
-    idx = {}
-    for i in range(count):
-        pos = idx_start + i * 8
-        if pos + 8 > len(G):
-            break
-        idx[struct.unpack_from('<I', G, pos)[0]] = struct.unpack_from('<I', G, pos + 4)[0]
-    return idx
+    from table_index import legacy_index
+    return legacy_index(G).offsets()
 
 
 def parse_entry(D, eoff, end):

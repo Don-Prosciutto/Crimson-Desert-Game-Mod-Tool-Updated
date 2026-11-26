@@ -1072,24 +1072,8 @@ def parse_gimmick_entry(D, eoff, end):
 
 
 def parse_pabgh_index(G):
-    c16 = struct.unpack_from('<H', G, 0)[0]
-    if 2 + c16 * 8 == len(G):
-        idx_start, count = 2, c16
-    else:
-        count = struct.unpack_from('<I', G, 0)[0]
-        idx_start = 4
-
-    idx = []
-    for i in range(count):
-        pos = idx_start + i * 8
-        if pos + 8 > len(G):
-            break
-        key = struct.unpack_from('<I', G, pos)[0]
-        offset = struct.unpack_from('<I', G, pos + 4)[0]
-        idx.append((key, offset))
-
-    idx.sort(key=lambda x: x[1])
-    return idx
+    from table_index import legacy_index
+    return sorted(((e.key, e.offset) for e in legacy_index(G).entries), key=lambda x: x[1])
 
 
 def parse_all_gimmicks(D, G):

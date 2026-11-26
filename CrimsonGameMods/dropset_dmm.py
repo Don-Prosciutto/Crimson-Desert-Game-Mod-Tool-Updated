@@ -102,12 +102,12 @@ class DmmDropsetEditor(DropsetEditor):
         return [r for r in self._recs if int(r["key"]) not in self._dlc_keys]
 
     def _read_index(self):
-        self.record_count = struct.unpack_from("<H", self.header_bytes, 0)[0]
-        self.records = [struct.unpack_from("<II", self.header_bytes, 2 + i * 8)
-                        for i in range(self.record_count)]
+        from table_index import read_index
+        idx = read_index(self.header_bytes)
+        self.record_count = len(idx.entries)
+        self.records = [(e.key, e.offset) for e in idx.entries]
         self._offsets = dict(self.records)
-        ends = sorted(o for _, o in self.records) + [len(self.body_bytes)]
-        self._next = {o: ends[i + 1] for i, o in enumerate(ends[:-1])}
+        self._next = {a: b for _e, a, b in idx.spans(len(self.body_bytes))}
 
     # ── records <-> DropSet objects ──────────────────────────────────
     def parse_dropset(self, key: int) -> Optional[DropSet]:

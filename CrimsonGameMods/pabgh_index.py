@@ -1,7 +1,7 @@
 """Rebuild a table's .pabgh index after records changed size.
 
 A .pabgh holds, for every record, its key and its byte offset in the
-.pabgb (u16 count, then key + u32 offset per record). dmm_parser reads the
+.pabgb (since game 2.06 also its name and size - see table_index). dmm_parser reads the
 body record by record and does not need correct offsets - the game does.
 So when an edit makes a record longer or shorter (a list gets an entry
 more, a string gets longer), shipping the game's original .pabgh makes the
@@ -14,7 +14,6 @@ one, then the caller must not write the table. No Qt in here.
 
 from __future__ import annotations
 
-import struct
 from typing import Optional
 
 
@@ -26,19 +25,20 @@ def _serialize_one(dmm, stem: str, rec: dict) -> bytes:
 def rebuild_index(stem: str, body: bytes, pabgh: bytes, dmm=None,
                   recs: Optional[list] = None) -> Optional[bytes]:
     """New .pabgh for `body`. Pass `recs` (the records `body` was written
-    from) for tables that dmm_parser can only read through a fitting index."""
+    from) for tables that dmm_parser can only read through a fitting index.
+    Works with both index layouts (see table_index); the new one also gets
+    the record sizes."""
+    from table_index import read_index  # noqa: PLC0415
     if dmm is None:
         import dmm_parser as dmm  # noqa: PLC0415
     body, pabgh = bytes(body), bytes(pabgh)
-    if len(pabgh) < 2:
+    try:
+        idx = read_index(pabgh)
+    except ValueError:
         return None
-    count = struct.unpack_from("<H", pabgh, 0)[0]
-    if count == 0 or (len(pabgh) - 2) % count:
+    count = len(idx.entries)
+    if count == 0:
         return None
-    step = (len(pabgh) - 2) // count
-    if step not in (6, 8):            # u16 or u32 key, then u32 offset
-        return None
-    key_fmt = "<H" if step == 6 else "<I"
     if recs is None:
         try:
             recs = dmm.parse_table(stem, body, pabgh)
@@ -46,7 +46,7 @@ def rebuild_index(stem: str, body: bytes, pabgh: bytes, dmm=None,
             return None
     if len(recs) != count:
         return None
-    offsets = {}
+    spans = {}
     pos = 0
     parts = []
     for r in recs:
@@ -55,18 +55,14 @@ def rebuild_index(stem: str, body: bytes, pabgh: bytes, dmm=None,
         except Exception:  # noqa: BLE001
             return None
         k = int(r.get("key"))
-        if k in offsets:              # duplicate keys: offsets not unique
+        if k in spans:                # duplicate keys: offsets not unique
             return None
-        offsets[k] = pos
+        spans[k] = (pos, len(chunk))
         parts.append(chunk)
         pos += len(chunk)
     if b"".join(parts) != body:       # records are not simply laid end to end
         return None
-    out = bytearray(pabgh[:2])
-    for i in range(count):
-        base = 2 + i * step
-        key = struct.unpack_from(key_fmt, pabgh, base)[0]
-        if key not in offsets:
-            return None
-        out += pabgh[base:base + step - 4] + struct.pack("<I", offsets[key])
-    return bytes(out)
+    try:
+        return idx.with_spans(spans)
+    except KeyError:
+        return None

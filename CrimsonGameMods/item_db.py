@@ -468,9 +468,8 @@ def _dlc_tables(dmm_parser, game_path: str, group: str, prefix: str, suffix: str
 
 def game_item_keys(game_path: str) -> set:
     """Item keys the installed game knows: main table plus every DLC table.
-    Read from the table headers only (u16 count, then u32 key + u32 offset
-    per record), so this is quick enough for a badge."""
-    import struct
+    Read from the table indexes only (both layouts, see table_index), so
+    this is quick enough for a badge."""
     import dmm_parser
     try:
         from table_layout import INTERNAL_DIR
@@ -483,36 +482,32 @@ def game_item_keys(game_path: str) -> set:
             headers.append(bytes(dmm_parser.extract_file(root, "0008", d, name)))
         except Exception:
             continue
+    from table_index import read_index
     keys = set()
     for h in headers:
-        if len(h) < 2:
+        try:
+            keys.update(read_index(h).keys())
+        except ValueError:
             continue
-        count = struct.unpack_from("<H", h, 0)[0]
-        step = (len(h) - 2) // count if count else 0
-        if step < 4:
-            continue
-        for i in range(count):
-            keys.add(struct.unpack_from("<I", h, 2 + i * step)[0])
     return keys
 
 
 def dlc_only_item_keys(game_path: str) -> set:
-    """Item keys only an installed DLC has (not in the main table)."""
-    import struct
+    """Item keys only an installed DLC has (not in the main table).
+    Since game 2.06 the DLC tables also carry most of the main table's
+    records, so this is the key difference, not the DLC table itself."""
     import dmm_parser
+    from table_index import read_index
     try:
         from table_layout import INTERNAL_DIR
     except ImportError:
         INTERNAL_DIR = "gamedata/binarystaticinfo__/bin"
 
     def _keys(h: bytes) -> set:
-        if len(h) < 2:
+        try:
+            return set(read_index(h).keys())
+        except ValueError:
             return set()
-        count = struct.unpack_from("<H", h, 0)[0]
-        step = (len(h) - 2) // count if count else 0
-        if step < 4:
-            return set()
-        return {struct.unpack_from("<I", h, 2 + i * step)[0] for i in range(count)}
 
     try:
         base = _keys(bytes(dmm_parser.extract_file(game_path, "0008", INTERNAL_DIR,

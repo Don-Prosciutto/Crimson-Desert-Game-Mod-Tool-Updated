@@ -86,12 +86,9 @@ class DropsetEditor:
         self.header_bytes = open(pabgh_path, "rb").read()
         self.body_bytes = bytearray(open(pabgb_path, "rb").read())
 
-        self.record_count = struct.unpack_from("<H", self.header_bytes, 0)[0]
-        self.records = []
-        for i in range(self.record_count):
-            off = 2 + i * 8
-            key, offset = struct.unpack_from("<II", self.header_bytes, off)
-            self.records.append((key, offset))
+        from table_index import legacy_index
+        self.records = [(e.key, e.offset) for e in legacy_index(self.header_bytes).entries]
+        self.record_count = len(self.records)
 
     def load_item_names(self, item_names_path: str = ""):
         _db = get_connection()
