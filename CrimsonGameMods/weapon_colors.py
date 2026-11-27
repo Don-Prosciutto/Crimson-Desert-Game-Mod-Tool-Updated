@@ -57,11 +57,13 @@ WEAPONS = {
               "ref_sat": GAME_PINK_SAT, "dlc": True, "tested": True},
 }
 
+# Fully saturated colours: the beam's bright core blooms towards white in the
+# game (since 2.05.01/2.06), so paler presets came out almost white.
 PRESETS: List[Tuple[str, str]] = [
-    ("Blue", "#2f6bff"), ("Ice Blue", "#7fd4ff"), ("Cyan", "#00e5ff"), ("Teal", "#00c9a7"),
-    ("Green", "#20ff60"), ("Toxic Green", "#9dff00"), ("Yellow", "#fff200"), ("Gold", "#ffc400"),
-    ("Orange", "#ff7a00"), ("Red", "#ff1e1e"), ("Crimson Red", "#c8102e"), ("Magenta", "#ff00d4"),
-    ("Purple", "#8a2bff"), ("Violet", "#b57bff"), ("Silver", "#c9d3e6"), ("White", "#ffffff"),
+    ("Blue", "#0018ff"), ("Ice Blue", "#00a8ff"), ("Cyan", "#00e0ff"), ("Teal", "#00c896"),
+    ("Green", "#00ff28"), ("Toxic Green", "#8cff00"), ("Yellow", "#ffe800"), ("Gold", "#ffb000"),
+    ("Orange", "#ff6000"), ("Red", "#ff0000"), ("Crimson Red", "#c80018"), ("Magenta", "#ff00c8"),
+    ("Purple", "#6a00ff"), ("Violet", "#9a30ff"), ("Silver", "#c9d3e6"), ("White", "#ffffff"),
 ]
 
 
