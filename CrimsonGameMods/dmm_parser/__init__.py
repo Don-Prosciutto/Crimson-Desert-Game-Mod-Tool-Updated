@@ -45,7 +45,7 @@ except NameError:
 
 
 # Game 2.06 tables in the old layout for this parser, and back when writing
-# (CrimsonGameMods: table_compat.py; off once the parser reads 2.06 itself).
+# (CrimsonGameMods: table_compat.py, using the parser's named_to_legacy / named_from_legacy).
 try:
     import table_compat as _table_compat
 except ImportError:

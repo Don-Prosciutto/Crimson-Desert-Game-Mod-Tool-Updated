@@ -19,8 +19,12 @@ exact: game -> old -> game gives the original bytes for every 2.06.00 table
 except characterappearanceindexinfo and the DLC's npcfriendlyinfo, which are
 passed through untouched.
 
-Off as soon as the bundled parser is not 9d9747c any more (Tag X: the new
-parser reads 2.06 itself), or with CGM_NO_TABLE_COMPAT=1. No Qt in here.
+Since dmm-parser f6f1de3 (game 2.06.00) the parser itself works the same
+way: its table readers keep the old layout, and named_to_legacy /
+named_from_legacy move the bytes (with a "sidecar" for the row numbers, the
+way DMM does it). When the bundled parser has those functions this layer
+uses them; the own conversion below is only the fallback for 9d9747c.
+Off with CGM_NO_TABLE_COMPAT=1. No Qt in here.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ import hashlib
 import logging
 import os
 import struct
+import sys
 import threading
 
 from table_index import read_index, TableIndex, IndexEntry, OLD, NEW
@@ -91,8 +96,7 @@ VERIFIED_DLC = frozenset({
 
 _lock = threading.Lock()
 _pairs: dict = {}        # (game_dir, group, dir, stem) -> converted pair or None
-_rows: dict = {}         # (dir, stem) -> {key: row number} of the original
-_shape: dict = {}        # (dir, stem) -> (count_size, key_size)
+_state: dict = {}        # (dir, stem) -> what to_new needs to restore the 2.06 layout
 _orig_new: dict = {}     # (dir, stem) -> (index, body) as in the game
 _converted: dict = {}    # sha1(old index) -> stem, for is_verified()
 _active = None
@@ -101,17 +105,38 @@ _active = None
 def active() -> bool:
     global _active
     if _active is None:
-        if os.environ.get("CGM_NO_TABLE_COMPAT"):
-            _active = False
-        else:
-            here = os.path.dirname(os.path.abspath(__file__))
-            try:
-                with open(os.path.join(here, "dmm_parser", "UPSTREAM_COMMIT.txt"),
-                          encoding="utf-8") as f:
-                    _active = f.read().startswith("9d9747c")
-            except OSError:
-                _active = True
+        _active = not os.environ.get("CGM_NO_TABLE_COMPAT")
     return _active
+
+
+def _parser():
+    """The loaded dmm_parser if it has the official 2.06 conversion, else None."""
+    m = sys.modules.get("dmm_parser")
+    return m if m is not None and hasattr(m, "named_to_legacy") else None
+
+
+def to_legacy(head: bytes, body: bytes):
+    """(old index, old body, state) for a 2.06 table, or None if it is not one."""
+    p = _parser()
+    if p is not None:
+        if not p.is_named_pair(head, body):
+            return None
+        h, b, sc = p.named_to_legacy(head, body)
+        return bytes(h), bytes(b), ("dmm", bytes(sc))
+    idx = read_index(head)
+    if idx.layout != NEW or not idx.entries:
+        return None
+    oh, ob, rows = as_old(head, body)
+    return oh, ob, ("own", rows, idx.count_size, idx.key_size)
+
+
+def from_legacy(head: bytes, body: bytes, state):
+    """(index, body) in the 2.06 layout from the old layout."""
+    if state[0] == "dmm":
+        p = _parser()
+        h, b = p.named_from_legacy(bytes(head), bytes(body), state[1])
+        return bytes(h), bytes(b)
+    return to_new(head, body, state[1], state[2], state[3])
 
 
 def _split(name: str):
@@ -181,15 +206,13 @@ def _convert_pair(native, game_dir, group, dir_path, stem, ext):
     try:
         head = bytes(native(game_dir, group, dir_path, hname))
         body = bytes(native(game_dir, group, dir_path, bname))
-        idx = read_index(head)
-        if idx.layout == NEW and idx.entries:
-            oh, ob, rows = as_old(head, body)
-            nh, nb = to_new(oh, ob, rows, idx.count_size, idx.key_size)
-            if (nh, nb) == (head, body):
+        conv = to_legacy(head, body)
+        if conv is not None:
+            oh, ob, state = conv
+            if from_legacy(oh, ob, state) == (head, body):
                 pair = (oh, ob)
                 with _lock:
-                    _rows.setdefault((dir_path, stem), rows)
-                    _shape.setdefault((dir_path, stem), (idx.count_size, idx.key_size))
+                    _state.setdefault((dir_path, stem), state)
                     _orig_new.setdefault((dir_path, stem), (head, body))
                     _converted[hashlib.sha1(oh).hexdigest()] = stem
             else:
@@ -235,15 +258,15 @@ class PackWriter:
 
     def add(self, dir_path, file_name, data):
         stem, kind, ext = _split(file_name)
-        if not active() or stem is None or (dir_path, stem) not in _rows:
+        if not active() or stem is None or (dir_path, stem) not in _state:
             return self._add(dir_path, file_name, data)
         data = bytes(data)
         if kind == "head":
             try:
-                if read_index(data).layout == NEW:          # already 2.06
-                    return self._add(dir_path, file_name, data)
-            except ValueError:
-                pass
+                if read_index(data, OLD) is None:
+                    pass
+            except ValueError:                              # not the old layout: already 2.06
+                return self._add(dir_path, file_name, data)
         slot = self._wait.setdefault((dir_path, stem), {})
         slot[kind] = (file_name, data)
         if len(slot) == 2:
@@ -252,25 +275,24 @@ class PackWriter:
 
     def _flush(self, dir_path, stem):
         slot = self._wait.pop((dir_path, stem))
-        rows = _rows[(dir_path, stem)]
-        cs, ks = _shape[(dir_path, stem)]
+        state = _state[(dir_path, stem)]
         orig_h, orig_b = _orig_new[(dir_path, stem)]
         head = slot.get("head")
         body = slot.get("body")
         try:
             if head is None:
-                old_h = as_old(orig_h, orig_b)[0]
-                nh, nb = to_new(old_h, body[1], rows, cs, ks)
+                old_h = to_legacy(orig_h, orig_b)[0]
+                nh, nb = from_legacy(old_h, body[1], state)
                 if nh != orig_h:
                     raise ValueError("records changed size but no index was written")
                 self._add(dir_path, body[0], nb)
                 return
             if body is None:
-                old_b = as_old(orig_h, orig_b)[1]
-                nh, nb = to_new(head[1], old_b, rows, cs, ks)
+                old_b = to_legacy(orig_h, orig_b)[1]
+                nh, nb = from_legacy(head[1], old_b, state)
                 self._add(dir_path, head[0], nh)
                 return
-            nh, nb = to_new(head[1], body[1], rows, cs, ks)
+            nh, nb = from_legacy(head[1], body[1], state)
         except Exception as e:
             raise RuntimeError(f"{stem}: could not write the table in the game 2.06 layout: {e}") from e
         self._add(dir_path, head[0], nh)

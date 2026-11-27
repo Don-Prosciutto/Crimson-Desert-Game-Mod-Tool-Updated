@@ -1,4 +1,5 @@
-9d9747c158b173a1323d1524513159f877f4854e  2026-11-21  "Merge AerowynX into main: game 2.05.01 table decodes, rebuilt .pyd"
+f6f1de31a9943dc8066f08ed48dc7b366c6e770d  2026-11-26  "Merge AerowynX into main: game 2.06.00 tables (names in the index, inline conditions)"
 Official upstream build: dmm_parser.pyd is the one shipped in the dmm-parser repository (unchanged).
 dmm_parser.abi3.so (Linux, development only) is built from the same commit without changes.
-The local 2.05.01 patch (dmm_parser_patches/) is no longer used - upstream decodes the same fields plus MissionResultData.level_gimmick_scene_object_info.
+Game 2.06 tables: the parser reads the 2.05 layout; table_compat.py (CrimsonGameMods) converts with the
+parser's own named_to_legacy / named_from_legacy, as DMM does.
