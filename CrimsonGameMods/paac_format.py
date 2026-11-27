@@ -1,7 +1,7 @@
 """PAAC action chart (.paac) reader/writer - own implementation, CrimsonGameMods.
 
 Reads and writes every action chart of the game byte-exact (558 files checked,
-game 2.05.00; not commonactioninfo*.paac, which is another format). No Qt in here.
+game 2.05.00 and 2.06.00, 559 files each; not commonactioninfo*.paac, which is another format). No Qt in here.
 
 Layout (little-endian):
   u32 node_count
@@ -16,7 +16,7 @@ Layout (little-endian):
   10 string lists: u16 n, n x (u8 length incl. 0, bytes)
       [0 pool (keys, masks), 1 .paa, 2 .paa camera, 3 effects, 4 ?, 5 motionblending,
        6 bones, 7 masks, 8 baseseq, 9 ?]
-  40-byte head, u16 nh, nj, k, m, x; nh x u32; k x u16; nj x 40;
+  40-byte head (18 bytes since game 2.06), u16 nh, nj, k, m, x; nh x u32; k x u16; nj x 40;
   m x 288-byte state records (+24 name hash, +84 u16 node index,
       +228/+232 u16 start/count in S6b, +238 movement mode); x x 12
   D1: u32 bytes + condition bytecode (u32 words, prefix: 651 AND, 652 OR, 653 NOT,
@@ -75,7 +75,37 @@ class Paac:
 def _u16(d, o): return struct.unpack_from('<H', d, o)[0]
 def _u32(d, o): return struct.unpack_from('<I', d, o)[0]
 
-def parse(d):
+# Game 2.06.00 shortened the 40-byte block after the string lists to 18 bytes
+# and inserted three condition opcodes before AND/OR/NOT (651-653 -> 654-656).
+HEAD_LEN = {"2.06": 18, "2.05": 40}
+COND_OPS = {"2.06": (654, 655, 656), "2.05": (651, 652, 653)}   # AND, OR, NOT
+
+
+def _need(d, o, size):
+    if size < 0 or o + size > len(d):
+        raise ValueError("paac: section runs past the end of the file")
+
+
+def parse(d, layout=None):
+    """Read a .paac; p.layout is the game layout ("2.06" or "2.05"), p.cond_ops
+    the AND/OR/NOT opcodes of that layout. Without a layout the current game's
+    (2.06) is tried first; 2.05 only when the file does not fit it (all 559
+    charts of 2.06.00 read as 2.06, a few 2.05 files would also fit 2.06 - pass
+    layout="2.05" for old files)."""
+    err = None
+    for lay in ((layout,) if layout else ("2.06", "2.05")):
+        try:
+            p = _parse(d, HEAD_LEN[lay])
+        except (ValueError, IndexError, struct.error) as e:
+            err = e
+            continue
+        p.layout = lay
+        p.cond_ops = COND_OPS[lay]
+        return p
+    raise ValueError("unknown action chart layout: %s" % err)
+
+
+def _parse(d, head_len):
     p = Paac(); o = 0
     n = _u32(d, 0); o = 4
     p.nodes = []
@@ -86,32 +116,33 @@ def parse(d):
         o2 = b + 164 + tab[19] + 16 * z
         nt = d[o2]; o3 = o2 + 1 + 20 * nt
         p.nodes.append(d[o:o3]); o = o3
-    P = _u32(d, o); o += 4
+    P = _u32(d, o); o += 4; _need(d, o, 8 * P)
     p.pairs = [struct.unpack_from('<II', d, o + 8 * i) for i in range(P)]; o += 8 * P
-    nA = _u32(d, o); p.A = list(struct.unpack_from('<%dI' % nA, d, o + 4)); o += 4 + 4 * nA
-    nB = _u32(d, o); p.B = list(struct.unpack_from('<%dI' % nB, d, o + 4)); o += 4 + 4 * nB
+    nA = _u32(d, o); _need(d, o + 4, 4 * nA); p.A = list(struct.unpack_from('<%dI' % nA, d, o + 4)); o += 4 + 4 * nA
+    nB = _u32(d, o); _need(d, o + 4, 4 * nB); p.B = list(struct.unpack_from('<%dI' % nB, d, o + 4)); o += 4 + 4 * nB
     p.lists = []
     for _ in range(10):
         c = _u16(d, o); o += 2; L = []
         for _ in range(c):
             ln = d[o]; L.append(d[o + 1:o + ln]); o += 1 + ln   # without the 0 byte
         p.lists.append(L)
-    p.chead = d[o:o + 40]; o += 40
+    _need(d, o, head_len + 10); p.chead = d[o:o + head_len]; o += head_len
     nh, nj, k, m, x = struct.unpack_from('<5H', d, o); o += 10
+    _need(d, o, 4 * nh + 2 * k + 40 * nj + 288 * m + 12 * x)
     p.hashes = list(struct.unpack_from('<%dI' % nh, d, o)); o += 4 * nh
     p.klist = list(struct.unpack_from('<%dH' % k, d, o)); o += 2 * k
     p.jblocks = [d[o + 40 * i:o + 40 * i + 40] for i in range(nj)]; o += 40 * nj
     p.records = [d[o + 288 * i:o + 288 * i + 288] for i in range(m)]; o += 288 * m
     p.xblocks = [d[o + 12 * i:o + 12 * i + 12] for i in range(x)]; o += 12 * x
-    nb = _u32(d, o); p.D1 = d[o + 4:o + 4 + nb]; o += 4 + nb
-    n2 = _u32(d, o); p.D2 = list(struct.unpack_from('<%dH' % n2, d, o + 4)); o += 4 + 2 * n2
-    n5 = _u32(d, o); p.S5 = [d[o + 4 + 56 * i:o + 4 + 56 * i + 56] for i in range(n5)]; o += 4 + 56 * n5
-    n6 = _u32(d, o); p.S6a = [d[o + 4 + 8 * i:o + 12 + 8 * i] for i in range(n6)]; o += 4 + 8 * n6
-    n6 = _u32(d, o); p.S6b = [d[o + 4 + 32 * i:o + 36 + 32 * i] for i in range(n6)]; o += 4 + 32 * n6
-    n7 = _u16(d, o); p.S7 = [d[o + 2 + 28 * i:o + 30 + 28 * i] for i in range(n7)]; o += 2 + 28 * n7
-    n8 = _u32(d, o); p.S8 = [d[o + 4 + 8 * i:o + 12 + 8 * i] for i in range(n8)]; o += 4 + 8 * n8
+    nb = _u32(d, o); _need(d, o + 4, nb); p.D1 = d[o + 4:o + 4 + nb]; o += 4 + nb
+    n2 = _u32(d, o); _need(d, o + 4, 2 * n2); p.D2 = list(struct.unpack_from('<%dH' % n2, d, o + 4)); o += 4 + 2 * n2
+    n5 = _u32(d, o); _need(d, o + 4, 56 * n5); p.S5 = [d[o + 4 + 56 * i:o + 4 + 56 * i + 56] for i in range(n5)]; o += 4 + 56 * n5
+    n6 = _u32(d, o); _need(d, o + 4, 8 * n6); p.S6a = [d[o + 4 + 8 * i:o + 12 + 8 * i] for i in range(n6)]; o += 4 + 8 * n6
+    n6 = _u32(d, o); _need(d, o + 4, 32 * n6); p.S6b = [d[o + 4 + 32 * i:o + 36 + 32 * i] for i in range(n6)]; o += 4 + 32 * n6
+    n7 = _u16(d, o); _need(d, o + 2, 28 * n7); p.S7 = [d[o + 2 + 28 * i:o + 30 + 28 * i] for i in range(n7)]; o += 2 + 28 * n7
+    n8 = _u32(d, o); _need(d, o + 4, 8 * n8); p.S8 = [d[o + 4 + 8 * i:o + 12 + 8 * i] for i in range(n8)]; o += 4 + 8 * n8
     p.gap5 = d[o:o + 5]; o += 5
-    nb = _u32(d, o); p.blob = d[o + 4:o + 4 + nb]; o += 4 + nb
+    nb = _u32(d, o); _need(d, o + 4, nb); p.blob = d[o + 4:o + 4 + nb]; o += 4 + nb
     p.trailer = d[o:]
     return p
 

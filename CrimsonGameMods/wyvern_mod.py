@@ -23,7 +23,7 @@ an ASI, without speed changes and without whole tables:
   * Field JSON (vehicleinfo, characterinfo, interactioninfo): second seat, carry
     dead/bound people, NPC on the back seat.
 
-Game 2.05.00. No Qt in here.
+Game 2.05.00 and 2.06.00 (paac_format reads both layouts). No Qt in here.
 """
 
 from __future__ import annotations
@@ -130,7 +130,8 @@ def build_pab(vanilla: bytes, seat_up: float = SEAT_UP) -> bytes:
 
 # ─────────────────────────────────────────────────── action chart (.paac)
 TAG_WYVERN = lookup3("wyvern")          # 0xa9b3d781
-OP_AND, OP_OR, OP_NOT, OP_KEY, OP_TAG = 651, 652, 653, 234, 311
+OP_KEY, OP_TAG = 234, 311     # AND/OR/NOT differ per game version: p.cond_ops
+PROJ_SPAWN_OFS = {"2.06": 244, "2.05": 240}   # u16 spawn index in a projectile event
 EV_PROJECTILE, EV_UPPER_ANIM, EV_DRAGON_VOICE = 0x07, 0x73, 0x4f
 
 REC_BREATH_STT = 0xc6b2f626      # record name hashes (stable ids)
@@ -212,6 +213,7 @@ def NOT(a): return ("NOT", a)
 def emit(p, expr):
     """Append an expression to D1/D2, return (start, count) in D2."""
     start = len(p.D2); words = []
+    OP_AND, OP_OR, OP_NOT = p.cond_ops
     def rec(e):
         k = e[0]
         if k in ("AND", "OR"):
@@ -232,6 +234,7 @@ def emit(p, expr):
 
 
 def decode(p, start, cnt):
+    OP_AND, OP_OR, OP_NOT = p.cond_ops
     seq = []
     for i in range(start, start + cnt):
         w = p.D2[i]; op = _u32(p.D1, 4 * w)
@@ -465,7 +468,7 @@ def patch_fire_breath(p, key: str = KEYS[DEFAULT_KEY], interval: Optional[float]
     def proj_map(word):
         if word not in copies:
             ev = bytearray(p.blob[4 * word:4 * word + _event_len(p, word)])
-            struct.pack_into("<H", ev, 240, WYV_MOUTH_SPAWN)
+            struct.pack_into("<H", ev, PROJ_SPAWN_OFS[p.layout], WYV_MOUTH_SPAWN)
             copies[word] = len(p.blob) // 4
             p.blob = p.blob + bytes(ev)
         return copies[word]
