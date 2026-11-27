@@ -24,9 +24,9 @@ RELEASES_URL = "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-U
 
 # Shown under "New in this version". Keep it to a few lines.
 WHATS_NEW = [
-    "Back up all saves with one click - and restore them (Backups)",
-    "Storable key items: start gear, pre-order items, books into a chest",
-    "Sockets for Damiane and Oongka, all DLC Abyss Gears",
+    "Works with game 2.06.00 (new table format, all game tables read)",
+    "Adding an item to a save keeps the whole inventory readable again",
+    "Edit items toolbar works in every language",
     "The tool now tells you about updates and installs them itself",
 ]
 

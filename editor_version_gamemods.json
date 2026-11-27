@@ -1,5 +1,5 @@
 {
-  "version": "2.6.4",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.4/CrimsonGameMods.exe",
-  "notes": "The buff list in Edit items is now in your language (all 13 languages, official Abyss Gear names); the game check says when game data is only partly read."
+  "version": "2.6.5",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.5/CrimsonGameMods.exe",
+  "notes": "For game 2.06.00: new parser, every game table is read again (mods need the updated DMM). Adding an item to a save no longer breaks the inventory list; Edit items toolbar fixed for other languages."
 }
