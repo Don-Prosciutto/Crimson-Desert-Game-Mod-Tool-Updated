@@ -1088,6 +1088,14 @@ class ItemBuffPatcher:
                             compressed = fh.read(f['compressed_size'])
                         decompressed = crimson_rs.decompress_data(
                             compressed, f['compression'], f['uncompressed_size'])
+                        # Game 2.06: hand the body out in the layout the parser reads.
+                        try:
+                            from table_compat import legacy_body_for
+                            _raw = bytes(decompressed)
+                            decompressed = legacy_body_for(self.game_path, "0008", "iteminfo", _raw)
+                            self._converted = decompressed != _raw
+                        except ImportError:
+                            pass
                         self.paz_path = paz_path
                         self._paz_offset = f['chunk_offset']
                         self._comp_size = f['compressed_size']
@@ -1430,6 +1438,11 @@ class ItemBuffPatcher:
 
 
     def repack_iteminfo(self, modified_data: bytes) -> Tuple[bool, str]:
+        if getattr(self, "_converted", False):
+            # The data is the game 2.06 table in the old layout; written back
+            # in place it would break the archive.
+            return False, ("Game 2.06: iteminfo can only be written as a mod "
+                           "(Export as Field JSON, or Apply to Game).")
         if not HAS_LZ4:
             return False, "lz4 package not installed"
 

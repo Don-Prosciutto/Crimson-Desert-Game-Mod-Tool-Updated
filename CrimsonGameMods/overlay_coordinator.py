@@ -342,7 +342,20 @@ def get_dmm_overlay_files(game_path: str, filename: str) -> Optional[bytes]:
                         f"gamedata/binary__/client/bin/{filename}"
                     )
                     if data:
-                        return bytes(data)
+                        data = bytes(data)
+                        # Game 2.06: a table body from another tool's overlay
+                        # in the layout the parser reads (index from the same overlay).
+                        if filename.lower().endswith(".pabgb"):
+                            try:
+                                from table_compat import legacy_body_for
+                                head = crimson_rs.extract_file_from_paz(
+                                    paz_path, f"gamedata/binary__/client/bin/{filename[:-1]}h")
+                                if head:
+                                    data = legacy_body_for(game_path, group, filename[:-6],
+                                                           data, head=bytes(head))
+                            except Exception as e:  # noqa: BLE001
+                                log.warning("Could not convert %s from %s: %s", filename, group, e)
+                        return data
                 except Exception as e:
                     log.warning("Could not extract %s from %s: %s",
                                 filename, group, e)

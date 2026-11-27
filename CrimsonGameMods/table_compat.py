@@ -301,3 +301,27 @@ class PackWriter:
     def finish(self):
         for dir_path, stem in list(self._wait):
             self._flush(dir_path, stem)
+
+
+def legacy_body_for(game_path: str, group: str, stem: str, body: bytes,
+                    head: bytes = None) -> bytes:
+    """`body` of table `stem`, read from the archives some other way (a raw
+    PAZ read), in the old layout. `head` is its index if the caller has it;
+    otherwise the game's own index is used. Unchanged when the table is not
+    in the 2.06 layout or this layer is off."""
+    if not active():
+        return body
+    try:
+        if head is None:
+            p = sys.modules.get("dmm_parser")
+            if p is None:
+                import dmm_parser as p  # noqa: PLC0415
+            native = getattr(p, "_native_extract_file", None) or p.extract_file
+            head = bytes(native(game_path, group, "gamedata/binarystaticinfo__/bin",
+                                stem + ".staticinfoheader"))
+        conv = to_legacy(bytes(head), bytes(body))
+        if conv is not None:
+            return conv[1]
+    except Exception as e:  # noqa: BLE001
+        log.warning("table %s: raw read not converted (%s)", stem, e)
+    return body
