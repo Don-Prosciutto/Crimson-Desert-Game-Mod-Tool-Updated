@@ -38,10 +38,12 @@ class DmmItemDrop(ItemDrop):
 
 
 def _new_raw(item_key: int, rate: int, low: int, high: int) -> dict:
-    """A plain drop entry, as the game writes one for a simple item drop."""
-    return {"dispatch_tag": 0, "lookup_4": 0, "lookup_6": 0, "lookup_8": 0,
+    """A plain drop entry, as the game writes one for a simple item drop.
+    Since game 2.06 lookup_4/6/8 are inline conditions (None = no condition)
+    and raw_58 is gone."""
+    return {"dispatch_tag": 0, "lookup_4": None, "lookup_6": None, "lookup_8": None,
             "raw_12": 0, "raw_16": int(rate), "raw_32": 0, "raw_40": int(low),
-            "raw_48": int(high), "raw_56": 65535, "raw_58": 0, "raw_at_120": int(item_key),
+            "raw_48": int(high), "raw_56": 65535, "raw_at_120": int(item_key),
             "variant": {"lookup": int(item_key), "tag": 0}}
 
 
