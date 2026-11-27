@@ -1683,9 +1683,17 @@ class FieldEditTab(QWidget):
             self._field_edit_modified = False
 
             from fieldinfo_parser import parse_pabgh_index, parse_entry
-            idx = parse_pabgh_index(self._field_edit_schema)
-            sorted_offs = sorted(set(idx.values()))
+            from table_index import NewLayoutError
             entries = []
+            try:
+                idx = parse_pabgh_index(self._field_edit_schema)
+            except NewLayoutError as _nle:
+                # The old byte reader does not know the game 2.06 fieldinfo
+                # (it found only 2 of 8 fields on 2.05 already); the rest of
+                # this page (vehicles, regions, mounts) still loads.
+                log.info("fieldinfo: zone list not available (%s)", _nle)
+                idx = {}
+            sorted_offs = sorted(set(idx.values()))
             for key, eoff in sorted(idx.items()):
                 bi = sorted_offs.index(eoff)
                 end = sorted_offs[bi + 1] if bi + 1 < len(sorted_offs) else len(self._field_edit_data)
@@ -5314,7 +5322,12 @@ class FieldEditTab(QWidget):
         catalog = _load_appearance_paths() or []
         dp = 'gamedata/binary__/client/bin'
         pabgh = crimson_rs.extract_file(game_path, '0008', dp, 'characterinfo.pabgh')
-        entries = parse_all_entries(bytes(self._charinfo_data), bytes(pabgh))
+        from table_index import NewLayoutError
+        try:
+            entries = parse_all_entries(bytes(self._charinfo_data), bytes(pabgh))
+        except NewLayoutError as _nle:
+            log.warning("mount overlay: old characterinfo reader not usable (%s)", _nle)
+            entries = []
         # parse_all_entries uses 'name', but _guess_xml_path expects 'internal_name'
         by_key = {}
         for e in entries:
