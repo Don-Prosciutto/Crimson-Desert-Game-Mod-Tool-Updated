@@ -169,6 +169,11 @@ class PresetsTab(QWidget):
         save.setToolTip("Saves a DMM mod that recolours the effect (load it in DMM and mount).")
         save.clicked.connect(self._lumen_save)
         h.addWidget(save)
+        several = QPushButton("Save several…")
+        several.setToolTip("Tick several colours and save them as one DMM pack - "
+                           "in DMM you then pick the colour to mount.")
+        several.clicked.connect(self._lumen_save_pack)
+        h.addWidget(several)
         self._lumen_update_swatch()
         return card
 
@@ -227,6 +232,57 @@ class PresetsTab(QWidget):
             self, "Save as mod",
             f"Saved ({n} colour values).\n\nLoad the file in DMM, activate it and mount. "
             f"Only one colour mod per weapon at a time.\n\nFile: {path}")
+
+    def _lumen_save_pack(self) -> None:
+        """Several colours of one weapon as one DMM pack (choice in DMM)."""
+        import dmm_pack
+        import weapon_colors
+        from gui.pick_list_dialog import pick_several
+        gp = self._game_path or self._config.get("game_install_path", "")
+        if not gp or not os.path.isfile(os.path.join(gp, "meta", "0.papgt")):
+            QMessageBox.warning(self, "Weapon effect colour", "Set the game folder first.")
+            return
+        wid = self._lumen_weapon.currentData() or "lumen"
+        wname = weapon_colors.WEAPONS[wid]["name"]
+        colours = [(self._lumen_combo.itemText(i), self._lumen_combo.itemData(i))
+                   for i in range(self._lumen_combo.count())]
+        picked = pick_several(
+            self, "Save several colours",
+            f"{wname}: tick the colours for the pack. In DMM you pick one of them to mount. "
+            "Own colours: add them with Custom… first.",
+            colours, checked=[self._lumen_combo.currentText()])
+        if not picked:
+            return
+        try:
+            files = weapon_colors.read_files(gp, wid)
+            hexes = dict(colours)
+            variants = [(f"{wname} - {name}",
+                         weapon_colors.build_mod(files, hexes[name], title=f"{wname} - {name}",
+                                                 weapon=wid))
+                        for name in picked]
+        except Exception as e:  # noqa: BLE001
+            log.warning("Weapon effect colour pack failed: %s", e)
+            QMessageBox.critical(self, "Weapon effect colour", str(e))
+            return
+        fname = wname.split("/")[0].strip().replace(" ", "") + "_Colours"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save several colours", f"{fname}.zip", "DMM pack (*.zip);;All Files (*)")
+        if not path:
+            return
+        w = weapon_colors.WEAPONS[wid]
+        try:
+            dmm_pack.write_pack(
+                path, f"{wname} - Colours", "CrimsonGameMods",
+                f"{wname}: effect colour. Pick one colour to mount ({len(variants)} colours)."
+                + (" Needs the DLC." if w.get("dlc") else ""), variants)
+        except OSError as e:
+            QMessageBox.critical(self, "Weapon effect colour", f"Could not write the file:\n{e}")
+            return
+        self._status.setText(f"{wname}: {len(variants)} colours saved to {os.path.basename(path)}")
+        QMessageBox.information(
+            self, "Save several colours",
+            f"Saved {len(variants)} colours as one pack.\n\nLoad the zip in DMM, pick the colour "
+            f"you want and mount. Only one colour per weapon at a time.\n\nFile: {path}")
 
     # ── Wyvern: fire breath, fireballs, passenger (own mod, loose files) ──
     def _build_wyvern_card(self) -> QFrame:

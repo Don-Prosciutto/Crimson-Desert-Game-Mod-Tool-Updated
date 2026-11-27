@@ -153,6 +153,11 @@ class MapColorsTab(QWidget):
         save.setObjectName("accentBtn")
         save.clicked.connect(self._save)
         top.addWidget(save)
+        several = QPushButton("Save several...")
+        several.setToolTip("Tick several colour schemes and save them as one DMM pack - "
+                           "in DMM you then pick the scheme to mount.")
+        several.clicked.connect(self._save_pack)
+        top.addWidget(several)
         outer.addLayout(top)
 
         mine = QHBoxLayout()
@@ -384,3 +389,67 @@ class MapColorsTab(QWidget):
             f"Saved {n} colour values to\n{path}\n\nLoad it in DMM and mount. "
             f"Use only one map colour mod at a time (also not together with other "
             f"map colour mods such as Dark Mode Map).")
+
+    def _save_pack(self) -> None:
+        """Several colour schemes as one DMM pack (choice in DMM)."""
+        import dmm_pack
+        from gui.pick_list_dialog import pick_several
+        if not self._ensure_loaded():
+            QMessageBox.warning(self, "Map Colors", self._status.text())
+            return
+        names = [n for n in mc.PRESETS if n != "Original"]
+        names += [self._MY + n for n in sorted(self._mine(), key=str.lower)]
+
+        def swatch(name: str) -> Optional[str]:
+            c = dict(self._game)
+            c.update(self._preset_colors(name))
+            return c.get("sea") or c.get("paper")
+
+        cur = self._preset.currentText()
+        picked = pick_several(
+            self, "Save several colour schemes",
+            "Tick the colour schemes for the pack. In DMM you pick one of them to mount. "
+            "Own schemes: Save as my preset first.",
+            [(n, swatch(n)) for n in names], checked=[cur] if cur in names else [])
+        if not picked:
+            return
+        variants, skipped = [], []
+        for name in picked:
+            colors = dict(self._game)
+            colors.update(self._preset_colors(name))
+            changed = {r: c for r, c in colors.items()
+                       if c.lower() != self._game.get(r, "").lower()}
+            shown = name[len(self._MY):] if name.startswith(self._MY) else name
+            try:
+                variants.append((f"Map Colors - {shown}",
+                                 mc.build_mod(self._css, changed, title=f"Map Colors - {shown}")))
+            except ValueError:
+                skipped.append(shown)
+        if not variants:
+            QMessageBox.information(self, "Map Colors",
+                                    "None of these schemes differs from the game's colours.")
+            return
+        start = os.path.join(self._config.get("map_colors_dir", "") or os.path.expanduser("~"),
+                             "Map_Colors.zip")
+        path, _ = QFileDialog.getSaveFileName(self, "Save colour schemes as one pack", start,
+                                              "DMM pack (*.zip)")
+        if not path:
+            return
+        try:
+            dmm_pack.write_pack(
+                path, "Map Colors", "CrimsonGameMods Map Colors",
+                f"World map colour schemes. Pick one to mount ({len(variants)} schemes).",
+                variants)
+        except OSError as e:
+            QMessageBox.critical(self, "Map Colors", f"Could not write the file:\n{e}")
+            return
+        self._config["map_colors_dir"] = os.path.dirname(path)
+        self._store()
+        self._status.setText(f"Saved {os.path.basename(path)} ({len(variants)} colour schemes).")
+        self.status_message.emit(f"Map colours saved: {path}")
+        extra = f"\n\nLeft out (same as the game's colours): {', '.join(skipped)}" if skipped else ""
+        QMessageBox.information(
+            self, "Map Colors",
+            f"Saved {len(variants)} colour schemes as one pack:\n{path}\n\nLoad the zip in DMM, "
+            f"pick the scheme you want and mount. Use only one map colour mod at a time."
+            + extra)
