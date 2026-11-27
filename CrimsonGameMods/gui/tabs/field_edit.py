@@ -2253,16 +2253,29 @@ class FieldEditTab(QWidget):
                 self._charinfo_dlc_items.append(cd)
         from perf_util import vanilla_copy as _vanilla_copy
         self._charinfo_dlc_vanilla = _vanilla_copy(self._charinfo_dlc_items)
-        # Names: character.dlc_01.paloc, entry (character_key << 32) | 0x30
+        # Names: entry (character_key << 32) | 0x30. Up to game 2.05 the DLC
+        # had its own character.dlc_01.paloc; since 2.06 the DLC names are in
+        # the main character.paloc and the DLC ships none.
         try:
-            for root, d, fname in _dlc_tables(_dmp, game_path, "0020", "character.", ".paloc"):
-                if not d.rstrip('/').endswith('/eng'):
-                    continue
+            def _read_paloc(root, d, fname):
                 b = bytes(_dmp.extract_file(root, "0020", d, fname))
                 if hasattr(_dmp, 'paloc_is_container') and _dmp.paloc_is_container(b):
                     b = bytes(_dmp.unwrap_paloc_container(b))
-                strings = {int(e['string_key']): e['string_value']
-                           for e in _dmp.parse_paloc_bytes(b) if str(e['string_key']).isdigit()}
+                return {int(e['string_key']): e['string_value']
+                        for e in _dmp.parse_paloc_bytes(b) if str(e['string_key']).isdigit()}
+            strings = {}
+            for root, d, fname in _dlc_tables(_dmp, game_path, "0020", "character.", ".paloc"):
+                if d.rstrip('/').endswith('/eng'):
+                    strings.update(_read_paloc(root, d, fname))
+            wanted = [int(c['key']) for c in list(self._charinfo_dlc_all) + list(self._charinfo_dlc_items)]
+            if any(((k << 32) | 0x30) not in strings for k in wanted):
+                try:
+                    for k, v in _read_paloc(game_path, "gamedata/stringtable/binary__/eng",
+                                            "character.paloc").items():
+                        strings.setdefault(k, v)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("Character names (main table) not loaded: %s", e)
+            if strings:
                 # Also the DLC versions of base records (e.g. 4 of the 5 sea
                 # turtles exist in the base table without a mount type and
                 # only become mounts in the DLC): they are not in

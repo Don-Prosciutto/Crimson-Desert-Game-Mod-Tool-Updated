@@ -46,15 +46,19 @@ def main(argv) -> int:
         is_dlc = bname != "characterinfo.staticinfobody"
         tag = bname.split(".")[1]
         names = {}
-        try:
-            pal = f"character.{tag}.paloc" if is_dlc else "character.paloc"
-            b = bytes(dmm.extract_file(root, "0020", "gamedata/stringtable/binary__/eng", pal))
-            if dmm.paloc_is_container(b):
-                b = bytes(dmm.unwrap_paloc_container(b))
-            names = {int(e["string_key"]): e["string_value"] for e in dmm.parse_paloc_bytes(b)
-                     if str(e["string_key"]).isdigit()}
-        except Exception as e:  # noqa: BLE001
-            print(f"{tag}: names not read: {e}")
+        # Up to game 2.05 a DLC had its own character.<dlc>.paloc; since 2.06
+        # its names are in the main character.paloc.
+        candidates = ([(root, f"character.{tag}.paloc")] if is_dlc else []) + [(game, "character.paloc")]
+        for proot, pal in candidates:
+            try:
+                b = bytes(dmm.extract_file(proot, "0020", "gamedata/stringtable/binary__/eng", pal))
+                if dmm.paloc_is_container(b):
+                    b = bytes(dmm.unwrap_paloc_container(b))
+                names = {int(e["string_key"]): e["string_value"] for e in dmm.parse_paloc_bytes(b)
+                         if str(e["string_key"]).isdigit()}
+                break
+            except Exception as e:  # noqa: BLE001
+                print(f"{tag}: names not in {pal} ({e})")
         rows = dmm.parse_table("character_info", bytes(dmm.extract_file(root, "0008", d, bname)),
                                bytes(dmm.extract_file(root, "0008", d, bname.replace("body", "header"))))
         for r in rows:
