@@ -32268,5 +32268,17 @@
   "name": "Knowledge_Node_Garden_of_Trials",
   "display_name": "[DLC] Garden of Trials",
   "dlc": true
+ },
+ {
+  "key": 1007029,
+  "name": "Knowledge_NatureCreature_StoneDuck",
+  "display_name": "[DLC] Stoneduck",
+  "dlc": true
+ },
+ {
+  "key": 1007030,
+  "name": "Knowledge_NatureCreature_BranchBird",
+  "display_name": "[DLC] Branch Bird",
+  "dlc": true
  }
 ]

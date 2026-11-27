@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "items": [
     {
       "itemKey": 1,
@@ -55007,6 +55007,12 @@
       "category": "Equipment"
     },
     {
+      "itemKey": 1007080,
+      "name": "Grotevant Lantern",
+      "internalName": "PS_Portal_Lantern",
+      "category": "Misc"
+    },
+    {
       "itemKey": 1163002,
       "name": "Hernandian Attire",
       "internalName": "Optionary_Hernand_Party_Cloth",
@@ -58745,5 +58751,5 @@
       "maxStack": 1
     }
   ],
-  "gameVersion": "2.05.01"
+  "gameVersion": "2.06.00"
 }
