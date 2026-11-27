@@ -24,10 +24,10 @@ RELEASES_URL = "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-U
 
 # Shown under "New in this version". Keep it to a few lines.
 WHATS_NEW = [
+    "Wyvern fire breath and fireballs work again on game 2.06.00",
+    "Weapon colour and Map Colors: save several at once, pick the colour in DMM",
+    "Stronger weapon colours",
     "Works with game 2.06.00 (new table format, all game tables read)",
-    "Adding an item to a save keeps the whole inventory readable again",
-    "Edit items toolbar works in every language",
-    "The tool now tells you about updates and installs them itself",
 ]
 
 

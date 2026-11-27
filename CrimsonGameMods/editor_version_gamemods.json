@@ -1,5 +1,5 @@
 {
-  "version": "2.6.5",
-  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.5/CrimsonGameMods.exe",
-  "notes": "For game 2.06.00: new parser, every game table is read again (mods need the updated DMM). Adding an item to a save no longer breaks the inventory list; Edit items toolbar fixed for other languages."
+  "version": "2.6.6",
+  "url": "https://github.com/Don-Prosciutto/Crimson-Desert-Game-Mod-Tool-Updated/releases/download/v2.6.6/CrimsonGameMods.exe",
+  "notes": "Wyvern fire breath and fireballs work again on game 2.06.00. Weapon colour and Map Colors: save several colours as one mod and pick the colour in DMM. Stronger weapon colours."
 }
